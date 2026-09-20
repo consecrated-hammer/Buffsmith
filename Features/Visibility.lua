@@ -1,6 +1,6 @@
 local addonName, ns = ...
 
--- The palette owns secure action buttons.  Its combat visibility therefore
+-- The bar owns secure action buttons.  Its combat visibility therefore
 -- belongs to Blizzard's state driver, not Lua Show/Hide calls at the instant
 -- combat starts.  The driver also lets group scenario changes take effect
 -- without rebuilding secure buttons.

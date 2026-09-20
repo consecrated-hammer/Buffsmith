@@ -9,7 +9,7 @@ SlashCmdList.BUFFSMITH = function(message)
     elseif message == "report" then
         ns.Print(ns.Diagnostics:Report():gsub("\n", " | "))
     elseif message == "toggle" then
-        ns.Set("showPalette", not ns.db.showPalette)
+        ns.Set("visibilityMode", ns.db.visibilityMode == "NEVER" and "ALWAYS" or "NEVER")
     elseif message == "preview" then
         ns.Preview:Toggle()
         ns.Options:RefreshPreviewToggle()

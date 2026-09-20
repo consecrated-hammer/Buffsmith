@@ -84,7 +84,6 @@ function Preview:ApplyPosition()
     local point = ns.db.palettePoint
     self.frame:ClearAllPoints()
     self.frame:SetPoint(point[1], UIParent, point[2], point[3], point[4])
-    self.frame:SetScale(ns.db.scale)
 end
 
 -- The player drags whichever of the two is on screen, so a preview drag has to

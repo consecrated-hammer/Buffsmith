@@ -34,6 +34,7 @@ function Options:Create()
     self.previewToggle = preview
 
     frame:SetScript("OnHide", function()
+        Options.CloseDropdown()
         ns.Preview:Hide()
         self:RefreshPreviewToggle()
     end)

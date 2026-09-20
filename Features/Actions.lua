@@ -260,7 +260,15 @@ function Actions:Key(entry)
     if entry.kind == "notice" then return "party:" .. tostring(entry.providerClass) .. ":" .. tostring(entry.spellID) end
 end
 
+-- An excluded buff is off everywhere: self, target, party and pet all route
+-- through IsSuppressed, so exclusion composes with the session dismissals
+-- rather than needing its own check at each call site.
+function Actions:IsExcluded(entry)
+    return entry.kind == "spell" and ns.db.excludedBuffs[entry.spellID] == true
+end
+
 function Actions:IsSuppressed(entry)
+    if self:IsExcluded(entry) then return true end
     local key = self:Key(entry)
     return key and self.suppressed[key] == true or false
 end

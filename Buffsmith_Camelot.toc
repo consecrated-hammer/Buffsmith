@@ -2,7 +2,7 @@
 ## Title: Buffsmith (WoW Forever)
 ## Author: consecrated-hammer
 ## Version: 0.1.0
-## Notes: Out-of-combat self-buff and consumable palette for WoW Forever.
+## Notes: Out-of-combat self-buff and consumable bar for WoW Forever.
 ## AllowLoadGameType: camelot
 ## SavedVariables: BuffsmithDB
 ## LoadSavedVariablesFirst: 1

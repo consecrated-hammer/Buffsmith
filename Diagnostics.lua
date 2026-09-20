@@ -8,10 +8,10 @@ function Diagnostics:Report()
     local scrolls = #ns.Inventory:Choices("scroll")
     local flasks = #ns.Inventory:Choices("flask")
     local weapons = #ns.Inventory:Choices("weapon")
-    local palette = ns.Palette.frame
-    local point, _, relativePoint, x, y = palette and palette:GetPoint()
-    local position = palette and ("%s %s %.1f %.1f; scale %.2f"):format(
-        tostring(point), tostring(relativePoint), tonumber(x) or 0, tonumber(y) or 0, palette:GetScale()) or "not built"
+    local bar = ns.Palette.frame
+    local point, _, relativePoint, x, y = bar and bar:GetPoint()
+    local position = bar and ("%s %s %.1f %.1f"):format(
+        tostring(point), tostring(relativePoint), tonumber(x) or 0, tonumber(y) or 0) or "not built"
     return table.concat({
         "Buffsmith diagnostics",
         "",
@@ -50,9 +50,10 @@ function Diagnostics:Report()
         "Container API: " .. tostring(ns.Inventory.lastContainerAPI or "not queried"),
         "Consumable aura tracking: " .. tostring(ns.Inventory.lastConsumableAura or "no item use observed"),
         "",
-        "Palette",
-        "Visibility: " .. (ns.db.showPalette and "shown" or "hidden"),
+        "Bar",
+        "Visibility: " .. ns.Visibility:Summary(),
         "Layout: " .. tostring(ns.Palette.lastLayout),
+        "Preview: " .. (ns.Preview:IsShown() and "on screen" or "closed"),
         "Position: " .. position,
         "Secure buttons prepared: " .. tostring(ns.lastSecureButtonCount or 0),
         "Key binding actions prepared: " .. tostring(ns.Bindings and ns.Bindings.lastCount or 0),

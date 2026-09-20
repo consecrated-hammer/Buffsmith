@@ -2,7 +2,7 @@
 ## Title: Buffsmith
 ## Author: consecrated-hammer
 ## Version: 0.1.0
-## Notes: Out-of-combat self-buff and consumable palette.
+## Notes: Out-of-combat self-buff and consumable bar.
 ## SavedVariables: BuffsmithDB
 ## LoadSavedVariablesFirst: 1
 ## IconTexture: Interface\Icons\INV_Misc_QuestionMark

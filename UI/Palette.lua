@@ -76,7 +76,6 @@ function Palette:Create()
     frame:SetMovable(true)
     local point = ns.db.palettePoint
     frame:SetPoint(point[1], UIParent, point[2], point[3], point[4])
-    frame:SetScale(ns.db.scale)
     self.frame = frame
     if ns.Handle then ns.Handle:Create(frame) end
     return frame
@@ -146,12 +145,11 @@ end
 function Palette:Refresh()
     if not self.frame then return end
     if ns.IsCombatLocked() then self.lastLayout = "hidden: combat"; return end
-    if not ns.db.showPalette then
+    if ns.db.visibilityMode == "NEVER" then
         ns.Visibility:Apply(self.frame, false)
         self.lastLayout = "hidden: preference"
         return
     end
-    self.frame:SetScale(ns.db.scale)
     ns.lastSecureButtonCount = 0
     for _, value in pairs(self.buttons) do value:Hide() end
     for _, value in pairs(self.toggles or {}) do value:Hide() end

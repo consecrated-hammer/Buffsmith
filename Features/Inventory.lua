@@ -245,8 +245,8 @@ function Inventory:ReminderSummary(category)
         end
     end
     if #summaries > 0 then return table.concat(summaries, ", ") end
-    if category == "weapon" then return "Shown while your weapon has no temporary enhancement." end
-    return "Use one to learn its exact timed effect."
+    if category == "weapon" then return "While your weapon has no enhancement." end
+    return "Not yet learned."
 end
 
 function Inventory:ReminderFor(item)

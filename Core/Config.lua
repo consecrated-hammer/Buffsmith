@@ -2,7 +2,6 @@ local addonName, ns = ...
 
 ns.defaults = {
     showStartupMessage = true,
-    showPalette = true,
     visibilityMode = "ALWAYS",
     visibility = {},
     showHandle = true,
@@ -16,13 +15,13 @@ ns.defaults = {
     showMinimap = true,
     ignoreBuffsInRestedAreas = false,
     minimapAngle = 225,
-    scale = 1,
     palettePoint = { "CENTER", "CENTER", 0, -120 },
     iconSize = 40,
     orientation = "VERTICAL",
     reminderPercent = { buff = 10, food = 10, scroll = 10, flask = 10, weapon = 10, buffBySpell = {}, item = {} },
     consumableAuras = {},
     excludedConsumables = {},
+    excludedBuffs = {},
     categories = { food = true, scroll = true, flask = true, weapon = true },
     maxAlternatives = 3,
     expanded = {},
@@ -61,9 +60,13 @@ function ns.InitConfig()
     if type(BuffsmithDB.reminderPercent) ~= "table" then BuffsmithDB.reminderPercent = {} end
     if type(BuffsmithDB.consumableAuras) ~= "table" then BuffsmithDB.consumableAuras = {} end
     if type(BuffsmithDB.excludedConsumables) ~= "table" then BuffsmithDB.excludedConsumables = {} end
+    if type(BuffsmithDB.excludedBuffs) ~= "table" then BuffsmithDB.excludedBuffs = {} end
     if type(BuffsmithDB.reminderPercent.buffBySpell) ~= "table" then BuffsmithDB.reminderPercent.buffBySpell = {} end
     if type(BuffsmithDB.reminderPercent.item) ~= "table" then BuffsmithDB.reminderPercent.item = {} end
-    if type(BuffsmithDB.showPalette) ~= "boolean" then BuffsmithDB.showPalette = true end
+    -- showPalette and the Never visibility mode were two switches for one
+    -- outcome. The saved value folds into the mode and stops being read.
+    if BuffsmithDB.showPalette == false then BuffsmithDB.visibilityMode = "NEVER" end
+    BuffsmithDB.showPalette = nil
     if BuffsmithDB.visibilityMode ~= "ALWAYS" and BuffsmithDB.visibilityMode ~= "NEVER" then BuffsmithDB.visibilityMode = "ALWAYS" end
     if type(BuffsmithDB.showHandle) ~= "boolean" then BuffsmithDB.showHandle = true end
     if type(BuffsmithDB.showTargetBuffs) ~= "boolean" then BuffsmithDB.showTargetBuffs = true end
@@ -77,7 +80,7 @@ function ns.InitConfig()
     if type(BuffsmithDB.showStartupMessage) ~= "boolean" then BuffsmithDB.showStartupMessage = true end
     if type(BuffsmithDB.showMinimap) ~= "boolean" then BuffsmithDB.showMinimap = true end
     if type(BuffsmithDB.ignoreBuffsInRestedAreas) ~= "boolean" then BuffsmithDB.ignoreBuffsInRestedAreas = false end
-    BuffsmithDB.scale = math.max(0.6, math.min(2, tonumber(BuffsmithDB.scale) or 1))
+    BuffsmithDB.scale = nil
     BuffsmithDB.iconSize = math.max(24, math.min(64, math.floor((tonumber(BuffsmithDB.iconSize) or 40) + 0.5)))
     if BuffsmithDB.orientation ~= "HORIZONTAL" and BuffsmithDB.orientation ~= "VERTICAL" then
         BuffsmithDB.orientation = "VERTICAL"
