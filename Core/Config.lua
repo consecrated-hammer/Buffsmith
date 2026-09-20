@@ -16,6 +16,7 @@ ns.defaults = {
     ignoreBuffsInRestedAreas = false,
     minimapAngle = 225,
     palettePoint = { "CENTER", "CENTER", 0, -120 },
+    settingsPoint = { "CENTER", "CENTER", 0, 0 },
     iconSize = 40,
     orientation = "VERTICAL",
     reminderPercent = { buff = 10, food = 10, scroll = 10, flask = 10, weapon = 10, buffBySpell = {}, item = {} },
@@ -94,6 +95,9 @@ function ns.InitConfig()
     end
     if not validPoint(BuffsmithDB.palettePoint) then
         BuffsmithDB.palettePoint = { "CENTER", "CENTER", 0, -120 }
+    end
+    if not validPoint(BuffsmithDB.settingsPoint) then
+        BuffsmithDB.settingsPoint = { "CENTER", "CENTER", 0, 0 }
     end
     ns.db = BuffsmithDB
     return ns.db

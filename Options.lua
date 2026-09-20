@@ -4,26 +4,43 @@ local Options = ns.Options
 function Options:Create()
     if self.frame then return self.frame end
     local frame = CreateFrame("Frame", "BuffsmithOptionsFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(760, 500); frame:SetPoint("CENTER"); frame:SetFrameStrata("DIALOG"); frame:SetToplevel(true)
-    frame:SetMovable(true); frame:SetClampedToScreen(true)
+    frame:SetSize(760, 540); frame:SetFrameStrata("DIALOG"); frame:SetToplevel(true)
+    frame:SetMovable(true); frame:SetClampedToScreen(true); frame:EnableMouse(true)
     Options.Surface(frame, Options.theme.outer, Options.theme.edge)
-    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", -3, -3); close:SetScript("OnClick", function() frame:Hide() end)
-    local rail = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    rail:SetPoint("TOPLEFT", 1, -1); rail:SetPoint("BOTTOMLEFT", 1, 1); rail:SetWidth(176); Options.Surface(rail, Options.theme.rail, Options.theme.edge)
-    -- Settings opens over the bar's default spot, so it has to be movable or the
-    -- preview can never be seen next to it. The empty rail is the drag surface.
-    rail:EnableMouse(true); rail:RegisterForDrag("LeftButton")
-    rail:SetScript("OnDragStart", function() frame:StartMoving() end)
-    rail:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
-    local title = rail:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 18, -20); title:SetText("Buffsmith"); title:SetTextColor(unpack(Options.theme.accent))
-    local version = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    version:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, 0); version:SetText(tostring(ns.VERSION or ""))
+    local saved = ns.db.settingsPoint
+    frame:SetPoint(saved[1], UIParent, saved[2], saved[3], saved[4])
+
+    -- The title bar is the drag handle, and the saved spot survives reloads, so
+    -- the window can be parked beside the bar while the preview is on screen.
+    local titleBar = CreateFrame("Button", nil, frame)
+    titleBar:SetPoint("TOPLEFT", 8, -6); titleBar:SetPoint("TOPRIGHT", -38, -6); titleBar:SetHeight(36)
+    titleBar:RegisterForDrag("LeftButton")
+    titleBar:SetScript("OnDragStart", function() frame:StartMoving() end)
+    titleBar:SetScript("OnDragStop", function()
+        frame:StopMovingOrSizing()
+        local point, _, relativePoint, x, y = frame:GetPoint()
+        ns.db.settingsPoint = { point, relativePoint, x, y }
+    end)
+    local icon = titleBar:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(26, 26); icon:SetPoint("LEFT", 8, 0); icon:SetTexture(Options.ICON)
+    local title = titleBar:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    title:SetPoint("LEFT", icon, "RIGHT", 8, 0); title:SetText("Buffsmith"); title:SetTextColor(unpack(Options.theme.accent))
+    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", -5, -5); close:SetScript("OnClick", function() frame:Hide() end)
+    local version = titleBar:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    version:SetPoint("RIGHT", close, "LEFT", -8, 0); version:SetText(tostring(ns.VERSION or ""))
     version:SetTextColor(unpack(Options.theme.muted))
+    local rule = frame:CreateTexture(nil, "ARTWORK")
+    rule:SetColorTexture(unpack(Options.theme.edge))
+    rule:SetPoint("TOPLEFT", 1, -42); rule:SetPoint("TOPRIGHT", -1, -42); rule:SetHeight(1)
+
+    local rail = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    rail:SetPoint("TOPLEFT", 1, -43); rail:SetPoint("BOTTOMLEFT", 1, 1); rail:SetWidth(176); Options.Surface(rail, Options.theme.rail, Options.theme.edge)
     local pages = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     pages:SetPoint("TOPLEFT", rail, "TOPRIGHT", 1, 0); pages:SetPoint("BOTTOMRIGHT", -1, 1); Options.Surface(pages, Options.theme.content, Options.theme.edge)
     self.pages, self.nav = {}, {}
     for index, spec in ipairs(self.pageSpecs) do
-        local nav = Options.Button(rail, 154, spec.label); nav:SetPoint("TOPLEFT", 11, -58 - (index - 1) * 34)
+        local nav = Options.Button(rail, 154, spec.label); nav:SetPoint("TOPLEFT", 11, -14 - (index - 1) * 34)
         local page = CreateFrame("Frame", nil, pages); page:SetAllPoints(); page:Hide(); Options.BuildPage(spec.id, page)
         self.pages[spec.id], self.nav[spec.id] = page, nav
         nav:SetScript("OnClick", function() self:ShowPage(spec.id) end)

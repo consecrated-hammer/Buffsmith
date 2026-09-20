@@ -13,9 +13,7 @@ Options.pageSpecs = {
     { id = "about", label = "About" },
 }
 
--- Placeholder until the real artwork lands; the AddOns-list IconTexture in
--- both TOCs is still a question mark for the same reason.
-local ANVIL = "Interface\\Icons\\Trade_BlackSmithing"
+local ANVIL = Options.ICON
 
 local anvilLines = {
     "The anvil gleams. Your buffs approve.",

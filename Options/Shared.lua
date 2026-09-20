@@ -8,6 +8,10 @@ Options.theme = {
     accent = { 0.298, 0.604, 0.478, 1 }, muted = { 0.553, 0.584, 0.639, 1 },
 }
 
+-- Placeholder until the real artwork lands; both TOCs' IconTexture is still a
+-- question mark for the same reason.
+Options.ICON = "Interface\\Icons\\Trade_BlackSmithing"
+
 -- Every control returns the y its successor should use, so a page reads as a
 -- chain instead of a column of hand-counted offsets. Mixing the two is what
 -- left the shipped Consumables page overlapping its own sub-text.
