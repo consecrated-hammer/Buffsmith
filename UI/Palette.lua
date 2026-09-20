@@ -115,6 +115,34 @@ local function show(buttonFrame, entry, x, y, size)
     buttonFrame:Show()
 end
 
+-- Resolves the live bar's contents into ns.Layout's item list, flattening
+-- `expanded` and `maxAlternatives` so the geometry stays free of settings.
+function Palette:Items()
+    local items, mainEntries, subEntries = {}, {}, {}
+    for _, entry in ipairs(ns.Actions:Entries()) do
+        items[#items + 1] = {}
+        mainEntries[#mainEntries + 1] = entry
+    end
+    for _, category in ipairs({ "food", "scroll", "flask", "weapon" }) do
+        local choices = ns.Actions:VisibleChoices(category)
+        if #choices > 0 then
+            local entry = choices[ns.Actions:Preferred(category, choices)]
+            mainEntries[#mainEntries + 1] = entry
+            local shown = 0
+            if ns.db.expanded[category] then
+                for _, choice in ipairs(choices) do
+                    if choice.itemID ~= entry.itemID and shown < ns.db.maxAlternatives then
+                        shown = shown + 1
+                        subEntries[#subEntries + 1] = choice
+                    end
+                end
+            end
+            items[#items + 1] = { toggle = category, subs = shown }
+        end
+    end
+    return items, mainEntries, subEntries
+end
+
 function Palette:Refresh()
     if not self.frame then return end
     if ns.IsCombatLocked() then self.lastLayout = "hidden: combat"; return end
@@ -127,73 +155,36 @@ function Palette:Refresh()
     ns.lastSecureButtonCount = 0
     for _, value in pairs(self.buttons) do value:Hide() end
     for _, value in pairs(self.toggles or {}) do value:Hide() end
-    local mainSize = ns.db.iconSize
-    local subSize = math.max(22, math.floor(mainSize * 0.76))
-    local spacing = 6
-    local vertical = ns.db.orientation == "VERTICAL"
-    local mainX, mainY = 2, -2
-    local width, height = mainSize + 4, mainSize + 4
-    local mainIndex, subIndex = 0, 0
-    local function placeMain(entry)
-        mainIndex = mainIndex + 1
-        local x, y = mainX, mainY
-        show(self:Acquire(mainIndex, false), entry, x, y, mainSize)
-        if vertical then
-            mainY = mainY - mainSize - spacing
-            height = math.max(height, -mainY + 2)
-        else
-            mainX = mainX + mainSize + spacing
-            width = math.max(width, mainX - spacing + 2)
-        end
-        return x, y, self:Acquire(mainIndex, false)
-    end
-    local spells = ns.Actions:Entries()
-    for _, entry in ipairs(spells) do
-        placeMain(entry)
-    end
-    for _, category in ipairs({ "food", "scroll", "flask", "weapon" }) do
-        local choices = ns.Actions:VisibleChoices(category)
-        if #choices > 0 then
-            local primary = ns.Actions:Preferred(category, choices)
-            local entry = choices[primary]
-            local primaryX, primaryY, expand = placeMain(entry)
-            local toggle = self:Toggle(category)
-            toggle:SetSize(16, 16)
-            toggle:ClearAllPoints(); toggle:SetPoint("TOPRIGHT", expand, "TOPRIGHT", 2, 2)
-            toggle:SetText(ns.db.expanded[category] and "−" or "+")
-            toggle:Show()
-            if ns.db.expanded[category] then
-                local shown = 0
-                for _, choice in ipairs(choices) do
-                    if choice.itemID ~= entry.itemID and shown < ns.db.maxAlternatives then
-                        subIndex = subIndex + 1; shown = shown + 1
-                        local x, y
-                        if vertical then
-                            x, y = math.floor((mainSize - subSize) / 2) + 2, mainY
-                            mainY = mainY - subSize - 4
-                            height = math.max(height, -mainY + 2)
-                        else
-                            x = primaryX + math.floor((mainSize - subSize) / 2)
-                            y = primaryY - mainSize - 4 - (shown - 1) * (subSize + 4)
-                            height = math.max(height, -y + subSize + 4)
-                        end
-                        show(self:Acquire(subIndex, true), choice, x, y, subSize)
-                    end
-                end
-            end
-        end
-    end
-    if mainIndex == 0 then
+    local items, mainEntries, subEntries = self:Items()
+    local layout = ns.Layout.Compute(items, {
+        mainSize = ns.db.iconSize,
+        vertical = ns.db.orientation == "VERTICAL",
+    })
+    if #layout.mains == 0 then
         ns.Visibility:Apply(self.frame, false)
         self.lastLayout = "hidden: no available actions"
         ns.Actions:ArmReminder()
         if ns.Bindings then ns.Bindings:Prepare() end
         return
     end
-    self.frame:SetWidth(math.max(mainSize + 4, width))
-    self.frame:SetHeight(math.max(mainSize + 4, height))
+    for index, placement in ipairs(layout.mains) do
+        show(self:Acquire(index, false), mainEntries[index], placement.x, placement.y, placement.size)
+    end
+    for index, placement in ipairs(layout.subs) do
+        show(self:Acquire(index, true), subEntries[index], placement.x, placement.y, placement.size)
+    end
+    for category, mainIndex in pairs(layout.toggles) do
+        local toggle = self:Toggle(category)
+        toggle:SetSize(16, 16)
+        toggle:ClearAllPoints()
+        toggle:SetPoint("TOPRIGHT", self:Acquire(mainIndex, false), "TOPRIGHT", 2, 2)
+        toggle:SetText(ns.db.expanded[category] and "−" or "+")
+        toggle:Show()
+    end
+    self.frame:SetWidth(layout.width)
+    self.frame:SetHeight(layout.height)
     ns.Visibility:Apply(self.frame, true)
-    self.lastLayout = ("%d primary, %d alternatives"):format(mainIndex, subIndex)
+    self.lastLayout = ("%d primary, %d alternatives"):format(#layout.mains, #layout.subs)
     if ns.Handle then ns.Handle:Update() end
     ns.Actions:ArmReminder()
     if ns.Bindings then ns.Bindings:Prepare() end

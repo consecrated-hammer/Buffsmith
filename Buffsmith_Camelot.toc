@@ -18,6 +18,7 @@ Features\Inventory.lua
 Features\Actions.lua
 Features\Thanks.lua
 Features\Visibility.lua
+UI\Layout.lua
 UI\Palette.lua
 UI\Handle.lua
 Features\Bindings.lua
