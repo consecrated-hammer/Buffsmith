@@ -13,12 +13,26 @@ local QUESTION_MARK = 134400
 local WELL_FED = 136000
 local BORDER = { 0.78, 0.59, 0.20, 0.9 }
 
+local SAMPLE_ICONS = {
+    "Interface\\Icons\\Spell_Holy_WordFortitude",
+    "Interface\\Icons\\Spell_Holy_MagicalSentry",
+    "Interface\\Icons\\Spell_Nature_Regeneration",
+}
+local MIN_SAMPLES = 3
+
+-- Real self-buffs come first so the preview looks like the player's own bar,
+-- then generic stand-ins pad it to a minimum. A class with nothing known, or
+-- a character with everything already active, still gets a full test bar.
 function Preview:Items()
     local items, mainIcons, subIcons = {}, {}, {}
     for index, buff in ipairs(ns.KnownSelfBuffs()) do
-        if index > 3 then break end
+        if index > MIN_SAMPLES then break end
         items[#items + 1] = {}
         mainIcons[#mainIcons + 1] = buff.icon or QUESTION_MARK
+    end
+    for index = #mainIcons + 1, MIN_SAMPLES do
+        items[#items + 1] = {}
+        mainIcons[#mainIcons + 1] = SAMPLE_ICONS[index]
     end
 
     local choices = ns.Inventory and ns.Inventory:Choices("food") or {}
@@ -40,7 +54,9 @@ end
 function Preview:Create()
     if self.frame then return self.frame end
     local frame = CreateFrame("Frame", "BuffsmithPreview", UIParent, "BackdropTemplate")
-    frame:SetFrameStrata("MEDIUM")
+    -- Above the settings window (DIALOG): the bar's saved spot is near screen
+    -- centre, exactly where settings opens, so a MEDIUM preview sat hidden behind it.
+    frame:SetFrameStrata("FULLSCREEN_DIALOG")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })

@@ -5,10 +5,16 @@ function Options:Create()
     if self.frame then return self.frame end
     local frame = CreateFrame("Frame", "BuffsmithOptionsFrame", UIParent, "BackdropTemplate")
     frame:SetSize(760, 500); frame:SetPoint("CENTER"); frame:SetFrameStrata("DIALOG"); frame:SetToplevel(true)
+    frame:SetMovable(true); frame:SetClampedToScreen(true)
     Options.Surface(frame, Options.theme.outer, Options.theme.edge)
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", -3, -3); close:SetScript("OnClick", function() frame:Hide() end)
     local rail = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     rail:SetPoint("TOPLEFT", 1, -1); rail:SetPoint("BOTTOMLEFT", 1, 1); rail:SetWidth(176); Options.Surface(rail, Options.theme.rail, Options.theme.edge)
+    -- Settings opens over the bar's default spot, so it has to be movable or the
+    -- preview can never be seen next to it. The empty rail is the drag surface.
+    rail:EnableMouse(true); rail:RegisterForDrag("LeftButton")
+    rail:SetScript("OnDragStart", function() frame:StartMoving() end)
+    rail:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
     local title = rail:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 18, -20); title:SetText("Buffsmith"); title:SetTextColor(unpack(Options.theme.accent))
     local version = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     version:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, 0); version:SetText(tostring(ns.VERSION or ""))
