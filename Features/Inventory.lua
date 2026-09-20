@@ -241,19 +241,19 @@ function Inventory:ReminderSummary(category)
         if aura and tonumber(aura.duration) and aura.duration > 0 then
             local percent = ns.Actions:Percent(item)
             local seconds = math.floor(aura.duration * percent / 100 + 0.5)
-            summaries[#summaries + 1] = item.name .. ": " .. (seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s")
+            summaries[#summaries + 1] = item.name .. ": " .. (seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s") .. " left"
         end
     end
     if #summaries > 0 then return table.concat(summaries, ", ") end
-    if category == "weapon" then return "While your weapon has no enhancement." end
-    return "Not yet learned."
+    if category == "weapon" then return "Reminds while your weapon has no enhancement." end
+    return "Time left is learned the first time you use one."
 end
 
 function Inventory:ReminderFor(item)
     local aura = ns.db.consumableAuras[item.itemID]
     if aura and tonumber(aura.duration) and aura.duration > 0 then
         local seconds = math.floor(aura.duration * ns.Actions:Percent(item) / 100 + 0.5)
-        return seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s"
+        return "Reminds with " .. (seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s") .. " left"
     end
-    return "when learned"
+    return "Time left is learned the first time you use it."
 end

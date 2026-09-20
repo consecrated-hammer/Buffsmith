@@ -103,7 +103,7 @@ local function reminderRow(parent, y, item)
         else
             changing = true; bar:SetValue(item.get()); changing = false
             percent:SetText(tostring(item.get()) .. "%")
-            detail:SetText("Reminds at " .. item.result())
+            detail:SetText(item.result())
         end
     end
     if bar then

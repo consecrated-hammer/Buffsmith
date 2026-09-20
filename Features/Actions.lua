@@ -365,12 +365,12 @@ function Actions:ReminderSummary()
 end
 
 function Actions:ReminderFor(entry)
-    if entry.permanent then return "while inactive" end
+    if entry.permanent then return "Shown only while inactive." end
     local status = auraStatus("player", entry.auraID, entry.auraIDs, entry.name)
     if status.duration and status.duration > 0 then
-        return timeText(status.duration * self:Percent(entry) / 100)
+        return "Reminds with " .. timeText(status.duration * self:Percent(entry) / 100) .. " left"
     end
-    return "when active"
+    return "Time left is learned while the buff is active."
 end
 
 function Actions:Remember(category, itemID)
