@@ -235,18 +235,19 @@ function Inventory:CategoryStatus(category)
 end
 
 function Inventory:ReminderSummary(category)
+    local choices = self:Choices(category)
+    if #choices == 0 then return "None in your bags." end
     local summaries = {}
-    for _, item in ipairs(self:Choices(category)) do
+    for _, item in ipairs(choices) do
         local aura = ns.db.consumableAuras[item.itemID]
         if aura and tonumber(aura.duration) and aura.duration > 0 then
-            local percent = ns.Actions:Percent(item)
-            local seconds = math.floor(aura.duration * percent / 100 + 0.5)
+            local seconds = math.floor(aura.duration * ns.Actions:Percent(item) / 100 + 0.5)
             summaries[#summaries + 1] = item.name .. ": " .. (seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s") .. " left"
         end
     end
     if #summaries > 0 then return table.concat(summaries, ", ") end
     if category == "weapon" then return "Reminds while your weapon has no enhancement." end
-    return "Time left is learned the first time you use one."
+    return #choices == 1 and "1 in your bags." or (#choices .. " in your bags.")
 end
 
 function Inventory:ReminderFor(item)
@@ -255,5 +256,5 @@ function Inventory:ReminderFor(item)
         local seconds = math.floor(aura.duration * ns.Actions:Percent(item) / 100 + 0.5)
         return "Reminds with " .. (seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s") .. " left"
     end
-    return "Time left is learned the first time you use it."
+    return "Timer is set after you use it once."
 end

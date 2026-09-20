@@ -263,7 +263,7 @@ function Options.BuildPage(id, parent)
     elseif id == "consumables" then
         local content = Options.Scroll(parent)
         local y = Options.Header(content, "Consumables", "Enable, time and exclude each available consumable.")
-        _, y = Options.Text(content, "A reminder time appears once you have used an item and Buffsmith has seen how long its effect lasts.", y)
+        _, y = Options.Text(content, "Items appear here while they are in your bags. Each item's reminder time is set after you use it once.", y)
         local refreshes = {}
         local function category(key, label)
             local refresh
