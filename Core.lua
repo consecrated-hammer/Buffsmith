@@ -23,6 +23,13 @@ function ns.Print(message)
     print("|cffd4af37Buffsmith:|r " .. tostring(message))
 end
 
+-- Single refresh entry point: the live bar settles its own geometry first, so
+-- the preview can read the bar's real size when both are on screen.
+function ns.RefreshAll()
+    if ns.Palette then ns.Palette:Refresh() end
+    if ns.Preview then ns.Preview:Refresh() end
+end
+
 function ns.IsCombatLocked()
     return InCombatLockdown and InCombatLockdown() or false
 end

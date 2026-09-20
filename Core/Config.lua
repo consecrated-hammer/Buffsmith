@@ -98,5 +98,5 @@ end
 
 function ns.Set(key, value)
     ns.db[key] = value
-    if ns.Palette then ns.Palette:Refresh() end
+    ns.RefreshAll()
 end

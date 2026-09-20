@@ -2,7 +2,7 @@ local function equal(actual, expected, label)
     if actual ~= expected then error(label .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual)) end
 end
 
-local ns = { Palette = { Refresh = function() end } }
+local ns = { RefreshAll = function() end }
 BuffsmithDB = { scale = "broken", palettePoint = "broken", categories = false, maxAlternatives = 99 }
 assert(loadfile("Core/Config.lua"))("Buffsmith", ns)
 ns.InitConfig()

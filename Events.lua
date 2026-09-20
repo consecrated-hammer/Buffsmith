@@ -18,9 +18,11 @@ local function refresh()
     ns.Inventory:Refresh()
     ns.Minimap:Update()
     ns.Handle:Update()
+    ns.Preview:Refresh()
 end
 
 local function hideForCombat()
+    if ns.Preview then ns.Preview:Hide() end
     if ns.Minimap and ns.Minimap.button then ns.Minimap.button:Hide() end
     if ns.Options and ns.Options.frame then ns.Options.frame:Hide() end
     if ns.Diagnostics and ns.Diagnostics.copy then ns.Diagnostics.copy:Hide() end

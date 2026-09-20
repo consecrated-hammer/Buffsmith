@@ -222,6 +222,7 @@ function Options.BuildPage(id, parent)
         reset:SetScript("OnClick", function()
             ns.db.palettePoint = { "CENTER", "CENTER", 0, -120 }
             ns.Palette.frame:ClearAllPoints(); ns.Palette.frame:SetPoint(unpack(ns.db.palettePoint))
+            ns.Preview:ApplyPosition()
         end)
         Options.Check(parent, -128, "Show minimap button", function() return ns.db.showMinimap end,
             function(v) ns.db.showMinimap = v; ns.Minimap:Update() end,

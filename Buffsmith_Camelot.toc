@@ -21,6 +21,7 @@ Features\Visibility.lua
 UI\Layout.lua
 UI\Palette.lua
 UI\Handle.lua
+UI\Preview.lua
 Features\Bindings.lua
 UI\Minimap.lua
 Options\Shared.lua

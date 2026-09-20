@@ -22,8 +22,32 @@ function Options:Create()
         self.pages[spec.id], self.nav[spec.id] = page, nav
         nav:SetScript("OnClick", function() self:ShowPage(spec.id) end)
     end
+    -- The preview lives in the rail rather than on a page: the player is
+    -- usually changing size or orientation somewhere else when they want to
+    -- see where the bar lands.
+    local preview = Options.Button(rail, 154, "Preview on screen")
+    preview:SetPoint("BOTTOMLEFT", 11, 14)
+    preview:SetScript("OnClick", function()
+        ns.Preview:Toggle()
+        self:RefreshPreviewToggle()
+    end)
+    self.previewToggle = preview
+
+    frame:SetScript("OnHide", function()
+        ns.Preview:Hide()
+        self:RefreshPreviewToggle()
+    end)
+    tinsert(UISpecialFrames, "BuffsmithOptionsFrame")
+
     self.frame = frame; self:ShowPage("overview"); frame:Hide()
     return frame
+end
+
+function Options:RefreshPreviewToggle()
+    if not self.previewToggle then return end
+    local active = ns.Preview:IsShown()
+    self.previewToggle:SetBackdropBorderColor(unpack(active and Options.theme.selected or Options.theme.edge))
+    self.previewToggle.Text:SetText(active and "Hide preview" or "Preview on screen")
 end
 
 function Options:ShowPage(id)
@@ -41,4 +65,4 @@ function Options:Toggle()
     local frame = self:Create(); frame:SetShown(not frame:IsShown()); if frame:IsShown() then frame:Raise() end
 end
 
-Options.Refresh = function() if ns.Palette then ns.Palette:Refresh() end end
+Options.Refresh = function() ns.RefreshAll() end
