@@ -179,10 +179,10 @@ local CHANNELS = { { "WHISPER", "Whisper" }, { "SAY", "Say" }, { "PARTY", "Party
 
 function Options.BuildPage(id, parent)
     if id == "overview" then
-        local y = Options.Header(parent, "Buffsmith", "Out-of-combat buffs and consumables, one click away.")
-        _, y = Options.Text(parent, "Buffsmith shows the self-buffs and consumables that are ready for you. Active self-buffs leave the bar and return when a refresh is useful.", y)
-        _, y = Options.Text(parent, "Left-click an icon to use it. Right-click any icon to dismiss it until you change zones.", y)
-        _, y = Options.Text(parent, "The bar is always hidden in combat, and so is everything it can do.", y)
+        local y = Options.Header(parent, "Buffsmith", "Buffs and consumables, without the scavenger hunt.")
+        _, y = Options.Text(parent, "Buffsmith keeps an eye on your out-of-combat buffs and consumables.\nMissing something? It appears. Sorted? It gets out of the way until it needs attention again.", y)
+        _, y = Options.Text(parent, "Left-click an icon to use it. Right-click to tell Buffsmith to stop nagging until you change zones.", y)
+        _, y = Options.Text(parent, "Combat starts, Buffsmith clocks off. The bar disappears, and so does everything it can do.", y)
 
     elseif id == "visibility" then
         local y = Options.Header(parent, "Visibility", "Choose when the bar is on screen.")
