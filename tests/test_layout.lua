@@ -6,20 +6,19 @@ local ns = {}
 assert(loadfile("UI/Layout.lua"))("Buffsmith", ns)
 local Layout = ns.Layout
 
--- Transcribed verbatim from the pre-refactor UI/Palette.lua Refresh loop so a
--- transcription slip in Layout.lua cannot pass unnoticed. Do not tidy this:
--- its value is being a faithful copy of the behaviour that shipped.
-local function reference(items, opts)
+-- Primary-icon geometry, transcribed from the pre-refactor UI/Palette.lua
+-- Refresh loop with the alternatives left out. Alternatives used to be
+-- inline and displace later primaries; they are now a flyout, so only the
+-- primary flow is checked against shipped behaviour. Do not tidy this copy.
+local function reference(count, opts)
     local mainSize = opts.mainSize
-    local subSize = math.max(22, math.floor(mainSize * 0.76))
     local spacing = 6
     local vertical = opts.vertical == true
     local mainX, mainY = 2, -2
     local width, height = mainSize + 4, mainSize + 4
-    local mains, subs = {}, {}
-    for _, item in ipairs(items) do
-        local x, y = mainX, mainY
-        mains[#mains + 1] = { x = x, y = y, size = mainSize }
+    local mains = {}
+    for _ = 1, count do
+        mains[#mains + 1] = { x = mainX, y = mainY, size = mainSize }
         if vertical then
             mainY = mainY - mainSize - spacing
             height = math.max(height, -mainY + 2)
@@ -27,52 +26,14 @@ local function reference(items, opts)
             mainX = mainX + mainSize + spacing
             width = math.max(width, mainX - spacing + 2)
         end
-        local primaryX, primaryY = x, y
-        local shown = 0
-        for _ = 1, (item.subs or 0) do
-            shown = shown + 1
-            local sx, sy
-            if vertical then
-                sx, sy = math.floor((mainSize - subSize) / 2) + 2, mainY
-                mainY = mainY - subSize - 4
-                height = math.max(height, -mainY + 2)
-            else
-                sx = primaryX + math.floor((mainSize - subSize) / 2)
-                sy = primaryY - mainSize - 4 - (shown - 1) * (subSize + 4)
-                height = math.max(height, -sy + subSize + 4)
-            end
-            subs[#subs + 1] = { x = sx, y = sy, size = subSize }
-        end
     end
-    return {
-        mains = mains, subs = subs,
-        width = math.max(mainSize + 4, width),
-        height = math.max(mainSize + 4, height),
-    }
-end
-
-local function compare(items, opts, label)
-    local got, want = Layout.Compute(items, opts), reference(items, opts)
-    equal(got.width, want.width, label .. " width")
-    equal(got.height, want.height, label .. " height")
-    equal(#got.mains, #want.mains, label .. " main count")
-    equal(#got.subs, #want.subs, label .. " sub count")
-    for i, main in ipairs(want.mains) do
-        equal(got.mains[i].x, main.x, label .. " main " .. i .. " x")
-        equal(got.mains[i].y, main.y, label .. " main " .. i .. " y")
-        equal(got.mains[i].size, main.size, label .. " main " .. i .. " size")
-    end
-    for i, sub in ipairs(want.subs) do
-        equal(got.subs[i].x, sub.x, label .. " sub " .. i .. " x")
-        equal(got.subs[i].y, sub.y, label .. " sub " .. i .. " y")
-        equal(got.subs[i].size, sub.size, label .. " sub " .. i .. " size")
-    end
+    return { mains = mains, width = math.max(mainSize + 4, width), height = math.max(mainSize + 4, height) }
 end
 
 -- Spot checks pinning the shipped numbers, independent of the reference copy.
 local horizontal = Layout.Compute({ {}, {}, {} }, { mainSize = 40, vertical = false })
 equal(horizontal.width, 136, "three 40px icons span 3*40 + 2*6 + 4")
-equal(horizontal.height, 44, "a horizontal row without alternatives is one icon tall")
+equal(horizontal.height, 44, "a horizontal row is one icon tall")
 equal(horizontal.mains[2].x, 48, "the second icon clears the first plus spacing")
 equal(horizontal.mains[2].y, -2, "a horizontal row keeps every icon on one line")
 
@@ -82,40 +43,72 @@ local vertical = Layout.Compute({ {} }, { mainSize = 40, vertical = true })
 equal(vertical.height, 50, "vertical height includes the trailing spacing")
 equal(vertical.width, 44, "vertical width is one icon wide")
 
--- The coupling that makes the extraction worth testing: in vertical mode a
--- category's alternatives push every later primary further down.
-local pushed = Layout.Compute({ { toggle = "food", subs = 2 }, {} }, { mainSize = 40, vertical = true })
-equal(pushed.mains[2].y, -116, "alternatives displace the following primary")
-equal(pushed.height, 164, "alternatives grow the bar")
-equal(pushed.toggles.food, 1, "the toggle anchors to its own primary")
-equal(pushed.subSize, 30, "40px icons take 30px alternatives")
-
--- Horizontal alternatives hang below their primary and never widen the bar.
-local hanging = Layout.Compute({ { toggle = "food", subs = 2 }, {} }, { mainSize = 40, vertical = false })
-equal(hanging.mains[2].x, 48, "alternatives do not displace the following primary")
-equal(hanging.width, 90, "alternatives never widen the bar")
-equal(hanging.subs[1].x, 7, "an alternative centres under its primary")
-equal(hanging.subs[2].y, -80, "alternatives stack downward")
-
 local empty = Layout.Compute({}, { mainSize = 40, vertical = true })
 equal(#empty.mains, 0, "an empty bar places nothing")
 equal(empty.width, 44, "an empty bar keeps the minimum width")
 equal(empty.height, 44, "an empty bar keeps the minimum height")
 
-equal(Layout.SubSize(24), 22, "small icons clamp alternatives to the 22px floor")
-equal(Layout.SubSize(64), 48, "large icons scale alternatives by 0.76")
+equal(Layout.SubSize(24), 22, "small icons clamp flyout icons to the 22px floor")
+equal(Layout.SubSize(64), 48, "large icons scale flyout icons by 0.76")
 
--- Fuzz every orientation, icon size and alternative count against the copy.
-for _, isVertical in ipairs({ true, false }) do
-    for mainSize = 24, 64, 2 do
-        for subs = 0, 3 do
+-- Flyouts: 40px primary at (2, -2), 30px flyout icons, 4px gap, so the
+-- cross-axis centring offset is 5.
+local function flyout(side, isVertical)
+    return Layout.Compute({ { subs = 2 } }, { mainSize = 40, vertical = isVertical, flyout = side })
+end
+local right = flyout("RIGHT", true)
+equal(right.subs[1].x, 46, "a right flyout starts past the primary and the gap")
+equal(right.subs[1].y, -7, "a right flyout centres on the primary")
+equal(right.subs[2].x, 80, "a right flyout advances by icon plus gap")
+equal(right.subs[2].y, -7, "a right flyout stays on one line")
+local left = flyout("LEFT", true)
+equal(left.subs[1].x, -32, "a left flyout ends before the primary and the gap")
+equal(left.subs[2].x, -66, "a left flyout advances away from the bar")
+local down = flyout("DOWN", false)
+equal(down.subs[1].x, 7, "a downward flyout centres under the primary")
+equal(down.subs[1].y, -46, "a downward flyout starts below the primary and the gap")
+equal(down.subs[2].y, -80, "a downward flyout stacks away from the bar")
+local up = flyout("UP", false)
+equal(up.subs[1].y, 32, "an upward flyout starts above the primary and the gap")
+equal(up.subs[2].y, 66, "an upward flyout stacks away from the bar")
+equal(right.subs[1].parent, 1, "a flyout icon names its primary")
+equal(right.side, "RIGHT", "the chosen side is reported")
+
+-- Default side follows the bar's direction.
+equal(Layout.Compute({ { subs = 1 } }, { mainSize = 40, vertical = true }).side, "RIGHT", "vertical defaults right")
+equal(Layout.Compute({ { subs = 1 } }, { mainSize = 40, vertical = false }).side, "DOWN", "horizontal defaults down")
+
+-- Which side has room.
+equal(Layout.FlyoutSide(true, 300, 400, 1920, 1080), "RIGHT", "a bar on the left opens right")
+equal(Layout.FlyoutSide(true, 1500, 400, 1920, 1080), "LEFT", "a bar on the right opens left")
+equal(Layout.FlyoutSide(false, 900, 800, 1920, 1080), "DOWN", "a bar high on screen opens down")
+equal(Layout.FlyoutSide(false, 900, 200, 1920, 1080), "UP", "a bar low on screen opens up")
+equal(Layout.FlyoutSide(true, nil, nil, nil, nil), "RIGHT", "an unplaced bar falls back to right")
+equal(Layout.FlyoutSide(false, nil, nil, nil, nil), "DOWN", "an unplaced bar falls back to down")
+
+-- The point of a flyout: it never changes what the rest of the bar does.
+for _, side in ipairs({ "LEFT", "RIGHT", "UP", "DOWN" }) do
+    for _, isVertical in ipairs({ true, false }) do
+        for mainSize = 24, 64, 2 do
             for mains = 0, 4 do
-                local items = {}
+                local items, plain = {}, {}
                 for index = 1, mains do
-                    items[index] = { toggle = index == mains and "food" or nil, subs = index == mains and subs or 0 }
+                    items[index] = { subs = index == mains and 3 or 0 }
+                    plain[index] = {}
                 end
-                compare(items, { mainSize = mainSize, vertical = isVertical },
-                    ("%s size=%d mains=%d subs=%d"):format(isVertical and "vertical" or "horizontal", mainSize, mains, subs))
+                local opts = { mainSize = mainSize, vertical = isVertical, flyout = side }
+                local got = Layout.Compute(items, opts)
+                local want = reference(mains, opts)
+                local label = ("%s %s size=%d mains=%d"):format(side, isVertical and "vertical" or "horizontal", mainSize, mains)
+                equal(got.width, want.width, label .. " width")
+                equal(got.height, want.height, label .. " height")
+                equal(#got.mains, #want.mains, label .. " main count")
+                for i, main in ipairs(want.mains) do
+                    equal(got.mains[i].x, main.x, label .. " main " .. i .. " x")
+                    equal(got.mains[i].y, main.y, label .. " main " .. i .. " y")
+                    equal(got.mains[i].size, main.size, label .. " main " .. i .. " size")
+                end
+                equal(#got.subs, mains > 0 and 3 or 0, label .. " flyout count")
             end
         end
     end

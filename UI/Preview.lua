@@ -6,7 +6,7 @@ local addonName, ns = ...
 -- that armed real actions could cast something on click, and would leave those
 -- attributes behind when it closed.
 
-ns.Preview = { icons = {}, expanded = false }
+ns.Preview = { icons = {} }
 local Preview = ns.Preview
 
 local QUESTION_MARK = 134400
@@ -36,8 +36,10 @@ function Preview:Items()
     end
 
     local choices = ns.Inventory and ns.Inventory:Choices("food") or {}
-    local alternatives = self.expanded and math.min(ns.db.maxAlternatives, 2) or 0
-    items[#items + 1] = { toggle = "food", subs = alternatives }
+    -- The flyout is always drawn here, dimmed, so its reach is visible without
+    -- having to hover; the live bar only opens it while the mouse is over it.
+    local alternatives = ns.db.maxAlternatives
+    items[#items + 1] = { subs = alternatives }
     mainIcons[#mainIcons + 1] = choices[1] and choices[1].icon or WELL_FED
     for index = 1, alternatives do
         local choice = choices[index + 1]
@@ -75,14 +77,6 @@ function Preview:Create()
         dragHint = "Drag: move the bar",
         onMoved = function() Preview:ApplyLivePosition() end,
     })
-
-    local toggle = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    toggle:SetSize(16, 16)
-    toggle:SetScript("OnClick", function()
-        Preview.expanded = not Preview.expanded
-        Preview:Refresh()
-    end)
-    self.toggle = toggle
 
     self.frame = frame
     self:ApplyPosition()
@@ -124,7 +118,6 @@ function Preview:Refresh()
     local bar = ns.Palette and ns.Palette.frame
     local bare = bar and bar:IsShown()
     if bare then
-        self.toggle:Hide()
         self.frame:SetSize(math.max(bar:GetWidth(), 8), math.max(bar:GetHeight(), 8))
         self.label:SetText("PREVIEW — live bar shown")
         return
@@ -132,9 +125,11 @@ function Preview:Refresh()
 
     self.label:SetText("PREVIEW")
     local items, mainIcons, subIcons = self:Items()
+    local vertical = ns.db.orientation == "VERTICAL"
     local layout = ns.Layout.Compute(items, {
         mainSize = ns.db.iconSize,
-        vertical = ns.db.orientation == "VERTICAL",
+        vertical = vertical,
+        flyout = ns.Palette.FlyoutSide(self.frame, vertical),
     })
     local index = 0
     for position, placement in ipairs(layout.mains) do
@@ -144,6 +139,7 @@ function Preview:Refresh()
         icon:SetPoint("TOPLEFT", placement.x, placement.y)
         icon:SetSize(placement.size, placement.size)
         icon:SetTexture(mainIcons[position])
+        icon:SetAlpha(1)
         icon:Show()
     end
     for position, placement in ipairs(layout.subs) do
@@ -153,17 +149,8 @@ function Preview:Refresh()
         icon:SetPoint("TOPLEFT", placement.x, placement.y)
         icon:SetSize(placement.size, placement.size)
         icon:SetTexture(subIcons[position])
+        icon:SetAlpha(0.55)
         icon:Show()
-    end
-    local foodIndex = layout.toggles.food
-    if foodIndex then
-        local anchor = layout.mains[foodIndex]
-        self.toggle:ClearAllPoints()
-        self.toggle:SetPoint("TOPRIGHT", self.frame, "TOPLEFT", anchor.x + anchor.size + 2, anchor.y + 2)
-        self.toggle:SetText(self.expanded and "−" or "+")
-        self.toggle:Show()
-    else
-        self.toggle:Hide()
     end
     self.frame:SetSize(layout.width, layout.height)
 end
@@ -178,7 +165,6 @@ end
 
 function Preview:Hide()
     if not self.frame then return end
-    self.expanded = false
     self.frame:Hide()
 end
 

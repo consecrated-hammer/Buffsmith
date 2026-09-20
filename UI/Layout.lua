@@ -4,10 +4,9 @@ local addonName, ns = ...
 -- settings preview. No WoW API calls belong here: the preview must be able to
 -- lay itself out without touching the secure buttons the live bar owns.
 --
--- Callers resolve `expanded` and `maxAlternatives` into the item list first.
--- Alternatives are placed immediately after their primary, and in vertical
--- mode they advance the shared cursor, so a category's alternatives push every
--- later primary down. That coupling is deliberate and load-bearing.
+-- Primaries flow in one line. A category's alternatives are not part of that
+-- flow: they sit in a flyout beside their primary, so opening one never moves
+-- any other icon and the bar's size never depends on what is in a flyout.
 
 ns.Layout = {}
 local Layout = ns.Layout
@@ -22,20 +21,44 @@ function Layout.SubSize(mainSize)
     return math.max(MIN_SUB_SIZE, math.floor(mainSize * SUB_SCALE))
 end
 
--- items: ordered list of { toggle = <category or nil>, subs = <alternative count> }
--- opts:  { mainSize = <px>, vertical = <boolean> }
+-- Which way a flyout opens. It runs across the bar's own direction, so a
+-- vertical bar flies out sideways and a horizontal bar flies out up or down,
+-- and it points at whichever side of the screen has room.
+function Layout.FlyoutSide(vertical, centreX, centreY, screenWidth, screenHeight)
+    if vertical then
+        return (centreX and screenWidth and centreX > screenWidth / 2) and "LEFT" or "RIGHT"
+    end
+    return (centreY and screenHeight and centreY < screenHeight / 2) and "UP" or "DOWN"
+end
+
+local function flyoutPlacement(side, x, y, mainSize, subSize, step)
+    local offset = (step - 1) * (subSize + SUB_GAP)
+    local across = math.floor((mainSize - subSize) / 2)
+    if side == "LEFT" then return x - SUB_GAP - subSize - offset, y - across end
+    if side == "UP" then return x + across, y + SUB_GAP + subSize + offset end
+    if side == "DOWN" then return x + across, y - mainSize - SUB_GAP - offset end
+    return x + mainSize + SUB_GAP + offset, y - across
+end
+
+-- items: ordered list of { subs = <flyout icon count> }
+-- opts:  { mainSize = <px>, vertical = <boolean>, flyout = "LEFT"|"RIGHT"|"UP"|"DOWN" }
 function Layout.Compute(items, opts)
     local mainSize = opts.mainSize
     local vertical = opts.vertical == true
+    local side = opts.flyout or (vertical and "RIGHT" or "DOWN")
     local subSize = Layout.SubSize(mainSize)
     local mainX, mainY = INSET, -INSET
     local width, height = mainSize + 4, mainSize + 4
-    local mains, subs, toggles = {}, {}, {}
+    local mains, subs = {}, {}
 
     for _, item in ipairs(items) do
         local x, y = mainX, mainY
         mains[#mains + 1] = { x = x, y = y, size = mainSize }
-        if item.toggle then toggles[item.toggle] = #mains end
+
+        for step = 1, (item.subs or 0) do
+            local sx, sy = flyoutPlacement(side, x, y, mainSize, subSize, step)
+            subs[#subs + 1] = { x = sx, y = sy, size = subSize, parent = #mains }
+        end
 
         if vertical then
             mainY = mainY - mainSize - SPACING
@@ -44,27 +67,13 @@ function Layout.Compute(items, opts)
             mainX = mainX + mainSize + SPACING
             width = math.max(width, mainX - SPACING + INSET)
         end
-
-        for shown = 1, (item.subs or 0) do
-            local sx, sy
-            if vertical then
-                sx, sy = math.floor((mainSize - subSize) / 2) + INSET, mainY
-                mainY = mainY - subSize - SUB_GAP
-                height = math.max(height, -mainY + INSET)
-            else
-                sx = x + math.floor((mainSize - subSize) / 2)
-                sy = y - mainSize - SUB_GAP - (shown - 1) * (subSize + SUB_GAP)
-                height = math.max(height, -sy + subSize + SUB_GAP)
-            end
-            subs[#subs + 1] = { x = sx, y = sy, size = subSize }
-        end
     end
 
     return {
         mains = mains,
         subs = subs,
-        toggles = toggles,
         subSize = subSize,
+        side = side,
         width = math.max(mainSize + 4, width),
         height = math.max(mainSize + 4, height),
     }

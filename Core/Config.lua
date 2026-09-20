@@ -25,7 +25,6 @@ ns.defaults = {
     excludedBuffs = {},
     categories = { food = true, scroll = true, flask = true, weapon = true },
     maxAlternatives = 3,
-    expanded = {},
     preferred = {},
 }
 
@@ -56,7 +55,7 @@ function ns.InitConfig()
     BuffsmithDB = copyDefaults(BuffsmithDB, ns.defaults)
     if type(BuffsmithDB.categories) ~= "table" then BuffsmithDB.categories = {} end
     if type(BuffsmithDB.visibility) ~= "table" then BuffsmithDB.visibility = {} end
-    if type(BuffsmithDB.expanded) ~= "table" then BuffsmithDB.expanded = {} end
+    BuffsmithDB.expanded = nil
     if type(BuffsmithDB.preferred) ~= "table" then BuffsmithDB.preferred = {} end
     if type(BuffsmithDB.reminderPercent) ~= "table" then BuffsmithDB.reminderPercent = {} end
     if type(BuffsmithDB.consumableAuras) ~= "table" then BuffsmithDB.consumableAuras = {} end

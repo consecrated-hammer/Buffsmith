@@ -36,6 +36,24 @@ local anvilLines = {
     "The anvil has been buffed. This is not technically useful, but it feels right.",
     "A goblin offers to sell you an anvil-polishing subscription. Declined.",
     "The sparkle is cosmetic. The sense of readiness is entirely real.",
+    "Properly buffed. Professionally smug.",
+    "No adventurer should leave home structurally unbuffed.",
+    "Applying entirely reasonable amounts of magical preparation.",
+    "Because \"I thought someone else had Fortitude\" is not a strategy.",
+    "The forge is hot. Your buffs are not.",
+    "Keeping heroes polished, provisioned, and mildly overprepared.",
+    "Every great victory begins with someone checking the buffs.",
+    "Buffs inspected. Flasks located. Standards maintained.",
+    "Putting the \"prepared\" back into \"wildly overprepared\".",
+    "A well-buffed adventurer is a slightly less embarrassing corpse.",
+    "Forging stronger heroes, one tiny icon at a time.",
+    "Someone has to notice you forgot your flask.",
+    "Your equipment is enchanted. Your attitude is questionable. Your buffs are fine.",
+    "No blessing left unapplied. No consumable left suspiciously unused.",
+    "The difference between readiness and confidence is usually a food buff.",
+    "Adventuring is dangerous enough without forgetting Mark of the Wild.",
+    "Measure twice. Buff once. Check again anyway.",
+    "The anvil does not judge. Buffsmith absolutely does.",
 }
 
 local TEXT_WIDTH = 190
@@ -199,7 +217,7 @@ function Options.BuildPage(id, parent)
         })
         refreshSize, y = Options.Slider(parent, y, "Icon size", 24, 64, 2,
             function() return ns.db.iconSize end, function(v) ns.db.iconSize = v end)
-        refreshAlternatives, y = Options.Slider(parent, y, "Alternatives shown when a category is expanded", 1, 3, 1,
+        refreshAlternatives, y = Options.Slider(parent, y, "Other choices shown in a flyout", 1, 3, 1,
             function() return ns.db.maxAlternatives end, function(v) ns.db.maxAlternatives = v end, "")
         _, y = Options.Check(parent, y, "Show drag handle",
             function() return ns.db.showHandle end,

@@ -17,6 +17,7 @@ local function button(parent, small)
     frame.count = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     frame.count:SetPoint("BOTTOMRIGHT", -3, 2)
     frame:SetScript("OnEnter", function(self)
+        if self.buffsmithFlyout then Palette:HoverEnter(self.buffsmithFlyout) end
         local entry = self.buffsmithEntry
         if not entry then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -38,9 +39,15 @@ local function button(parent, small)
             GameTooltip:AddLine("Self-buff — left-click to cast on yourself.", 0.7, 0.7, 0.7)
         end
         GameTooltip:AddLine("Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
+        if self.buffsmithFlyout and not self.buffsmithSmall then
+            GameTooltip:AddLine("Hover: show your other choices.", 0.7, 0.7, 0.7)
+        end
         GameTooltip:Show()
     end)
-    frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    frame:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
+        if self.buffsmithFlyout then Palette:HoverLeave() end
+    end)
     frame:SetScript("PreClick", function(self, mouseButton)
         local entry = self.buffsmithEntry
         if mouseButton == "LeftButton" and entry and entry.kind == "item" then
@@ -61,6 +68,7 @@ local function button(parent, small)
         if entry and entry.kind == "item" then
             ns.Actions:Remember(entry.category, entry.itemID)
             ns.Inventory:FinishConsumableUse()
+            Palette:CloseFlyout()
         end
         C_Timer.After(0.2, function() if ns.Inventory then ns.Inventory:Refresh() end end)
     end)
@@ -87,20 +95,7 @@ function Palette:Acquire(index, small)
     return self.buttons[key]
 end
 
-function Palette:Toggle(category)
-    self.toggles = self.toggles or {}
-    if self.toggles[category] then return self.toggles[category] end
-    local control = CreateFrame("Button", nil, self.frame, "UIPanelButtonTemplate")
-    control:SetSize(24, 22)
-    control:SetScript("OnClick", function()
-        ns.db.expanded[category] = not ns.db.expanded[category]
-        self:Refresh()
-    end)
-    self.toggles[category] = control
-    return control
-end
-
-local function show(buttonFrame, entry, x, y, size)
+local function show(buttonFrame, entry, x, y, size, visible)
     buttonFrame:ClearAllPoints(); buttonFrame:SetPoint("TOPLEFT", x, y)
     buttonFrame:SetSize(size, size)
     buttonFrame.icon:SetTexture(entry.icon)
@@ -111,13 +106,55 @@ local function show(buttonFrame, entry, x, y, size)
         buttonFrame.icon:SetDesaturated(false)
     end
     ns.Actions:Configure(buttonFrame, entry)
-    buttonFrame:Show()
+    buttonFrame:SetShown(visible ~= false)
 end
 
--- Resolves the live bar's contents into ns.Layout's item list, flattening
--- `expanded` and `maxAlternatives` so the geometry stays free of settings.
+-- Flyouts: a category's other choices open beside its primary while the mouse
+-- is over the primary or the flyout. They are secure buttons like any other, so
+-- they are only shown or hidden out of combat; the bar itself is hidden by its
+-- state driver in combat, which takes them with it.
+local FLYOUT_GRACE = 0.3
+
+function Palette:ApplyFlyout()
+    for _, value in pairs(self.buttons) do
+        if value.buffsmithSmall then
+            value:SetShown(self.openFlyout ~= nil and value.buffsmithFlyout == self.openFlyout)
+        end
+    end
+end
+
+function Palette:OpenFlyout(category)
+    if ns.IsCombatLocked() then return end
+    self.openFlyout = category
+    self:ApplyFlyout()
+end
+
+function Palette:CloseFlyout()
+    self.openFlyout = nil
+    if not ns.IsCombatLocked() then self:ApplyFlyout() end
+end
+
+function Palette:HoverEnter(category)
+    self.hoverCategory = category
+    if self.openFlyout ~= category then self:OpenFlyout(category) end
+end
+
+function Palette:HoverLeave()
+    self.hoverCategory = nil
+    C_Timer.After(FLYOUT_GRACE, function()
+        if not self.hoverCategory then self:CloseFlyout() end
+    end)
+end
+
+function Palette.FlyoutSide(frame, vertical)
+    local x, y = frame:GetCenter()
+    return ns.Layout.FlyoutSide(vertical, x, y, UIParent:GetWidth(), UIParent:GetHeight())
+end
+
+-- Resolves the live bar's contents into ns.Layout's item list. Flyout icons
+-- follow their primary in item order, which is the order Layout returns them.
 function Palette:Items()
-    local items, mainEntries, subEntries = {}, {}, {}
+    local items, mainEntries, subEntries, mainCategories = {}, {}, {}, {}
     for _, entry in ipairs(ns.Actions:Entries()) do
         items[#items + 1] = {}
         mainEntries[#mainEntries + 1] = entry
@@ -127,19 +164,18 @@ function Palette:Items()
         if #choices > 0 then
             local entry = choices[ns.Actions:Preferred(category, choices)]
             mainEntries[#mainEntries + 1] = entry
+            mainCategories[#mainEntries] = category
             local shown = 0
-            if ns.db.expanded[category] then
-                for _, choice in ipairs(choices) do
-                    if choice.itemID ~= entry.itemID and shown < ns.db.maxAlternatives then
-                        shown = shown + 1
-                        subEntries[#subEntries + 1] = choice
-                    end
+            for _, choice in ipairs(choices) do
+                if choice.itemID ~= entry.itemID and shown < ns.db.maxAlternatives then
+                    shown = shown + 1
+                    subEntries[#subEntries + 1] = choice
                 end
             end
-            items[#items + 1] = { toggle = category, subs = shown }
+            items[#items + 1] = { subs = shown }
         end
     end
-    return items, mainEntries, subEntries
+    return items, mainEntries, subEntries, mainCategories
 end
 
 function Palette:Refresh()
@@ -151,34 +187,41 @@ function Palette:Refresh()
         return
     end
     ns.lastSecureButtonCount = 0
-    for _, value in pairs(self.buttons) do value:Hide() end
-    for _, value in pairs(self.toggles or {}) do value:Hide() end
-    local items, mainEntries, subEntries = self:Items()
+    for _, value in pairs(self.buttons) do
+        value:Hide()
+        value.buffsmithFlyout = nil
+    end
+    local items, mainEntries, subEntries, mainCategories = self:Items()
+    local vertical = ns.db.orientation == "VERTICAL"
     local layout = ns.Layout.Compute(items, {
         mainSize = ns.db.iconSize,
-        vertical = ns.db.orientation == "VERTICAL",
+        vertical = vertical,
+        flyout = Palette.FlyoutSide(self.frame, vertical),
     })
     if #layout.mains == 0 then
+        self.openFlyout = nil
         ns.Visibility:Apply(self.frame, false)
         self.lastLayout = "hidden: no available actions"
         ns.Actions:ArmReminder()
         if ns.Bindings then ns.Bindings:Prepare() end
         return
     end
+    local hasFlyout = {}
+    for _, placement in ipairs(layout.subs) do hasFlyout[placement.parent] = true end
     for index, placement in ipairs(layout.mains) do
-        show(self:Acquire(index, false), mainEntries[index], placement.x, placement.y, placement.size)
+        local main = self:Acquire(index, false)
+        show(main, mainEntries[index], placement.x, placement.y, placement.size)
+        main.buffsmithFlyout = hasFlyout[index] and mainCategories[index] or nil
     end
+    local stillOpen = false
     for index, placement in ipairs(layout.subs) do
-        show(self:Acquire(index, true), subEntries[index], placement.x, placement.y, placement.size)
+        local sub = self:Acquire(index, true)
+        show(sub, subEntries[index], placement.x, placement.y, placement.size, false)
+        sub.buffsmithFlyout = mainCategories[placement.parent]
+        if sub.buffsmithFlyout == self.openFlyout then stillOpen = true end
     end
-    for category, mainIndex in pairs(layout.toggles) do
-        local toggle = self:Toggle(category)
-        toggle:SetSize(16, 16)
-        toggle:ClearAllPoints()
-        toggle:SetPoint("TOPRIGHT", self:Acquire(mainIndex, false), "TOPRIGHT", 2, 2)
-        toggle:SetText(ns.db.expanded[category] and "−" or "+")
-        toggle:Show()
-    end
+    if not stillOpen then self.openFlyout = nil end
+    self:ApplyFlyout()
     self.frame:SetWidth(layout.width)
     self.frame:SetHeight(layout.height)
     ns.Visibility:Apply(self.frame, true)
