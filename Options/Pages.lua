@@ -47,9 +47,11 @@ local SLIDER_X = 268
 -- the row grows to fit however many lines that block wraps to. The shipped
 -- version anchored the name below the icon's top and fixed the row at 46px,
 -- which is what pushed the two-line consumable sub-texts out of their row.
+local ROW_HEIGHT = 58
+
 local function reminderRow(parent, y, item)
     local row = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    row:SetPoint("TOPLEFT", Options.LEFT, y); row:SetWidth(500)
+    row:SetPoint("TOPLEFT", Options.LEFT, y); row:SetSize(500, ROW_HEIGHT)
     Options.Surface(row, Options.theme.raised, Options.theme.edge)
 
     local tick = CreateFrame("Frame", nil, row, "BackdropTemplate")
@@ -67,12 +69,17 @@ local function reminderRow(parent, y, item)
         left = icon
     end
 
+    -- Fixed line counts and a fixed row height: the summary text changes as
+    -- items become known, and a row that regrew on refresh would slide under
+    -- the next one, whose position was fixed when the page was built.
     local name = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     name:SetPoint("TOPLEFT", left, "TOPRIGHT", 8, item.icon and -2 or 0)
     name:SetWidth(TEXT_WIDTH); name:SetJustifyH("LEFT"); name:SetText(item.label)
+    if name.SetMaxLines then name:SetMaxLines(1) end
     local detail = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     detail:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4)
     detail:SetWidth(TEXT_WIDTH); detail:SetJustifyH("LEFT")
+    if detail.SetMaxLines then detail:SetMaxLines(2) end
 
     local bar, percent
     if not item.permanent then
@@ -87,10 +94,6 @@ local function reminderRow(parent, y, item)
     end
 
     local changing = false
-    local function resize()
-        local height = 26 + name:GetStringHeight() + detail:GetStringHeight()
-        row:SetHeight(math.max(46, height))
-    end
     local function refresh()
         local enabled = item.enabled()
         mark:SetShown(enabled)
@@ -102,7 +105,6 @@ local function reminderRow(parent, y, item)
             percent:SetText(tostring(item.get()) .. "%")
             detail:SetText("Reminds at " .. item.result())
         end
-        resize()
     end
     if bar then
         bar:SetScript("OnValueChanged", function(_, value)
@@ -116,7 +118,7 @@ local function reminderRow(parent, y, item)
         if Options.Refresh then Options.Refresh() end
     end)
     refresh()
-    return refresh, y - row:GetHeight() - 6
+    return refresh, y - ROW_HEIGHT - 6
 end
 
 local function visibilityItems()
