@@ -1,0 +1,26 @@
+# CurseForge packaging, for BigWigsMods/packager.
+# The repo root is the one Buffsmith addon folder. Both TOCs ship inside it:
+# Buffsmith.toc for Retail and Buffsmith_Camelot.toc for WoW Forever.
+
+package-as: Buffsmith
+
+# No embedded libraries, so there is no no-lib variant worth building.
+enable-nolib-creation: no
+
+# Not CHANGELOG.md. The packager hands this file to CurseForge verbatim, so
+# pointing it at the full history would republish every past release's notes on
+# every upload. Release CI extracts just the tagged version into
+# RELEASE_NOTES.md before packaging.
+manual-changelog:
+  filename: RELEASE_NOTES.md
+  markup-type: markdown
+
+license-output: LICENSE.txt
+
+ignore:
+  - .github
+  - .pkgmeta
+  - .gitignore
+  - CHANGELOG.md
+  - tests
+  - tools

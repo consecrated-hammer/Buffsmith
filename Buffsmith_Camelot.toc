@@ -7,6 +7,9 @@
 ## SavedVariables: BuffsmithDB
 ## LoadSavedVariablesFirst: 1
 ## IconTexture: Interface\Icons\INV_Misc_QuestionMark
+## X-License: GPL-3.0
+## X-Website: https://github.com/consecrated-hammer/Buffsmith
+## X-Curse-Project-ID: 1704142
 ## X-Buffsmith-Target: Camelot
 
 Core.lua
