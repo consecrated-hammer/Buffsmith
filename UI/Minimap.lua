@@ -38,7 +38,7 @@ function MinimapButton:Create()
         local cursorX, cursorY = GetCursorPosition()
         local centerX, centerY = Minimap:GetCenter()
         if not centerX or not centerY then return end
-        local angle = math.deg(atan2(cursorY / scale - centerY, cursorX / scale - centerX))
+        local angle = math.deg(atan2(cursorY / scale - centerY, cursorX / scale - centerX)) % 360
         ns.db.minimapAngle = angle
         place(angle)
     end

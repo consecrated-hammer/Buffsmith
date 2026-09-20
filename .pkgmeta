@@ -24,3 +24,4 @@ ignore:
   - CHANGELOG.md
   - tests
   - tools
+  - .scratch

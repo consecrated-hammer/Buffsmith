@@ -255,7 +255,10 @@ end
 
 function Actions:Key(entry)
     if not entry then return nil end
-    if entry.kind == "spell" then return "spell:" .. tostring(entry.spellID) end
+    if entry.kind == "spell" then
+        return "spell:" .. tostring(entry.spellID) .. ":" .. tostring(entry.scope or "self")
+            .. ":" .. tostring(entry.unit or "player")
+    end
     if entry.kind == "item" then return "item:" .. tostring(entry.itemID) end
     if entry.kind == "notice" then return "party:" .. tostring(entry.providerClass) .. ":" .. tostring(entry.spellID) end
 end

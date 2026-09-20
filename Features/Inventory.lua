@@ -86,8 +86,8 @@ local function classify(itemType, itemSubType, itemName, itemID)
     local flask = ns.CONSUMABLE_CATEGORIES.flask.subtypes[itemSubType] or itemSubType == "Flask"
     if flask or (type(itemName) == "string" and string.match(itemName, "^Flask")) then return "flask" end
 
-    local weapon = ns.CONSUMABLE_CATEGORIES.weapon.subtypes[itemSubType]
-    if weapon then return "weapon" end
+    -- Item Enhancement also contains armour kits. A weapon-specific name is
+    -- required before presenting it as an oil/stone action.
     if type(itemName) == "string" then
         local name = string.lower(itemName)
         if string.find(name, "oil", 1, true) or string.find(name, "whetstone", 1, true)
@@ -100,7 +100,7 @@ end
 
 local function weaponEnchantStatus()
     if type(GetWeaponEnchantInfo) ~= "function" then return nil end
-    local ok, mainHand, mainExpires, _, offHand, offExpires = pcall(GetWeaponEnchantInfo)
+    local ok, mainHand, mainExpires, _, _, offHand, offExpires = pcall(GetWeaponEnchantInfo)
     if not ok or not (mainHand or offHand) then return nil end
     local remaining = math.max(tonumber(mainHand and mainExpires) or 0, tonumber(offHand and offExpires) or 0) / 1000
     return { state = "active", duration = 0, remaining = remaining > 0 and remaining or nil }

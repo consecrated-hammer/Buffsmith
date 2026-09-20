@@ -184,6 +184,7 @@ function Palette:Refresh()
     if ns.db.visibilityMode == "NEVER" then
         ns.Visibility:Apply(self.frame, false)
         self.lastLayout = "hidden: preference"
+        if ns.Bindings then ns.Bindings:Prepare() end
         return
     end
     ns.lastSecureButtonCount = 0

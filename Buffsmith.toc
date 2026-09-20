@@ -15,6 +15,7 @@ Core.lua
 Core\Config.lua
 Data\SelfBuffs.lua
 Data\PartyBuffs.lua
+Data\RetailBuffs.lua
 Data\Consumables.lua
 Features\Inventory.lua
 Features\Actions.lua
