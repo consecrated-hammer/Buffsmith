@@ -81,6 +81,7 @@ local function cloneForUnit(entry, unit, scope)
     local copy = {}
     for key, value in pairs(entry) do copy[key] = value end
     copy.unit, copy.scope = unit, scope
+    copy.unitGUID = UnitGUID and UnitGUID(unit) or nil
     return copy
 end
 
@@ -256,8 +257,10 @@ end
 function Actions:Key(entry)
     if not entry then return nil end
     if entry.kind == "spell" then
+        local unit = entry.unit or "player"
+        local identity = entry.unitGUID or (UnitGUID and UnitGUID(unit)) or unit
         return "spell:" .. tostring(entry.spellID) .. ":" .. tostring(entry.scope or "self")
-            .. ":" .. tostring(entry.unit or "player")
+            .. ":" .. tostring(identity)
     end
     if entry.kind == "item" then return "item:" .. tostring(entry.itemID) end
     if entry.kind == "notice" then return "party:" .. tostring(entry.providerClass) .. ":" .. tostring(entry.spellID) end
