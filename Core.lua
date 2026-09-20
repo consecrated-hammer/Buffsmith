@@ -1,0 +1,36 @@
+local addonName, ns = ...
+
+Buffsmith = ns
+ns.NAME = addonName
+
+function ns.GetMetadata(key)
+    local getter = C_AddOns and C_AddOns.GetAddOnMetadata
+    local value = getter and getter(addonName, key)
+    if value ~= nil then return value end
+    return GetAddOnMetadata and GetAddOnMetadata(addonName, key)
+end
+
+ns.VERSION = ns.GetMetadata("Version") or "0.1.0"
+ns.REVISION = ns.VERSION
+ns.TARGET = ns.GetMetadata("X-Buffsmith-Target")
+    or (WOW_PROJECT_ID and WOW_PROJECT_MAINLINE and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and "Mainline")
+    or "Unknown"
+
+_G.BINDING_HEADER_BUFFSMITH = "Buffsmith"
+_G["BINDING_NAME_CLICK BuffsmithBindingButton:LeftButton"] = "Buff trigger — apply next missing buff"
+
+function ns.Print(message)
+    print("|cffd4af37Buffsmith:|r " .. tostring(message))
+end
+
+function ns.IsCombatLocked()
+    return InCombatLockdown and InCombatLockdown() or false
+end
+
+function ns.IsSecret(value)
+    return issecretvalue and issecretvalue(value) or false
+end
+
+function ns.Plain(value)
+    return ns.IsSecret(value) and nil or value
+end

@@ -1,0 +1,30 @@
+## Interface: 16001
+## Title: Buffsmith (WoW Forever)
+## Author: consecrated-hammer
+## Version: 0.1.0
+## Notes: Out-of-combat self-buff and consumable palette for WoW Forever.
+## AllowLoadGameType: camelot
+## SavedVariables: BuffsmithDB
+## LoadSavedVariablesFirst: 1
+## IconTexture: Interface\Icons\INV_Misc_QuestionMark
+## X-Buffsmith-Target: Camelot
+
+Core.lua
+Core\Config.lua
+Data\SelfBuffs.lua
+Data\PartyBuffs.lua
+Data\Consumables.lua
+Features\Inventory.lua
+Features\Actions.lua
+Features\Thanks.lua
+Features\Visibility.lua
+UI\Palette.lua
+UI\Handle.lua
+Features\Bindings.lua
+UI\Minimap.lua
+Options\Shared.lua
+Options\Pages.lua
+Options.lua
+Diagnostics.lua
+Events.lua
+Slash.lua
