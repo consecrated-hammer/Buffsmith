@@ -7,6 +7,26 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-21
+
+### Added
+
+- Buffsmith artwork: a clean anvil minimap/settings icon and a hammermark addon
+  icon for the AddOns list.
+- Configurable flyout direction: Left/Right for vertical bars and Above/Below
+  for horizontal bars, with an Automatic choice that follows available space.
+- Range-aware target, party and pet buff icons, including live target range
+  updates and lightweight party/pet range refreshes.
+- Visibility choices matching Salve: Always, Never, and combinable combat and
+  group conditions.
+
+### Changed
+
+- A rejected weaker buff or consumable is dismissed for the current zone rather
+  than repeatedly offered when a stronger compatible effect is already active.
+- Existing scoped out-of-combat visibility settings retain their original
+  behaviour until changed by the player.
+
 ## [0.1.0] - 2026-09-20
 
 ### Added

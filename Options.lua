@@ -22,7 +22,7 @@ function Options:Create()
         ns.db.settingsPoint = { point, relativePoint, x, y }
     end)
     local icon = titleBar:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(26, 26); icon:SetPoint("LEFT", 8, 0); icon:SetTexture(Options.ICON)
+    icon:SetSize(26, 26); icon:SetPoint("LEFT", 8, 0); icon:SetTexture(Options.SETTINGS_ICON)
     local title = titleBar:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("LEFT", icon, "RIGHT", 8, 0); title:SetText("Buffsmith"); title:SetTextColor(unpack(Options.theme.accent))
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")

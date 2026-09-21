@@ -85,6 +85,37 @@ local function cloneForUnit(entry, unit, scope)
     return copy
 end
 
+-- A nil range result is intentionally neutral: the client only returns a
+-- definite false when it can establish that this spell cannot reach the unit.
+-- This keeps party, pet and unusual spell targets actionable when no precise
+-- range probe is available.
+function Actions:RangeState(entry)
+    if entry.kind ~= "spell" or not entry.unit or entry.unit == "player" then return nil end
+    local checker = C_Spell and C_Spell.IsSpellInRange
+    if type(checker) ~= "function" then return nil end
+    local ok, inRange = pcall(checker, entry.spellID, entry.unit)
+    if not ok then return nil end
+    inRange = ns.Plain(inRange)
+    if inRange == false then return false end
+    return nil
+end
+
+function Actions:UpdateTargetRangeChecks(entries)
+    local enable = C_Spell and C_Spell.EnableSpellRangeCheck
+    if type(enable) ~= "function" then return end
+    local wanted = {}
+    for _, entry in ipairs(entries) do
+        if entry.kind == "spell" and entry.unit == "target" then wanted[entry.spellID] = true end
+    end
+    self.rangeChecks = self.rangeChecks or {}
+    for spellID in pairs(self.rangeChecks) do
+        if not wanted[spellID] then pcall(enable, spellID, false); self.rangeChecks[spellID] = nil end
+    end
+    for spellID in pairs(wanted) do
+        if not self.rangeChecks[spellID] then pcall(enable, spellID, true); self.rangeChecks[spellID] = true end
+    end
+end
+
 local function partyUnits()
     local units = { "player" }
     if IsInGroup and IsInGroup() then
@@ -217,6 +248,7 @@ function Actions:Entries()
         end
     end
     for _, notice in ipairs(self:PartyCoverage()) do entries[#entries + 1] = notice end
+    for _, entry in ipairs(entries) do entry.outOfRange = self:RangeState(entry) == false end
     return entries
 end
 
@@ -282,6 +314,39 @@ end
 function Actions:Dismiss(entry)
     local key = self:Key(entry)
     if key then self.suppressed[key] = true end
+end
+
+function Actions:BeginAttempt(entry)
+    local key = self:Key(entry)
+    if not key then return end
+    self.lastAttempt = { key = key, spellID = entry.spellID, untilTime = (GetTime and GetTime() or 0) + 0.25 }
+end
+
+function Actions:FinishAttempt(spellID)
+    local attempt = self.lastAttempt
+    if attempt and attempt.spellID and attempt.spellID == spellID then self.lastAttempt = nil end
+end
+
+function Actions:ExpireAttempt(entry)
+    local attempt = self.lastAttempt
+    if attempt and attempt.key == self:Key(entry) then self.lastAttempt = nil end
+end
+
+-- The server, rather than addon-visible aura data, is authoritative for
+-- overlapping effects with different strengths (for example a scroll versus
+-- a stronger class buff). The window is deliberately one UI frame long: a
+-- generic UI_ERROR_MESSAGE carries no spell/item identity, so a stale click
+-- must never be mistaken for a later unrelated failure.
+function Actions:HandleAuraBounce(message)
+    if ns.IsCombatLocked() then return false end
+    local attempt = self.lastAttempt
+    if not attempt then return false end
+    if (GetTime and GetTime() or 0) > attempt.untilTime then self.lastAttempt = nil; return false end
+    if message ~= SPELL_FAILED_AURA_BOUNCED then return false end
+    self.lastAttempt = nil
+    self.suppressed[attempt.key] = true
+    self.lastSuppression = "stronger effect already active"
+    return true
 end
 
 function Actions:ReportPartyCoverage(entry)

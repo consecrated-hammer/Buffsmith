@@ -8,9 +8,8 @@ Options.theme = {
     accent = { 0.298, 0.604, 0.478, 1 }, muted = { 0.553, 0.584, 0.639, 1 },
 }
 
--- Placeholder until the real artwork lands; both TOCs' IconTexture is still a
--- question mark for the same reason.
-Options.ICON = "Interface\\Icons\\Trade_BlackSmithing"
+Options.ICON = "Interface\\AddOns\\Buffsmith\\Textures\\BuffsmithLogo"
+Options.SETTINGS_ICON = "Interface\\AddOns\\Buffsmith\\Textures\\BuffsmithMinimap"
 
 -- Every control returns the y its successor should use, so a page reads as a
 -- chain instead of a column of hand-counted offsets. Mixing the two is what
@@ -171,7 +170,8 @@ function Options.Dropdown(parent, y, label, spec)
         local list, catcher = shared()
         for _, entry in ipairs(list.rows) do entry:Hide() end
         local height = 8
-        for index, item in ipairs(spec.items) do
+        local items = type(spec.items) == "function" and spec.items() or spec.items
+        for index, item in ipairs(items) do
             local entry = row(list, index)
             entry:SetWidth(width)
             entry:ClearAllPoints()

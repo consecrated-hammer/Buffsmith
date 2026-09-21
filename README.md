@@ -1,12 +1,8 @@
 # Buffsmith
 
-**Buffs and consumables, without the scavenger hunt.** A small out-of-combat
+**Buffs and consumables, without the scavenger hunt.** A small
 bar of clickable icons for the self-buffs, party buffs and bag consumables you
 are missing.
-
-> **Status: in development.** Buffsmith has not been released or published to
-> CurseForge, and its settings and preview have so far been checked by unit
-> tests only, not in a live client.
 
 [![License](https://img.shields.io/badge/license-GPL--3.0-4c9a7a?style=flat-square)](LICENSE.txt)
 [![Client](https://img.shields.io/badge/client-retail%20%2B%20forever-4c9a7a?style=flat-square)](https://worldofwarcraft.blizzard.com/)
@@ -22,6 +18,13 @@ and the bar waits until something needs attention again.
 **One click to use it.** Left-click an icon to cast the buff or use the item.
 Right-click to dismiss it until you change zones.
 
+**Range-aware target buffs.** A target, party-member or pet buff is greyed out
+when the client can confirm that its recipient is out of range.
+
+**No repeated weaker-effect prompts.** If the game rejects a Buffsmith action
+because a stronger compatible effect is active, Buffsmith hides that action
+until you change zones.
+
 **Consumables come from your bags.** Food, scrolls, flasks and weapon
 enhancements are discovered automatically. Hover a category's icon to open a
 flyout of your other choices; using one makes it the new primary.
@@ -35,10 +38,11 @@ repeatedly to work down the bar.
 
 ## Combat
 
-Combat starts, Buffsmith clocks off. The bar is hidden by a secure state driver
-and none of its actions are available until combat ends. This is deliberate:
-its clickable icons are protected, and Lua may not show, hide or reconfigure
-them in combat.
+Visibility uses Salve's familiar choices: **Always**, **Never**, or any
+combination of **In combat**, **Out of combat**, **Solo**, **In a party** and
+**In a raid group**. New profiles use Out of combat. When it is visible in
+combat, the bar retains its last prepared state; Buffsmith does not scan,
+rearrange flyouts, or reconfigure secure actions until combat ends.
 
 ## Settings
 

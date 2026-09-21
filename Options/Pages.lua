@@ -147,10 +147,11 @@ local function visibilityItems()
     local function setMode(mode)
         ns.db.visibilityMode = mode
         ns.db.visibility = {}
+        ns.db.legacyVisibility = nil
     end
     local items = {
         {
-            label = "Always, out of combat", radio = true,
+            label = "Always", radio = true,
             get = function() return ns.db.visibilityMode ~= "NEVER" and not hasConditions() end,
             set = function() setMode("ALWAYS") end,
         },
@@ -168,6 +169,7 @@ local function visibilityItems()
             get = function() return ns.db.visibilityMode ~= "NEVER" and ns.db.visibility[key] == true end,
             set = function(value)
                 ns.db.visibilityMode = "ALWAYS"
+                ns.db.legacyVisibility = nil
                 ns.db.visibility[key] = value or nil
             end,
         }
@@ -182,7 +184,7 @@ function Options.BuildPage(id, parent)
         local y = Options.Header(parent, "Buffsmith", "Buffs and consumables, without the scavenger hunt.")
         _, y = Options.Text(parent, "Buffsmith keeps an eye on your out-of-combat buffs and consumables.\nMissing something? It appears. Sorted? It gets out of the way until it needs attention again.", y)
         _, y = Options.Text(parent, "Left-click an icon to use it. Right-click to tell Buffsmith to stop nagging until you change zones.", y)
-        _, y = Options.Text(parent, "Combat starts, Buffsmith clocks off. The bar disappears, and so does everything it can do.", y)
+        _, y = Options.Text(parent, "By default, combat hides the bar. You can choose to keep its last out-of-combat state visible in Visibility.", y)
 
     elseif id == "visibility" then
         local y = Options.Header(parent, "Visibility", "Choose when the bar is on screen.")
@@ -190,29 +192,70 @@ function Options.BuildPage(id, parent)
         refresh, y = Options.Dropdown(parent, y, "Show the bar", {
             items = visibilityItems(),
             summary = function() return ns.Visibility:Summary() end,
-            hint = "Pick Always or Never, or tick several rules; any matching rule shows the bar.",
+            hint = "Choose Always or Never, or tick several rules; any matching rule shows the bar.",
             width = 300,
         })
         _, y = Options.Check(parent, y, "Skip missing-buff checks in rested areas",
             function() return ns.db.ignoreBuffsInRestedAreas end,
             function(v) ns.db.ignoreBuffsInRestedAreas = v end,
             "Pause self-buff reminders while your character is resting in a city or inn.")
-        _, y = Options.Text(parent, "Combat overrides every choice here. The bar's clickable actions are deliberately available only out of combat.", y - 6)
+        _, y = Options.Text(parent, "In combat, the bar retains its last prepared state. Settings, scans, and flyout changes wait until combat ends.", y - 6)
         parent.buffsmithRefresh = refresh
 
     elseif id == "appearance" then
         local y = Options.Header(parent, "Appearance", "Size, direction and the controls around the bar.")
-        local refreshSize, refreshOrientation, refreshAlternatives
+        local refreshSize, refreshOrientation, refreshFlyoutDirection, refreshAlternatives
+        local function setOrientation(orientation)
+            ns.db.orientation = orientation
+            ns.RefreshAll()
+            if parent.buffsmithRefresh then parent.buffsmithRefresh() end
+        end
+        local function flyoutDirectionItems()
+            if ns.db.orientation == "HORIZONTAL" then
+                return {
+                    { label = "Automatic", radio = true,
+                      get = function() return ns.db.flyoutHorizontalDirection == "AUTO" end,
+                      set = function() ns.db.flyoutHorizontalDirection = "AUTO" end },
+                    { label = "Above", radio = true,
+                      get = function() return ns.db.flyoutHorizontalDirection == "UP" end,
+                      set = function() ns.db.flyoutHorizontalDirection = "UP" end },
+                    { label = "Below", radio = true,
+                      get = function() return ns.db.flyoutHorizontalDirection == "DOWN" end,
+                      set = function() ns.db.flyoutHorizontalDirection = "DOWN" end },
+                }
+            end
+            return {
+                { label = "Automatic", radio = true,
+                  get = function() return ns.db.flyoutVerticalDirection == "AUTO" end,
+                  set = function() ns.db.flyoutVerticalDirection = "AUTO" end },
+                { label = "Left", radio = true,
+                  get = function() return ns.db.flyoutVerticalDirection == "LEFT" end,
+                  set = function() ns.db.flyoutVerticalDirection = "LEFT" end },
+                { label = "Right", radio = true,
+                  get = function() return ns.db.flyoutVerticalDirection == "RIGHT" end,
+                  set = function() ns.db.flyoutVerticalDirection = "RIGHT" end },
+            }
+        end
+        local function flyoutDirectionSummary()
+            local direction = ns.db.orientation == "HORIZONTAL" and ns.db.flyoutHorizontalDirection or ns.db.flyoutVerticalDirection
+            return direction == "AUTO" and "Automatic" or direction:sub(1, 1) .. direction:sub(2):lower()
+        end
         refreshOrientation, y = Options.Dropdown(parent, y, "Direction", {
             items = {
                 { label = "Vertical", radio = true,
                   get = function() return ns.db.orientation == "VERTICAL" end,
-                  set = function() ns.Set("orientation", "VERTICAL") end },
+                  set = function() setOrientation("VERTICAL") end },
                 { label = "Horizontal", radio = true,
                   get = function() return ns.db.orientation == "HORIZONTAL" end,
-                  set = function() ns.Set("orientation", "HORIZONTAL") end },
+                  set = function() setOrientation("HORIZONTAL") end },
             },
             summary = function() return ns.db.orientation == "VERTICAL" and "Vertical" or "Horizontal" end,
+            width = 220,
+        })
+        refreshFlyoutDirection, y = Options.Dropdown(parent, y, "Flyout direction", {
+            items = flyoutDirectionItems,
+            summary = flyoutDirectionSummary,
+            hint = "For vertical bars, choose Left or Right. For horizontal bars, choose Above or Below. Automatic picks the side with more room.",
             width = 220,
         })
         refreshSize, y = Options.Slider(parent, y, "Icon size", 24, 64, 2,
@@ -234,7 +277,7 @@ function Options.BuildPage(id, parent)
             ns.Palette.frame:ClearAllPoints(); ns.Palette.frame:SetPoint(unpack(ns.db.palettePoint))
             ns.Preview:ApplyPosition()
         end)
-        parent.buffsmithRefresh = function() refreshSize(); refreshOrientation(); refreshAlternatives() end
+        parent.buffsmithRefresh = function() refreshSize(); refreshOrientation(); refreshFlyoutDirection(); refreshAlternatives() end
 
     elseif id == "buffs" then
         local content = Options.Scroll(parent)

@@ -21,6 +21,11 @@ BuffsmithDB = { palettePoint = "broken", categories = false, maxAlternatives = 9
 ns.InitConfig()
 equal(ns.db.visibilityMode, "ALWAYS", "an unset visibility mode defaults to always")
 
+BuffsmithDB = { flyoutVerticalDirection = "UP", flyoutHorizontalDirection = "LEFT" }
+ns.InitConfig()
+equal(ns.db.flyoutVerticalDirection, "AUTO", "an invalid vertical flyout direction is repaired")
+equal(ns.db.flyoutHorizontalDirection, "AUTO", "an invalid horizontal flyout direction is repaired")
+
 -- showPalette folded into the visibility mode, so a saved "off" has to land on
 -- Never rather than silently switching the bar back on.
 BuffsmithDB = { showPalette = false }

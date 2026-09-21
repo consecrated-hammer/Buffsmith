@@ -2,7 +2,7 @@ local addonName, ns = ...
 
 ns.Minimap = {}
 local MinimapButton = ns.Minimap
-local ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
+local ICON = "Interface\\AddOns\\Buffsmith\\Textures\\BuffsmithMinimap"
 
 function MinimapButton:Create()
     if self.button then return self.button end

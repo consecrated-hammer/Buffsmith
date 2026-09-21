@@ -1,13 +1,13 @@
 ## Interface: 16001
 ## Title: Buffsmith (WoW Forever)
 ## Author: consecrated-hammer
-## Version: 0.1.0
-## X-ReleaseDate: 2026-09-20
+## Version: 0.1.1
+## X-ReleaseDate: 2026-09-21
 ## Notes: Out-of-combat self-buff and consumable bar for WoW Forever.
 ## AllowLoadGameType: camelot
 ## SavedVariables: BuffsmithDB
 ## LoadSavedVariablesFirst: 1
-## IconTexture: Interface\Icons\INV_Misc_QuestionMark
+## IconTexture: Interface\AddOns\Buffsmith\Textures\BuffsmithLogo
 ## X-License: GPL-3.0
 ## X-Website: https://github.com/consecrated-hammer/Buffsmith
 ## X-Curse-Project-ID: 1704142

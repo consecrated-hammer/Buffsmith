@@ -19,6 +19,8 @@ ns.defaults = {
     settingsPoint = { "CENTER", "CENTER", 0, 0 },
     iconSize = 40,
     orientation = "VERTICAL",
+    flyoutVerticalDirection = "AUTO",
+    flyoutHorizontalDirection = "AUTO",
     reminderPercent = { buff = 10, food = 10, scroll = 10, flask = 10, weapon = 10, buffBySpell = {}, item = {} },
     consumableAuras = {},
     excludedConsumables = {},
@@ -68,6 +70,25 @@ function ns.InitConfig()
     if BuffsmithDB.showPalette == false then BuffsmithDB.visibilityMode = "NEVER" end
     BuffsmithDB.showPalette = nil
     if BuffsmithDB.visibilityMode ~= "ALWAYS" and BuffsmithDB.visibilityMode ~= "NEVER" then BuffsmithDB.visibilityMode = "ALWAYS" end
+    -- Visibility now uses Salve's composable conditions. Retain a legacy
+    -- scoped out-of-combat rule until the player changes it, because the old
+    -- AND relationship cannot be represented by Salve's OR-style selector.
+    if BuffsmithDB.visibilityVersion ~= 2 then
+        if BuffsmithDB.showInCombat ~= true then
+            local legacy = {}
+            for _, key in ipairs({ "solo", "inParty", "inRaid" }) do
+                if BuffsmithDB.visibility[key] then legacy[key] = true end
+            end
+            if next(legacy) then
+                BuffsmithDB.legacyVisibility = legacy
+            else
+                BuffsmithDB.visibility.outOfCombat = true
+            end
+        end
+        BuffsmithDB.visibilityVersion = 2
+    end
+    BuffsmithDB.showInCombat = nil
+    if BuffsmithDB.legacyVisibility ~= nil and type(BuffsmithDB.legacyVisibility) ~= "table" then BuffsmithDB.legacyVisibility = nil end
     if type(BuffsmithDB.showHandle) ~= "boolean" then BuffsmithDB.showHandle = true end
     if type(BuffsmithDB.showTargetBuffs) ~= "boolean" then BuffsmithDB.showTargetBuffs = true end
     if type(BuffsmithDB.showPartyBuffs) ~= "boolean" then BuffsmithDB.showPartyBuffs = true end
@@ -84,6 +105,14 @@ function ns.InitConfig()
     BuffsmithDB.iconSize = math.max(24, math.min(64, math.floor((tonumber(BuffsmithDB.iconSize) or 40) + 0.5)))
     if BuffsmithDB.orientation ~= "HORIZONTAL" and BuffsmithDB.orientation ~= "VERTICAL" then
         BuffsmithDB.orientation = "VERTICAL"
+    end
+    if BuffsmithDB.flyoutVerticalDirection ~= "AUTO" and BuffsmithDB.flyoutVerticalDirection ~= "LEFT"
+        and BuffsmithDB.flyoutVerticalDirection ~= "RIGHT" then
+        BuffsmithDB.flyoutVerticalDirection = "AUTO"
+    end
+    if BuffsmithDB.flyoutHorizontalDirection ~= "AUTO" and BuffsmithDB.flyoutHorizontalDirection ~= "UP"
+        and BuffsmithDB.flyoutHorizontalDirection ~= "DOWN" then
+        BuffsmithDB.flyoutHorizontalDirection = "AUTO"
     end
     BuffsmithDB.minimapAngle = math.max(0, math.min(360, tonumber(BuffsmithDB.minimapAngle) or 225))
     BuffsmithDB.maxAlternatives = math.max(1, math.min(3,

@@ -1,11 +1,15 @@
 local addonName, ns = ...
 
 local frame = CreateFrame("Frame", "BuffsmithEventFrame")
+local rangeElapsed = 0
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("BAG_UPDATE_DELAYED")
 frame:RegisterEvent("SPELLS_CHANGED")
 frame:RegisterEvent("PLAYER_TARGET_CHANGED")
+pcall(frame.RegisterEvent, frame, "SPELL_RANGE_CHECK_UPDATE")
+frame:RegisterEvent("UI_ERROR_MESSAGE")
+frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 frame:RegisterEvent("GROUP_ROSTER_UPDATE")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -31,7 +35,7 @@ local function hideForCombat()
     GameTooltip:Hide()
 end
 
-frame:SetScript("OnEvent", function(_, event, arg1)
+frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
     if event == "ADDON_LOADED" then
         if arg1 ~= addonName then return end
         ns.InitConfig()
@@ -48,6 +52,12 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         refresh()
     elseif event == "PLAYER_REGEN_DISABLED" then
         hideForCombat()
+    elseif event == "SPELL_RANGE_CHECK_UPDATE" then
+        if not ns.IsCombatLocked() and ns.Palette then ns.Palette:RefreshRange() end
+    elseif event == "UI_ERROR_MESSAGE" then
+        if ns.Actions:HandleAuraBounce(arg2) and not ns.IsCombatLocked() then refresh() end
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        ns.Actions:FinishAttempt(arg3)
     elseif event == "UNIT_AURA" then
         if arg1 == "player" then ns.Thanks:Observe(false) end
         if arg1 == "player" or arg1 == "target" or arg1 == "pet"
@@ -60,4 +70,11 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         or event == "PLAYER_REGEN_ENABLED" then
         refresh()
     end
+end)
+
+frame:SetScript("OnUpdate", function(_, elapsed)
+    rangeElapsed = rangeElapsed + elapsed
+    if rangeElapsed < 0.25 then return end
+    rangeElapsed = 0
+    if not ns.IsCombatLocked() and ns.Palette and ns.Palette.rangeWatching then ns.Palette:RefreshRange() end
 end)

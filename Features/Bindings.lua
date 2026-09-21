@@ -99,7 +99,10 @@ local function button(name, direction)
     frame:Show()
     frame:SetScript("PreClick", function(self)
         local entry = self.buffsmithEntry
-        if entry and entry.kind == "item" then ns.Inventory:BeginConsumableUse(entry) end
+        if entry then
+            ns.Actions:BeginAttempt(entry)
+            if entry.kind == "item" then ns.Inventory:BeginConsumableUse(entry) end
+        end
     end)
     frame:SetScript("PostClick", function(self)
         if ns.IsCombatLocked() then return end
@@ -110,6 +113,7 @@ local function button(name, direction)
         end
         Bindings.index = Bindings.index + direction
         C_Timer.After(0, function() Bindings:Prepare() end)
+        C_Timer.After(0.25, function() ns.Actions:ExpireAttempt(entry) end)
     end)
     return frame
 end
