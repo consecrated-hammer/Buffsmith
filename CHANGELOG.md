@@ -7,6 +7,14 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-24
+
+### Fixed
+
+- The rested-area setting now also hides food, scroll, flask and weapon
+  reminders, and the bar updates as soon as you enter or leave a rested area.
+  The setting is renamed "Pause reminders in rested areas".
+
 ## [0.1.1] - 2026-09-21
 
 ### Added

@@ -195,10 +195,10 @@ function Options.BuildPage(id, parent)
             hint = "Choose Always or Never, or tick several rules; any matching rule shows the bar.",
             width = 300,
         })
-        _, y = Options.Check(parent, y, "Skip missing-buff checks in rested areas",
+        _, y = Options.Check(parent, y, "Pause reminders in rested areas",
             function() return ns.db.ignoreBuffsInRestedAreas end,
             function(v) ns.db.ignoreBuffsInRestedAreas = v end,
-            "Pause self-buff reminders while your character is resting in a city or inn.")
+            "Hide buff and consumable reminders while your character is resting in a city or inn.")
         _, y = Options.Text(parent, "In combat, the bar retains its last prepared state. Settings, scans, and flyout changes wait until combat ends.", y - 6)
         parent.buffsmithRefresh = refresh
 

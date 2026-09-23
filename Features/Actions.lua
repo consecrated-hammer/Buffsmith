@@ -169,11 +169,16 @@ function Actions:PartyCoverage()
     return coverage
 end
 
+-- The rested-area pause covers the whole bar: buffs and consumables alike.
+function Actions:IsRestedPaused()
+    return ns.db.ignoreBuffsInRestedAreas and IsResting and IsResting() or false
+end
+
 function Actions:Entries()
     local entries = {}
     self.nextReminderDelay = nil
     ns.lastAuraProbe = {}
-    if ns.db.ignoreBuffsInRestedAreas and IsResting and IsResting() then
+    if self:IsRestedPaused() then
         ns.lastAuraProbe[1] = "self-buff checks paused: rested area"
         return entries
     end
@@ -383,7 +388,7 @@ end
 
 function Actions:VisibleChoices(category)
     local choices = {}
-    if not ns.db.categories[category] then return choices end
+    if not ns.db.categories[category] or self:IsRestedPaused() then return choices end
     -- A category-level active effect suppresses alternatives of the same kind.
     -- This prevents a second food or weapon oil appearing while one is active.
     local categoryStatus = ns.Inventory:CategoryStatus(category)

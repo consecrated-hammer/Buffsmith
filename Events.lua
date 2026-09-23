@@ -16,6 +16,7 @@ frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("UNIT_AURA")
+pcall(frame.RegisterEvent, frame, "PLAYER_UPDATE_RESTING")
 
 local function refresh()
     if ns.IsCombatLocked() then return end
@@ -66,7 +67,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         ns.Actions:ResetDismissals()
         refresh()
     elseif event == "BAG_UPDATE_DELAYED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
-        or event == "GROUP_ROSTER_UPDATE"
+        or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
         or event == "PLAYER_REGEN_ENABLED" then
         refresh()
     end
