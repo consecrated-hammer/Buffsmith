@@ -7,6 +7,22 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-25
+
+### Added
+
+- A configurable one-to-five-second Thank You delay, so replies can feel more
+  natural.
+- One combined Thank You for multiple recognised buffs applied by the same
+  player during the delay.
+
+### Fixed
+
+- Thank You replies now use the complete cross-realm recipient name and stay
+  quiet when the buff provider cannot be identified.
+- Pending Thank You replies cancel when combat begins or the feature is turned
+  off.
+
 ## [0.1.2] - 2026-09-24
 
 ### Fixed

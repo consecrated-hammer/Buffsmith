@@ -10,6 +10,7 @@ ns.defaults = {
     showPartyCoverage = true,
     thanksEnabled = false,
     thanksChannel = "WHISPER",
+    thanksDelay = 1,
     thanksMessage = "Thanks for the {buff}!",
     showPetBuffs = false,
     showMinimap = true,
@@ -95,6 +96,7 @@ function ns.InitConfig()
     if type(BuffsmithDB.showPartyCoverage) ~= "boolean" then BuffsmithDB.showPartyCoverage = true end
     if type(BuffsmithDB.thanksEnabled) ~= "boolean" then BuffsmithDB.thanksEnabled = false end
     if BuffsmithDB.thanksChannel ~= "WHISPER" and BuffsmithDB.thanksChannel ~= "SAY" and BuffsmithDB.thanksChannel ~= "PARTY" then BuffsmithDB.thanksChannel = "WHISPER" end
+    BuffsmithDB.thanksDelay = math.max(1, math.min(5, math.floor((tonumber(BuffsmithDB.thanksDelay) or 1) + 0.5)))
     if type(BuffsmithDB.thanksMessage) ~= "string" or BuffsmithDB.thanksMessage == "" then BuffsmithDB.thanksMessage = "Thanks for the {buff}!" end
     BuffsmithDB.thanksMessage = BuffsmithDB.thanksMessage:gsub("[\r\n]+", " "):sub(1, 240)
     if type(BuffsmithDB.showPetBuffs) ~= "boolean" then BuffsmithDB.showPetBuffs = false end

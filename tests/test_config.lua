@@ -26,6 +26,13 @@ ns.InitConfig()
 equal(ns.db.flyoutVerticalDirection, "AUTO", "an invalid vertical flyout direction is repaired")
 equal(ns.db.flyoutHorizontalDirection, "AUTO", "an invalid horizontal flyout direction is repaired")
 
+BuffsmithDB = { thanksDelay = 99 }
+ns.InitConfig()
+equal(ns.db.thanksDelay, 5, "thank-you delay is capped")
+BuffsmithDB = { thanksDelay = "broken" }
+ns.InitConfig()
+equal(ns.db.thanksDelay, 1, "an invalid thank-you delay defaults to one second")
+
 -- showPalette folded into the visibility mode, so a saved "off" has to land on
 -- Never rather than silently switching the bar back on.
 BuffsmithDB = { showPalette = false }

@@ -23,6 +23,7 @@ jobs:
         run: |
           lua tests/test_config.lua
           lua tests/test_layout.lua
+          lua tests/test_thanks.lua
 
       - name: Check each TOC lists exactly the addon's Lua files
         run: |

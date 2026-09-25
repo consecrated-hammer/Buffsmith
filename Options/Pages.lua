@@ -400,12 +400,12 @@ function Options.BuildPage(id, parent)
         parent.buffsmithRefresh = refresh
 
     elseif id == "thanks" then
-        local y = Options.Header(parent, "Thank You", "Send a short thanks when someone buffs you.")
-        local refreshChannel
+        local y = Options.Header(parent, "Thank You", "Send a short thanks when a recognised buff identifies its caster.")
+        local refreshChannel, refreshDelay
         _, y = Options.Check(parent, y, "Send thank-you messages",
             function() return ns.db.thanksEnabled end,
             function(v) ns.db.thanksEnabled = v end,
-            "Send a short thank-you when a party member buffs you. Buffs you already have never trigger one.")
+            "Send a short thank-you for a recognised buff from an identifiable friendly player. Buffs you already have never trigger one.")
         refreshChannel, y = Options.Dropdown(parent, y, "Send it to", {
             items = (function()
                 local items = {}
@@ -427,6 +427,11 @@ function Options.BuildPage(id, parent)
             end,
             width = 220,
         })
+        refreshDelay, y = Options.Slider(parent, y, "Thank-you delay", 1, 5, 1,
+            function() return ns.db.thanksDelay end,
+            function(value) ns.db.thanksDelay = value end,
+            " seconds")
+        _, y = Options.Text(parent, "Wait briefly before sending, so the reply feels less robotic. Turning Thank You off during this delay cancels it.", y)
         _, y = Options.Text(parent, "Message — {buff} and {player} are replaced when it is sent.", y)
         local edit = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
         edit:SetSize(430, 28); edit:SetPoint("TOPLEFT", Options.LEFT + 6, y)
@@ -441,8 +446,8 @@ function Options.BuildPage(id, parent)
             local sample = (ns.db.thanksMessage or ""):gsub("{buff}", "Power Word: Fortitude"):gsub("{player}", UnitName and UnitName("player") or "a friend")
             ns.Print("Preview: " .. sample)
         end)
-        Options.Text(parent, "Only recognised party buffs are eligible. Buffsmith ignores your own casts and never sends a message for buffs already present when you log in or turn this on.", y - 40)
-        parent.buffsmithRefresh = refreshChannel
+        Options.Text(parent, "Only recognised buffs are eligible. Buffsmith ignores your own casts and never sends a message for buffs already present when you log in or turn this on. If Buffsmith cannot identify the caster, it stays quiet.", y - 40)
+        parent.buffsmithRefresh = function() refreshChannel(); refreshDelay() end
 
     elseif id == "troubleshooting" then
         local y = Options.Header(parent, "Troubleshooting", "Copy a concise client and configuration report.")
