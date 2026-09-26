@@ -123,6 +123,12 @@ HC:Init({
     },
 })
 
+HC.Commands:AddAction({ section = "Bar", usage = "Left-click an icon", help = "Use that buff or item" })
+HC.Commands:AddAction({ section = "Bar", usage = "Right-click an icon", help = "Dismiss it until you change zones" })
+HC.Commands:AddAction({ section = "Bar", usage = "Shift-right-click an icon", help = "Ignore it; restore on Ignored" })
+HC.Commands:AddAction({ section = "Bar", usage = "Hover a food, scroll or flask", help = "Show your other choices" })
+HC.Commands:AddAction({ section = "Bar", usage = "Drag the handle", help = "Move the bar; right-click it for settings" })
+
 HC.Commands:Add({ name = "preview", section = "Bar", help = "Show or hide the on-screen preview",
     run = function()
         ns.Preview:Toggle()

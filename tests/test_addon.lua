@@ -121,6 +121,14 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     SlashCmdList.BUFFSMITH("preview")
     equal(HC.Settings.railButton:GetText(), "Hide preview", toc .. ": preview command updates the rail")
 
+    wow.printed = {}
+    SlashCmdList.BUFFSMITH("help")
+    local sawAction = false
+    for _, line in ipairs(wow.printed) do
+        if wow.Plain(line) == "  Shift-right-click an icon - Ignore it; restore on Ignored" then sawAction = true end
+    end
+    equal(sawAction, true, toc .. ": bar actions are listed in help")
+
     -- Old spellings are gone.
     SlashCmdList.BUFFSMITH("copy")
     equal(wow.LastPrint(), "Buffsmith: unknown command. Type /buffsmith help for the list.", toc .. ": old commands are removed")
