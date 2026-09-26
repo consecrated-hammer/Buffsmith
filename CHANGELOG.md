@@ -32,6 +32,9 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A **Classic** settings theme, Blizzard's 2004 look, on the Theme page or
+  with `/buffsmith theme classic` (applies after a reload).
+
 - A lore quiz behind the "!" on the About page, or `/buffsmith quiz`: five questions
   suited to your client, class and race, with a verdict in chat.
 
