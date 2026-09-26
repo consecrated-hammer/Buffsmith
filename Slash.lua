@@ -2,6 +2,7 @@ local addonName, ns = ...
 
 SLASH_BUFFSMITH1 = "/buffsmith"
 SLASH_BUFFSMITH2 = "/bsmith"
+SLASH_BUFFSMITH3 = "/bs"
 SlashCmdList.BUFFSMITH = function(message)
     message = (message or ""):lower():match("^%s*(.-)%s*$")
     if message == "debug" or message == "copy" then

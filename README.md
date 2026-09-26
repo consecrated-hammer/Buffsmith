@@ -60,7 +60,7 @@ rearrange flyouts, or reconfigure secure actions until combat ends.
 
 ## Settings
 
-Use `/buffsmith` to open settings. The window has a preview mode that draws a
+Use `/buffsmith` (or `/bs`) to open settings. The window has a preview mode that draws a
 test bar at the saved position, so you can place and size the bar even when
 nothing is missing.
 
