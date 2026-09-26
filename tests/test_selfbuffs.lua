@@ -96,15 +96,27 @@ end
 -- Off-spec spellbook entries are never armed, and Retail never uses the name
 -- fallback for a spell whose exact ID is unknown.
 do
-    playerClass, knownIDs = "PALADIN", {}
-    book = { { itemType = 1, spellID = 99999, name = "Devotion Aura" },
+    SPELL_NAMES[99999] = "Devotion Aura"
+    playerClass, knownIDs = "PALADIN", { [19740] = true }
+    book = { { itemType = 1, spellID = 99999 },
         { itemType = 1, spellID = 19740, name = "Blessing of Might", isOffSpec = true } }
     local ns = load("Camelot")
     local buffs = byLabel(ns.KnownSelfBuffs())
-    equal(buffs["Blessing of Might"], nil, "an off-spec entry is ignored")
-    assert(buffs["Devotion Aura"], "Forever resolves by spellbook name")
+    equal(buffs["Blessing of Might"], nil, "an off-spec entry is not re-admitted by IsSpellKnown")
+    assert(buffs["Devotion Aura"], "Forever resolves by a spellbook name derived from the spell ID")
     ns = load("Mainline")
     equal(#ns.KnownSelfBuffs(), 0, "Retail requires the exact spell ID")
+    SPELL_NAMES[99999] = nil
+end
+
+-- On Retail an enumerated spellbook is authoritative; the legacy probe is
+-- used only when enumeration is unavailable.
+do
+    playerClass, knownIDs = "DRUID", { [1126] = true }
+    book = { { itemType = 1, spellID = 5185, name = "Healing Touch" } }
+    equal(#load("Mainline").KnownSelfBuffs(), 0, "Retail ignores a legacy positive absent from the spellbook")
+    book = nil
+    equal(#load("Mainline").KnownSelfBuffs(), 1, "Retail uses the legacy probe without enumeration")
 end
 
 -- Groups offer one member; exclusions fall through to the next known member.

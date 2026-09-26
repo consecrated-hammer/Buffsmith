@@ -100,7 +100,7 @@ end
 
 local function spellbook()
     if spellbookCache then return spellbookCache end
-    local book = { byID = {}, byName = {}, available = false, count = 0 }
+    local book = { byID = {}, byName = {}, offSpec = {}, available = false, count = 0 }
     local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
     if C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines and C_SpellBook.GetSpellBookSkillLineInfo
         and C_SpellBook.GetSpellBookItemInfo and bank then
@@ -117,10 +117,12 @@ local function spellbook()
                     local itemOK, item = pcall(C_SpellBook.GetSpellBookItemInfo, offset + itemOffset, bank)
                     local spellID = itemOK and type(item) == "table" and tonumber(ns.Plain(item.spellID))
                     local isSpell = spellID and (spellType == nil or item.itemType == spellType)
-                    if isSpell and item.isOffSpec ~= true then
+                    if isSpell and item.isOffSpec == true then
+                        book.offSpec[spellID] = true
+                    elseif isSpell then
                         book.byID[spellID] = true
                         book.count = book.count + 1
-                        local name = ns.Plain(item.name)
+                        local name = ns.Plain(item.name) or spellInfo(spellID)
                         if type(name) == "string" and name ~= "" then
                             -- Keep the highest ID seen for a name: later ranks
                             -- carry larger IDs in every legacy rank family.
@@ -153,10 +155,14 @@ end
 -- or off-spec ability never arms a secure button.
 local function resolve(entry, book)
     local found, source
+    -- An off-spec item is never armed.  On Retail an enumerated spellbook is
+    -- authoritative; Forever's can list only part of a legacy class book, so
+    -- a legacy positive is merged there, as in Salve.
+    local legacy = not book.available or ns.TARGET == "Camelot"
     for _, spellID in ipairs(rankIDs(entry)) do
         if book.byID[spellID] then
             found, source = spellID, "spellbook"
-        else
+        elseif legacy and not book.offSpec[spellID] then
             local isKnown, how = known(spellID)
             if isKnown then found, source = spellID, how end
         end
