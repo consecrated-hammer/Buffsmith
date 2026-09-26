@@ -39,8 +39,11 @@ function Diagnostics:Report()
         "Party buffs: " .. (#(ns.lastPartyProbe or {}) > 0 and table.concat(ns.lastPartyProbe, ", ") or "none missing or unsupported"),
         "Pet buffs: " .. (#(ns.lastPetProbe or {}) > 0 and table.concat(ns.lastPetProbe, ", ") or "none missing or disabled"),
         "Party coverage: " .. (#(ns.lastCoverageProbe or {}) > 0 and table.concat(ns.lastCoverageProbe, ", ") or "not evaluated"),
-        "Thank-you messages: " .. (ns.db.thanksEnabled and "enabled" or "disabled")
-            .. "; channel " .. tostring(ns.db.thanksChannel) .. "; status " .. tostring(ns.Thanks.lastStatus),
+        "Thank You: " .. (ns.db.thanksEnabled and "enabled" or "disabled")
+            .. "; channel " .. tostring(ns.db.thanksChannel) .. "; emote " .. tostring(ns.db.thanksEmote)
+            .. "; status " .. tostring(ns.Thanks.lastStatus),
+        "Thank You scan: " .. tostring(ns.Thanks.lastScan),
+        "Thank You attribution: " .. tostring(ns.Thanks.lastAttribution),
         "",
         "Consumables",
         "Bag discovery: food " .. tostring(foods) .. ", scroll " .. tostring(scrolls)

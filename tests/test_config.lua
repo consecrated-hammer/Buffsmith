@@ -32,6 +32,14 @@ equal(ns.db.thanksDelay, 5, "thank-you delay is capped")
 BuffsmithDB = { thanksDelay = "broken" }
 ns.InitConfig()
 equal(ns.db.thanksDelay, 1, "an invalid thank-you delay defaults to one second")
+equal(ns.db.thanksEmote, "THANK", "the default emote is Thank")
+BuffsmithDB = { thanksChannel = "EMOTE", thanksEmote = "RANDOM" }
+ns.InitConfig()
+equal(ns.db.thanksChannel, "EMOTE", "emote delivery persists")
+equal(ns.db.thanksEmote, "RANDOM", "random emote selection persists")
+BuffsmithDB = { thanksChannel = "EMOTE", thanksEmote = "bad token" }
+ns.InitConfig()
+equal(ns.db.thanksEmote, "THANK", "invalid emote selection resets to Thank")
 
 -- showPalette folded into the visibility mode, so a saved "off" has to land on
 -- Never rather than silently switching the bar back on.
@@ -55,4 +63,11 @@ assert(loadfile("Data/SelfBuffs.lua"))("Buffsmith", spellNS)
 local buffs = spellNS.KnownSelfBuffs()
 equal(#buffs, 1, "legacy IsSpellKnown fallback is reached")
 equal(buffs[1].spellID, 1126, "known self-buff is retained")
+
+local secret = {}
+issecretvalue = function(value) return value == secret end
+local coreNS = {}
+assert(loadfile("Core.lua"))("Buffsmith", coreNS)
+equal(coreNS.Plain(secret), nil, "secret values are never returned as plain")
+equal(coreNS.Plain("safe"), "safe", "plain values pass through")
 print("config tests passed")

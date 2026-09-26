@@ -60,7 +60,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         ns.Actions:FinishAttempt(arg3)
     elseif event == "UNIT_AURA" then
-        if arg1 == "player" then ns.Thanks:Observe(false) end
+        if arg1 == "player" then ns.Thanks:Observe(false, arg2) end
         if arg1 == "player" or arg1 == "target" or arg1 == "pet"
             or string.match(tostring(arg1), "^party%d+pet$") or string.match(tostring(arg1), "^party%d$") then refresh() end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then

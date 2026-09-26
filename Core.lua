@@ -39,5 +39,6 @@ function ns.IsSecret(value)
 end
 
 function ns.Plain(value)
-    return ns.IsSecret(value) and nil or value
+    if ns.IsSecret(value) then return nil end
+    return value
 end

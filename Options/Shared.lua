@@ -168,6 +168,7 @@ function Options.Dropdown(parent, y, label, spec)
 
     local function populate()
         local list, catcher = shared()
+        if list.picker then list.picker:Hide() end
         for _, entry in ipairs(list.rows) do entry:Hide() end
         local height = 8
         local items = type(spec.items) == "function" and spec.items() or spec.items
@@ -219,6 +220,87 @@ function Options.Dropdown(parent, y, label, spec)
 
     refresh()
     return refresh, y - BLOCK
+end
+
+-- A searchable list for large client-provided catalogues such as emotes.
+function Options.SearchPicker(parent, y, label, spec)
+    local width = spec.width or 300
+    local x = spec.x or Options.LEFT
+    local title = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    title:SetPoint("TOPLEFT", x, y); title:SetText(label)
+    local button = Options.Button(parent, width, "")
+    button:SetPoint("TOPLEFT", x, y - 22)
+    button.Text:SetJustifyH("LEFT")
+    button.Text:ClearAllPoints(); button.Text:SetPoint("LEFT", 10, 0); button.Text:SetPoint("RIGHT", -22, 0)
+    local arrow = button:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    arrow:SetPoint("RIGHT", -8, 0); arrow:SetText("v")
+    local function refresh() button.Text:SetText(spec.summary()) end
+    button:SetScript("OnClick", function()
+        if Options.popupOwner == button then Options.CloseDropdown(); return end
+        Options.CloseDropdown()
+        local list, catcher = shared()
+        for _, entry in ipairs(list.rows) do entry:Hide() end
+        if not list.picker then
+            local picker = CreateFrame("Frame", nil, list)
+            picker:SetAllPoints(list)
+            picker.search = CreateFrame("EditBox", nil, picker, "InputBoxTemplate")
+            picker.search:SetSize(width - 22, 26)
+            picker.search:SetPoint("TOPLEFT", 12, -10)
+            picker.search:SetAutoFocus(false)
+            picker.scroll = CreateFrame("ScrollFrame", nil, picker, "UIPanelScrollFrameTemplate")
+            picker.scroll:SetPoint("TOPLEFT", 8, -45)
+            picker.scroll:SetPoint("BOTTOMRIGHT", -30, 8)
+            picker.content = CreateFrame("Frame", nil, picker.scroll)
+            picker.content:SetWidth(width - 42); picker.content:SetHeight(1)
+            picker.scroll:SetScrollChild(picker.content)
+            picker.rows = {}
+            list.picker = picker
+        end
+        local picker = list.picker
+        picker.search:SetWidth(width - 22)
+        picker.content:SetWidth(width - 42)
+        for _, entry in ipairs(picker.rows) do entry:Hide() end
+        local items = spec.items()
+        local function populate()
+            local query = picker.search:GetText():lower()
+            local count = 0
+            for index, item in ipairs(items) do
+                local entry = picker.rows[index]
+                if not entry then
+                    entry = CreateFrame("Button", nil, picker.content)
+                    entry:SetHeight(22)
+                    entry.text = entry:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+                    entry.text:SetPoint("LEFT", 5, 0); entry.text:SetJustifyH("LEFT")
+                    picker.rows[index] = entry
+                end
+                if query == "" or item.label:lower():find(query, 1, true) then
+                    entry:SetWidth(width - 42)
+                    entry:ClearAllPoints(); entry:SetPoint("TOPLEFT", 0, -count * 22)
+                    entry.text:SetText((spec.get() == item.token and "|cff3f9aee> |r" or "") .. item.label)
+                    entry:SetScript("OnClick", function()
+                        spec.set(item.token); refresh()
+                        if Options.Refresh then Options.Refresh() end
+                        Options.CloseDropdown()
+                    end)
+                    entry:Show(); count = count + 1
+                else
+                    entry:Hide()
+                end
+            end
+            picker.content:SetHeight(math.max(1, count * 22))
+            picker.scroll:SetVerticalScroll(0)
+        end
+        picker.search:SetScript("OnTextChanged", populate)
+        picker.search:SetText("")
+        populate()
+        list:SetSize(width, 330)
+        list:ClearAllPoints(); list:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -2)
+        picker:Show(); list:Show(); catcher:Show()
+        Options.popupOwner = button
+        picker.search:SetFocus()
+    end)
+    refresh()
+    return refresh, y - BLOCK, title, button
 end
 
 function Options.Scroll(parent)

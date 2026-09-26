@@ -177,7 +177,7 @@ local function visibilityItems()
     return items
 end
 
-local CHANNELS = { { "WHISPER", "Whisper" }, { "SAY", "Say" }, { "PARTY", "Party" } }
+local CHANNELS = { { "WHISPER", "Whisper" }, { "SAY", "Say chat" }, { "PARTY", "Party chat" }, { "EMOTE", "Emote" } }
 
 function Options.BuildPage(id, parent)
     if id == "overview" then
@@ -400,13 +400,13 @@ function Options.BuildPage(id, parent)
         parent.buffsmithRefresh = refresh
 
     elseif id == "thanks" then
-        local y = Options.Header(parent, "Thank You", "Send a short thanks when a recognised buff identifies its caster.")
-        local refreshChannel, refreshDelay
-        _, y = Options.Check(parent, y, "Send thank-you messages",
+        local y = Options.Header(parent, "Thank You", "Thank the player who gave you a recognised buff.")
+        local refreshChannel, refreshDelay, refreshEmote, refreshMode
+        _, y = Options.Check(parent, y, "Thank players for buffs",
             function() return ns.db.thanksEnabled end,
             function(v) ns.db.thanksEnabled = v end,
             "Send a short thank-you for a recognised buff from an identifiable friendly player. Buffs you already have never trigger one.")
-        refreshChannel, y = Options.Dropdown(parent, y, "Send it to", {
+        refreshChannel, y = Options.Dropdown(parent, y, "Show your thanks with", {
             items = (function()
                 local items = {}
                 for _, channel in ipairs(CHANNELS) do
@@ -414,7 +414,7 @@ function Options.BuildPage(id, parent)
                     items[#items + 1] = {
                         label = channel[2], radio = true,
                         get = function() return ns.db.thanksChannel == key end,
-                        set = function() ns.db.thanksChannel = key end,
+                        set = function() ns.db.thanksChannel = key; if refreshMode then refreshMode() end end,
                     }
                 end
                 return items
@@ -427,12 +427,27 @@ function Options.BuildPage(id, parent)
             end,
             width = 220,
         })
+        local emoteTitle, emoteButton
+        refreshEmote, _, emoteTitle, emoteButton = Options.SearchPicker(parent, y + 58, "Emote", {
+            width = 220,
+            x = 254,
+            items = function() return ns.Thanks:EmoteChoices() end,
+            get = function() return ns.db.thanksEmote end,
+            set = function(token) ns.db.thanksEmote = token end,
+            summary = function()
+                for _, choice in ipairs(ns.Thanks:EmoteChoices()) do
+                    if choice.token == ns.db.thanksEmote then return choice.label end
+                end
+                return "Thank"
+            end,
+        })
         refreshDelay, y = Options.Slider(parent, y, "Thank-you delay", 1, 5, 1,
             function() return ns.db.thanksDelay end,
             function(value) ns.db.thanksDelay = value end,
             " seconds")
         _, y = Options.Text(parent, "Wait briefly before sending, so the reply feels less robotic. Turning Thank You off during this delay cancels it.", y)
-        _, y = Options.Text(parent, "Message — {buff} and {player} are replaced when it is sent.", y)
+        local messageLabel
+        messageLabel, y = Options.Text(parent, "Message — {buff} and {player} are replaced when it is sent.", y)
         local edit = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
         edit:SetSize(430, 28); edit:SetPoint("TOPLEFT", Options.LEFT + 6, y)
         edit:SetAutoFocus(false); edit:SetText(ns.db.thanksMessage)
@@ -446,8 +461,15 @@ function Options.BuildPage(id, parent)
             local sample = (ns.db.thanksMessage or ""):gsub("{buff}", "Power Word: Fortitude"):gsub("{player}", UnitName and UnitName("player") or "a friend")
             ns.Print("Preview: " .. sample)
         end)
-        Options.Text(parent, "Only recognised buffs are eligible. Buffsmith ignores your own casts and never sends a message for buffs already present when you log in or turn this on. If Buffsmith cannot identify the caster, it stays quiet.", y - 40)
-        parent.buffsmithRefresh = function() refreshChannel(); refreshDelay() end
+        Options.Text(parent, "Only recognised buffs are eligible. Buffsmith ignores your own casts and buffs already present when you log in. Emotes require the caster to remain identifiable when the delay ends.", y - 40)
+        refreshMode = function()
+            local emote = ns.db.thanksChannel == "EMOTE"
+            emoteTitle:SetShown(emote); emoteButton:SetShown(emote)
+            messageLabel:SetShown(not emote); edit:SetShown(not emote); preview:SetShown(not emote)
+            refreshEmote()
+        end
+        parent.buffsmithRefresh = function() refreshChannel(); refreshDelay(); refreshMode() end
+        refreshMode()
 
     elseif id == "troubleshooting" then
         local y = Options.Header(parent, "Troubleshooting", "Copy a concise client and configuration report.")

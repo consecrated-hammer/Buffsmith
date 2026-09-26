@@ -36,6 +36,20 @@ chat; it never casts.
 **One key for the next missing buff.** Bind the Buff trigger and press it
 repeatedly to work down the bar.
 
+**Optional Thank You.** Buffsmith can whisper, say, post to party chat, or
+perform a built-in emote when a recognised buff identifies its caster. Emote
+mode starts with Thank, offers Bow, Cheer, Applaud and Salute first,
+then the client's full emote catalogue in a searchable list. Random picks an
+emote from that catalogue for each thank-you. The feature is off by default;
+one caster's buffs received together produce one delayed reply. Emotes are
+only sent while Buffsmith can still identify the caster at send time.
+On Forever, ranked versions of recognised buffs are matched by name when their
+aura ID differs. The diagnostics report shows when a matching aura had no
+identifiable caster; Buffsmith will not guess who applied it.
+Forever briefly rechecks a newly received tracked aura for delayed caster
+information before giving up. It still sends nothing if the client never
+identifies the caster.
+
 ## Combat
 
 Visibility uses Salve's familiar choices: **Always**, **Never**, or any

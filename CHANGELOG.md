@@ -5,7 +5,32 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.4] - 2026-09-26
+
+### Added
+
+- Thank You can perform a built-in emote instead of sending a chat message.
+  Its searchable picker starts with Random, Thank, Bow, Cheer, Applaud and
+  Salute, followed by the client's available emotes.
+
+### Fixed
+
+- Forever Thank You recognises ranked versions of tracked buffs by their aura
+  name when the spell ID differs, and diagnostics now show aura-match and
+  missing-caster counts.
+- Existing self-buffs and unidentified auras no longer overwrite the latest
+  Thank You delivery status on every unrelated aura update.
+- Forever emotes use the confirmed caster unit token through the legacy emote
+  API; the modern emote call could broadcast an untargeted emote while
+  reporting failure. A matching `UNIT_AURA` added entry can supply direct
+  caster attribution, and diagnostics probe the legacy aura API when no caster
+  is exposed.
+- Secret values are no longer returned by Buffsmith's plain-value helper.
+- Forever retries direct caster attribution for the same newly received aura
+  at 0.2 and 0.7 seconds. It stays quiet when the client never exposes the
+  caster or merely reveals one for an aura present before login.
+- A different identified player refreshing an existing buff remains eligible
+  for thanks even when the client keeps the same aura instance.
 
 ## [0.1.3] - 2026-09-25
 
