@@ -214,6 +214,13 @@ function Actions:Entries()
         ns.lastAuraProbe[#ns.lastAuraProbe + 1] = entry.name .. "=" .. entry.state
         if display and not self:IsSuppressed(entry) then entries[#entries + 1] = entry end
     end
+    -- Tracking that is off; Tracking:Entries applies ticks and dismissals.
+    ns.lastTrackingProbe = {}
+    for _, entry in ipairs(ns.Tracking and ns.Tracking:Entries() or {}) do
+        entry.state = "missing"
+        entries[#entries + 1] = entry
+        ns.lastTrackingProbe[#ns.lastTrackingProbe + 1] = entry.name
+    end
     local known = ns.KnownSelfBuffs()
     local selectedTarget = friendlyPlayer("target") or (ns.db.showPetBuffs and friendlyPet("target"))
     if ns.db.showTargetBuffs and selectedTarget and not UnitIsUnit("player", "target") then

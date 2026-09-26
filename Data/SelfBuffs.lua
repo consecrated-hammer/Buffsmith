@@ -202,11 +202,12 @@ function ns.IsShortBuff(entry)
 end
 
 -- excludedBuffs holds the player's explicit choice: true is off, false is on.
--- With no choice recorded, a short buff is off and anything else is on.
+-- With no choice recorded, a short buff or an entry marked defaultOff (such as
+-- non-gathering tracking) is off, and anything else is on.
 function ns.IsBuffExcluded(entry)
     local choice = ns.db and ns.db.excludedBuffs and ns.db.excludedBuffs[entry.spellID]
     if choice ~= nil then return choice == true end
-    return ns.IsShortBuff(entry)
+    return entry.defaultOff == true or ns.IsShortBuff(entry)
 end
 
 local excluded = ns.IsBuffExcluded

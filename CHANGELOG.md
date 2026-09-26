@@ -7,6 +7,15 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Tracking. Buffsmith reads your minimap tracking list and offers each
+  tracking spell (Find Herbs, Find Minerals, class and racial senses) on the
+  Buffs page; gathering tracking starts ticked. When no ticked tracking is
+  on, the bar shows it and a click casts it. WoW Forever tracks one thing at
+  a time, so there the ticked tracking types share one slot; Retail shows
+  each missing one.
+
 ## [0.2.0] - 2026-09-26
 
 ### Added

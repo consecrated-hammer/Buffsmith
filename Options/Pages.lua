@@ -66,7 +66,9 @@ local function reminderRow(panel, y, item)
     local changing = false
     local function refresh()
         tick:SetChecked(item.enabled())
-        if item.permanent then
+        if item.detail then
+            detail:SetText(item.detail)
+        elseif item.permanent then
             detail:SetText("Permanent effect")
         else
             changing = true
@@ -243,6 +245,14 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local none = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     none:SetText("No self-buffs found for your class and level yet.")
+    local trackingHeader, trackingRule = UI.FontString(panel, "GameFontNormalLarge", "section"), nil
+    trackingHeader:SetText("Tracking")
+    trackingRule = T.Fill(panel:CreateTexture(nil, "ARTWORK"), "edge")
+    trackingRule:SetHeight(1)
+    trackingRule:SetPoint("LEFT", trackingHeader, "RIGHT", 10, 0)
+    trackingRule:SetPoint("RIGHT", panel.hcHeaderOwner or panel, "RIGHT", -20, 0)
+    local trackingNote = UI.FontString(panel, "GameFontHighlightSmall", "muted")
+    trackingNote:SetText("One at a time; the first ticked one shows.")
     local function layout()
         local y = link("spell", listTop)
         pool:Begin()
@@ -266,6 +276,31 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
         none:SetPoint("TOPLEFT", UI.PAD, y)
         none:SetShown(shown == 0)
         if shown == 0 then y = y - 24 end
+
+        -- Tracking this character has, from the minimap's own list.
+        local tracking = {}
+        for _, entry in ipairs(ns.Tracking:Available()) do
+            if ns.db.excludedBuffs[entry.spellID] ~= true then tracking[#tracking + 1] = entry end
+        end
+        trackingHeader:ClearAllPoints()
+        trackingHeader:SetPoint("TOPLEFT", UI.PAD, y - 10)
+        trackingHeader:SetShown(#tracking > 0)
+        trackingRule:SetShown(#tracking > 0)
+        trackingNote:ClearAllPoints()
+        trackingNote:SetPoint("TOPLEFT", UI.PAD, y - 38)
+        trackingNote:SetShown(#tracking > 0 and ns.Tracking.Exclusive())
+        if #tracking > 0 then
+            y = y - 38 - (ns.Tracking.Exclusive() and 20 or 0)
+            for _, found in ipairs(tracking) do
+                local entry = found
+                y = pool:Place("tracking:" .. entry.spellID, y, function() return {
+                    label = entry.name, icon = entry.icon, permanent = true, detail = "Tracking",
+                    enabled = function() return not ns.IsBuffExcluded(entry) end,
+                    toggle = function() ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry) end,
+                    changed = function() panel.hcRefreshAll() end,
+                } end)
+            end
+        end
         panel.hcSetBottom(y)
         return y
     end

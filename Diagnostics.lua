@@ -32,6 +32,8 @@ function Diagnostics:Report()
         "Spellbook: " .. ns.SpellbookSummary(),
         "Known self-buffs: " .. tostring(#ns.KnownSelfBuffs()),
         "Self-buff candidates: " .. table.concat(ns.lastSelfBuffProbe or {}, ", "),
+        "Tracking: " .. ns.Tracking:Summary() .. (ns.Tracking.Exclusive() and " (one at a time)" or " (several at once)"),
+        "Tracking offered: " .. (#(ns.lastTrackingProbe or {}) > 0 and table.concat(ns.lastTrackingProbe, ", ") or "none"),
         "Aura state: " .. table.concat(ns.lastAuraProbe or {}, ", "),
         "Target buffs: " .. table.concat(ns.lastTargetProbe or {}, ", "),
         "Party buffs: " .. (#(ns.lastPartyProbe or {}) > 0 and table.concat(ns.lastPartyProbe, ", ") or "none missing or unsupported"),

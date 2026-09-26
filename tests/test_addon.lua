@@ -28,6 +28,10 @@ local function installClient()
     SetBinding, SaveBindings, GetCurrentBindingSet = function() return true end, function() end, function() return 1 end
     GetWeaponEnchantInfo = function() return false end
     C_Timer = { After = function() end, NewTicker = function() return { Cancel = function() end } end }
+    C_Minimap = { GetNumTrackingTypes = function() return 2 end, GetTrackingInfo = function(index)
+        return ({ { name = "Find Herbs", texture = 1, active = false, type = "spell", spellID = 2383 },
+            { name = "Find Minerals", texture = 2, active = false, type = "spell", spellID = 2580 } })[index]
+    end }
     C_Container = { GetContainerNumSlots = function() return 0 end, GetContainerItemInfo = function() return nil end }
     C_UnitAuras = { GetAuraDataByIndex = function() return nil end, GetUnitAuraBySpellID = function() return nil end }
     C_Spell = { GetSpellInfo = function(id) return { name = "Spell " .. id, iconID = 1 } end }
@@ -94,6 +98,9 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
         HC.Settings:Show(spec.name)
         equal(HC.Settings.selected, spec.name, toc .. ": " .. spec.name .. " opens")
     end
+
+    HC.Settings:Show("Buffs")
+    equal(wow.FindText("Find Minerals") ~= nil, true, toc .. ": the Buffs page lists tracking")
 
     SlashCmdList.BUFFSMITH("toggle")
     equal(ns.db.visibilityMode, "NEVER", toc .. ": toggle hides the bar")
