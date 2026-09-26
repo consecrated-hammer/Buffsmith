@@ -32,6 +32,9 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A lore quiz behind the "!" on the About page, or `/buffsmith quiz`: five questions
+  suited to your client, class and race, with a verdict in chat.
+
 - Forever Paladins get Blessing of Might, Kings and Wisdom as self and
   friendly-target actions. They share one slot: any active blessing satisfies
   it, and unticking one on the Buffs page offers the next.
