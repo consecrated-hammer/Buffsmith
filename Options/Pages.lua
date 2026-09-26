@@ -301,6 +301,7 @@ function Options.BuildPage(id, parent)
             function(v) ns.db.showPartyCoverage = v end,
             "Show missing class buffs a party member may be able to provide. These icons report to chat; they never cast.")
         _, y = Options.SectionLabel(content, "Detected buffs", y - 4)
+        _, y = Options.Text(content, "Short buffs are off by default.", y)
         for _, buff in ipairs(ns.KnownSelfBuffCandidates()) do
             local entry = buff
             local refresh

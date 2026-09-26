@@ -239,7 +239,7 @@ function Actions:Entries()
         for _, entry in ipairs(known) do
             if entry.target and not self:IsSuppressed(entry) then
                 for _, unit in ipairs({ "party1", "party2", "party3", "party4" }) do
-                    if friendlyPlayer(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
+                    if visiblePartyPlayer(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
                         local status = entryStatus(unit, entry)
                         self:ConsiderReminder(entry, status)
                         local display, state = shouldShow(entry, status)

@@ -16,6 +16,9 @@ frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("UNIT_AURA")
+-- Offline and phased party members stop being offered as buff targets.
+pcall(frame.RegisterEvent, frame, "UNIT_CONNECTION")
+pcall(frame.RegisterEvent, frame, "UNIT_PHASE")
 pcall(frame.RegisterEvent, frame, "PLAYER_UPDATE_RESTING")
 
 local function refresh()
@@ -68,6 +71,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         refresh()
     elseif event == "BAG_UPDATE_DELAYED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
+        or event == "UNIT_CONNECTION" or event == "UNIT_PHASE"
         or event == "PLAYER_REGEN_ENABLED" then
         if event == "SPELLS_CHANGED" then ns.ResetSpellbook() end
         refresh()

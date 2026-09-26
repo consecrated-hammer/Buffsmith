@@ -175,6 +175,9 @@ do
     end
     auras = {}
     equal(missingUnits(), "party1:19740,pet:19740,player:19740,target:19740", "a missing group is offered on every unit")
+    UnitIsConnected = function(unit) return unit ~= "party1" end
+    equal(missingUnits(), "pet:19740,player:19740,target:19740", "an offline party member is not offered")
+    UnitIsConnected = nil
     auras = { player = { [20217] = { duration = 0 } }, target = { [20217] = { duration = 0 } },
         party1 = { [19740] = { duration = 0 } }, pet = { [20217] = { duration = 0 } } }
     equal(missingUnits(), "", "any active member satisfies the group")

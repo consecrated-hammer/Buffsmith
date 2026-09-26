@@ -23,6 +23,7 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Offline and phased party members are no longer offered as buff targets.
 - Mutually exclusive self-buffs no longer nag while another is active: a
   Warlock with Fel Armor is not asked for Demon Skin, and a Shaman with Water
   Shield is not asked for Lightning Shield.
