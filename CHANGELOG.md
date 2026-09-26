@@ -7,60 +7,51 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Changed
-
-- Buffsmith now uses HammerCore, the settings, command and chat foundation
-  shared by every Consecrated Hammer addon:
-  - The settings rail groups Buffsmith's pages, then a divider, then
-    Commands, Troubleshooting and About. **Preview on screen** stays at the
-    foot of the rail.
-  - "Show startup message" and "Show minimap button" moved to Visibility.
-    Your existing choices, minimap position and settings position carry
-    over.
-  - The login message now reads `Buffsmith v0.1.4 loaded - type /buffsmith
-    for settings, /buffsmith help for commands`.
-  - New commands: `help`, `version`, `about`, `startup`, `minimap`,
-    `reset position`, `reset settings`, `lock`, `unlock` and `scan`.
-    `/buffsmith debug` opens the copyable report.
-  - Right-click the minimap button to show or hide the drag handle.
-  - The Overview page is gone; its tips live in the bar and minimap
-    tooltips.
-
-### Removed
-
-- `/buffsmith copy` and `/buffsmith report`; use `/buffsmith debug`.
+## [0.2.0] - 2026-09-26
 
 ### Added
 
-- A lore quiz behind the "!" on the About page, or `/buffsmith quiz`: five questions
-  suited to your client, class and race, with a verdict in chat.
-
+- A lore quiz: the quest "!" on the About page, or `/buffsmith quiz`, asks five
+  questions suited to your client, class and race. **Share result** posts
+  the verdict to yourself, Say or Party in one click; it is unavailable in
+  combat and during keys, PvP matches and encounters.
 - Forever Paladins get Blessing of Might, Kings and Wisdom as self and
   friendly-target actions. They share one slot: any active blessing satisfies
   it, and unticking one on the Buffs page offers the next.
 - Self-buffs lasting under a minute, such as Seal of Righteousness, are listed
   on the Buffs page but start unticked. Buffsmith learns each buff's real
-  duration the first time it is seen on you; ticking or unticking one keeps
-  your choice.
-- Shift-right-click a bar icon to ignore that item or buff. The new Ignored
-  settings page lists everything ignored, including items no longer in your
-  bags, with a Restore button for each. Ignored entries leave the Buffs and
-  Consumables lists, which link to that page while anything is ignored.
+  duration the first time it sees it; your own choice always wins.
+- Shift-right-click a bar icon to ignore it. The Ignored page lists everything
+  ignored, including items no longer in your bags, with Restore buttons.
 - `/bs` opens Buffsmith, alongside `/buffsmith` and `/bsmith`.
-- Retail adds Evoker Blessing of the Bronze and Shaman Skyfury and Water
-  Shield.
-- Diagnostics report how many spellbook spells were enumerated and the rank
-  each self-buff resolved to.
+- Retail adds Evoker Blessing of the Bronze and Shaman Skyfury and Water Shield.
+- New commands: `version`, `about`, `startup`, `minimap`, `reset position`,
+  `reset settings`, `lock`, `unlock` and `scan`.
+
+### Changed
+
+- Buffsmith now uses HammerCore, the settings, command and chat foundation shared
+  by every Consecrated Hammer addon. The login message reads
+  `Buffsmith v0.2.0 loaded - type /buffsmith for settings, /buffsmith help for commands`, chat uses
+  a gold name prefix, and `/buffsmith help` lists every command.
+- Settings: Buffsmith's pages, then Commands, Troubleshooting and About.
+  **Preview on screen** stays at the foot of the rail. "Show startup message"
+  and "Show minimap button" are on Visibility; existing choices carry over.
+- Right-click the minimap button to show or hide the drag handle.
+- The Overview page is gone; its tips live in the bar and minimap tooltips.
+
+### Removed
+
+- `/buffsmith copy` and `/buffsmith report`; use `/buffsmith debug`.
 
 ### Fixed
 
 - Offline and phased party members are no longer offered as buff targets.
-- Mutually exclusive self-buffs no longer nag while another is active: a
-  Warlock with Fel Armor is not asked for Demon Skin, and a Shaman with Water
-  Shield is not asked for Lightning Shield.
+- Mutually exclusive self-buffs no longer nag while another is active (Fel
+  Armor and Demon Skin; Water and Lightning Shield).
 - On Forever, a self-buff whose catalogue ID is not recognised is found by its
-  spellbook name, and the highest learned rank is used for range checks and
-  cast matching.
+  spellbook name, using the highest learned rank.
+- Clicking the tick in a dropdown menu now chooses it.
 
 ## [0.1.4] - 2026-09-26
 
