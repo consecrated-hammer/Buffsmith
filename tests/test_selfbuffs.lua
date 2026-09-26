@@ -210,7 +210,7 @@ do
     equal(ns.IsBuffExcluded(byLabel(ns.KnownSelfBuffCandidates())["Blessing of Might"]), true,
         "a buff observed under a minute becomes off by default")
     db.buffDurations[20154] = nil
-    equal(ns.Actions:ReminderFor(seal), "Lasts under a minute, so it starts unticked.", "settings explain the default")
+    equal(ns.Actions:ReminderFor(seal), "Short duration", "settings explain the default")
     SPELL_NAMES[20154] = nil
 end
 

@@ -95,7 +95,8 @@ local function reminderRow(parent, y, item)
     local detail = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     detail:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4)
     detail:SetWidth(TEXT_WIDTH); detail:SetJustifyH("LEFT")
-    if detail.SetMaxLines then detail:SetMaxLines(2) end
+    detail:SetWordWrap(false)
+    if detail.SetMaxLines then detail:SetMaxLines(1) end
 
     local bar, percent
     if not item.permanent then
@@ -115,7 +116,7 @@ local function reminderRow(parent, y, item)
         mark:SetShown(enabled)
         tick:SetBackdropBorderColor(unpack(enabled and Options.theme.selected or Options.theme.edge))
         if item.permanent then
-            detail:SetText("Permanent effect — shown only while inactive.")
+            detail:SetText("Permanent effect")
         else
             changing = true; bar:SetValue(item.get()); changing = false
             percent:SetText(tostring(item.get()) .. "%")
@@ -299,7 +300,7 @@ function Options.BuildPage(id, parent)
             function() return ns.db.showPartyCoverage end,
             function(v) ns.db.showPartyCoverage = v end,
             "Show missing class buffs a party member may be able to provide. These icons report to chat; they never cast.")
-        _, y = Options.SectionLabel(content, "YOUR BUFFS — UNTICK ONE TO IGNORE IT", y - 4)
+        _, y = Options.SectionLabel(content, "Detected buffs", y - 4)
         for _, buff in ipairs(ns.KnownSelfBuffCandidates()) do
             local entry = buff
             local refresh

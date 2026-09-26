@@ -465,8 +465,8 @@ function Actions:ReminderSummary()
 end
 
 function Actions:ReminderFor(entry)
-    if entry.permanent then return "Shown only while inactive." end
-    if ns.IsShortBuff(entry) then return "Lasts under a minute, so it starts unticked." end
+    if entry.permanent then return "Permanent effect" end
+    if ns.IsShortBuff(entry) then return "Short duration" end
     local status = entryStatus("player", entry)
     if status.duration and status.duration > 0 then
         return "Reminds with " .. timeText(status.duration * self:Percent(entry) / 100) .. " left"
