@@ -11,7 +11,7 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Buffsmith now uses HammerCore, the settings, command and chat foundation
   shared by every Consecrated Hammer addon:
-  - The settings rail groups Buffsmith's pages, then a divider, then Theme,
+  - The settings rail groups Buffsmith's pages, then a divider, then
     Commands, Troubleshooting and About. **Preview on screen** stays at the
     foot of the rail.
   - "Show startup message" and "Show minimap button" moved to Visibility.
@@ -19,7 +19,7 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     over.
   - The login message now reads `Buffsmith v0.1.4 loaded - type /buffsmith
     for settings, /buffsmith help for commands`.
-  - New commands: `help`, `version`, `about`, `startup`, `minimap`, `theme`,
+  - New commands: `help`, `version`, `about`, `startup`, `minimap`,
     `reset position`, `reset settings`, `lock`, `unlock` and `scan`.
     `/buffsmith debug` opens the copyable report.
   - Right-click the minimap button to show or hide the drag handle.
@@ -31,9 +31,6 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `/buffsmith copy` and `/buffsmith report`; use `/buffsmith debug`.
 
 ### Added
-
-- A **Classic** settings theme, Blizzard's 2004 look, on the Theme page or
-  with `/buffsmith theme classic` (applies after a reload).
 
 - A lore quiz behind the "!" on the About page, or `/buffsmith quiz`: five questions
   suited to your client, class and race, with a verdict in chat.

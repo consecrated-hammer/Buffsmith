@@ -74,7 +74,6 @@ nothing is missing.
 | `/buffsmith debug` | Open a copyable diagnostic report |
 | `/buffsmith startup [on\|off]` | Show the startup message |
 | `/buffsmith minimap [on\|off]` | Show the minimap button |
-| `/buffsmith theme [modern\|classic]` | Choose the settings theme |
 | `/buffsmith reset position` | Move the bar back to the centre |
 | `/buffsmith reset settings` | Reset every setting after a confirmation |
 | `/buffsmith toggle` | Show or hide the bar |
