@@ -13,10 +13,7 @@ function Diagnostics:Report()
     local position = bar and ("%s %s %.1f %.1f"):format(
         tostring(point), tostring(relativePoint), tonumber(x) or 0, tonumber(y) or 0) or "not built"
     return table.concat({
-        "Buffsmith diagnostics",
-        "",
         "Client",
-        "Version: " .. tostring(ns.VERSION),
         "Target: " .. tostring(ns.TARGET),
         "Combat lockdown: " .. (ns.IsCombatLocked() and "yes" or "no"),
         "Rested-area pause: " .. (ns.db.ignoreBuffsInRestedAreas and "enabled" or "disabled")
@@ -64,57 +61,4 @@ function Diagnostics:Report()
         "",
         "Privacy: configuration and client API state only.",
     }, "\n")
-end
-
-function Diagnostics:ShowCopy()
-    if ns.IsCombatLocked() then return end
-    if not self.copy then
-        local frame = CreateFrame("Frame", "BuffsmithDiagnosticsCopy", UIParent, "BackdropTemplate")
-        frame:SetSize(680, 500); frame:SetPoint("CENTER"); frame:SetFrameStrata("FULLSCREEN_DIALOG")
-        frame:SetToplevel(true); frame:EnableMouse(true)
-        frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        frame:SetBackdropColor(0.04, 0.05, 0.07, 0.98); frame:SetBackdropBorderColor(0.55, 0.43, 0.16, 1)
-        local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-        title:SetPoint("TOPLEFT", 20, -18); title:SetText("Buffsmith diagnostics")
-        local hint = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        hint:SetPoint("TOPLEFT", 21, -48); hint:SetText("Click the report, then press Ctrl+C to copy it.")
-        local panel = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-        panel:SetPoint("TOPLEFT", 18, -72); panel:SetPoint("BOTTOMRIGHT", -18, 18)
-        panel:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        panel:SetBackdropColor(0.012, 0.014, 0.02, 0.94); panel:SetBackdropBorderColor(0.32, 0.27, 0.12, 1)
-        local scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
-        scroll:SetPoint("TOPLEFT", 10, -10); scroll:SetPoint("BOTTOMRIGHT", -28, 10)
-        local box = CreateFrame("EditBox", nil, scroll, "BackdropTemplate")
-        box:SetMultiLine(true); box:SetAutoFocus(false); box:SetFont("Fonts\\FRIZQT__.TTF", 13, "")
-        box:SetTextColor(0.92, 0.92, 0.92); box:SetJustifyH("LEFT"); box:SetJustifyV("TOP")
-        box:SetTextInsets(4, 4, 4, 4); box:SetWidth(600); box:SetHeight(430)
-        scroll:SetScrollChild(box)
-        box:SetScript("OnEscapePressed", function() frame:Hide() end)
-        local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-        close:SetPoint("TOPRIGHT", -3, -3); close:SetScript("OnClick", function() frame:Hide() end)
-        frame.box = box; frame:Hide(); self.copy = frame
-    end
-    self.copy.box:SetText(self:Report()); self.copy.box:HighlightText(); self.copy:Show(); self.copy:Raise()
-    self.copy.box:SetFocus()
-end
-
-function Diagnostics:ShowAbout()
-    if ns.IsCombatLocked() then return end
-    if not self.about then
-        local frame = CreateFrame("Frame", "BuffsmithAboutFrame", UIParent, "BackdropTemplate")
-        frame:SetSize(460, 245); frame:SetPoint("CENTER"); frame:SetFrameStrata("FULLSCREEN_DIALOG")
-        frame:SetToplevel(true); frame:EnableMouse(true)
-        frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        frame:SetBackdropColor(0.04, 0.05, 0.07, 0.98); frame:SetBackdropBorderColor(0.55, 0.43, 0.16, 1)
-        local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-        title:SetPoint("TOPLEFT", 18, -16); title:SetText("About Buffsmith")
-        local text = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        text:SetPoint("TOPLEFT", 18, -52); text:SetWidth(420); text:SetJustifyH("LEFT"); text:SetJustifyV("TOP")
-        text:SetText("Version " .. ns.VERSION .. "\n\nBuffsmith is an out-of-combat self-buff and consumable palette.\n\nFeatures include self-buffs, food, scroll, flask and weapon-enhancement discovery.\n\nLeft-click a button to use it. Right-click to dismiss it until you change zones.")
-        local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-        close:SetSize(100, 24); close:SetPoint("BOTTOMRIGHT", -16, 16); close:SetText("Close")
-        close:SetScript("OnClick", function() frame:Hide() end)
-        frame:Hide(); self.about = frame
-    end
-    self.about:Show(); self.about:Raise()
 end

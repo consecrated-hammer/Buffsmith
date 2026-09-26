@@ -24,17 +24,15 @@ pcall(frame.RegisterEvent, frame, "PLAYER_UPDATE_RESTING")
 local function refresh()
     if ns.IsCombatLocked() then return end
     ns.Inventory:Refresh()
-    ns.Minimap:Update()
+    ns.HC.Minimap:Update()
     ns.Handle:Update()
     ns.Preview:Refresh()
 end
 
+-- HammerCore hides settings, reports and the minimap button itself
+-- (spec.hideInCombat); these are Buffsmith's own non-secure frames.
 local function hideForCombat()
     if ns.Preview then ns.Preview:Hide() end
-    if ns.Minimap and ns.Minimap.button then ns.Minimap.button:Hide() end
-    if ns.Options and ns.Options.frame then ns.Options.frame:Hide() end
-    if ns.Diagnostics and ns.Diagnostics.copy then ns.Diagnostics.copy:Hide() end
-    if ns.Diagnostics and ns.Diagnostics.about then ns.Diagnostics.about:Hide() end
     if ns.Bindings and ns.Bindings.capture then ns.Bindings.capture:Hide() end
     GameTooltip:Hide()
 end
@@ -45,11 +43,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         ns.InitConfig()
         ns.Palette:Create()
         ns.Bindings:Create()
-        ns.Minimap:Create()
-        ns.Minimap:Update()
-        if ns.db.showStartupMessage then
-            ns.Print("loaded — version " .. tostring(ns.VERSION) .. "; type /buffsmith or /bs for settings")
-        end
+        ns.HC:Start()
         frame:UnregisterEvent("ADDON_LOADED")
     elseif event == "PLAYER_LOGIN" then
         ns.Thanks:Observe(true)

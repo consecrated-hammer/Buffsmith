@@ -7,6 +7,29 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Buffsmith now uses HammerCore, the settings, command and chat foundation
+  shared by every Consecrated Hammer addon:
+  - The settings rail groups Buffsmith's pages, then a divider, then Theme,
+    Commands, Troubleshooting and About. **Preview on screen** stays at the
+    foot of the rail.
+  - "Show startup message" and "Show minimap button" moved to Visibility.
+    Your existing choices, minimap position and settings position carry
+    over.
+  - The login message now reads `Buffsmith v0.1.4 loaded - type /buffsmith
+    for settings, /buffsmith help for commands`.
+  - New commands: `help`, `version`, `about`, `startup`, `minimap`, `theme`,
+    `reset position`, `reset settings`, `lock`, `unlock` and `scan`.
+    `/buffsmith debug` opens the copyable report.
+  - Right-click the minimap button to show or hide the drag handle.
+  - The Overview page is gone; its tips live in the bar and minimap
+    tooltips.
+
+### Removed
+
+- `/buffsmith copy` and `/buffsmith report`; use `/buffsmith debug`.
+
 ### Added
 
 - Forever Paladins get Blessing of Might, Kings and Wisdom as self and

@@ -33,7 +33,7 @@ function Handle.Attach(parent, name, opts)
         if opts.onMoved then opts.onMoved() end
     end)
     frame:SetScript("OnClick", function(_, mouseButton)
-        if mouseButton == "RightButton" then ns.Options:Toggle() end
+        if mouseButton == "RightButton" then ns.HC.Settings:Toggle() end
     end)
     frame:SetScript("OnEnter", function(self)
         self:SetBackdropColor(unpack(HOVER))

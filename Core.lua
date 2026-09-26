@@ -19,9 +19,10 @@ ns.TARGET = ns.GetMetadata("X-Buffsmith-Target")
 _G.BINDING_HEADER_BUFFSMITH = "Buffsmith"
 _G["BINDING_NAME_CLICK BuffsmithBindingButton:LeftButton"] = "Buff trigger — apply next missing buff"
 
-function ns.Print(message)
-    print("|cffd4af37Buffsmith:|r " .. tostring(message))
-end
+-- Chat output, settings, commands, the minimap button and the standard
+-- reference pages come from HammerCore (Libs/HammerCore); see Setup.lua.
+ns.HC = ns.HammerCore
+ns.Print = ns.HammerCore.Print
 
 -- Single refresh entry point: the live bar settles its own geometry first, so
 -- the preview can read the bar's real size when both are on screen.

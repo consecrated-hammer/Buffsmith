@@ -11,7 +11,9 @@
 ## X-Website: https://github.com/consecrated-hammer/Buffsmith
 ## X-Curse-Project-ID: 1704142
 
+Libs\HammerCore\HammerCore.xml
 Core.lua
+Setup.lua
 Core\Config.lua
 Data\SelfBuffs.lua
 Data\PartyBuffs.lua
@@ -26,10 +28,6 @@ UI\Palette.lua
 UI\Handle.lua
 UI\Preview.lua
 Features\Bindings.lua
-UI\Minimap.lua
-Options\Shared.lua
 Options\Pages.lua
-Options.lua
 Diagnostics.lua
 Events.lua
-Slash.lua

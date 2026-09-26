@@ -1,7 +1,6 @@
 local addonName, ns = ...
 
 ns.defaults = {
-    showStartupMessage = true,
     visibilityMode = "ALWAYS",
     visibility = {},
     showHandle = true,
@@ -14,11 +13,8 @@ ns.defaults = {
     thanksDelay = 1,
     thanksMessage = "Thanks for the {buff}!",
     showPetBuffs = false,
-    showMinimap = true,
     ignoreBuffsInRestedAreas = false,
-    minimapAngle = 225,
     palettePoint = { "CENTER", "CENTER", 0, -120 },
-    settingsPoint = { "CENTER", "CENTER", 0, 0 },
     iconSize = 40,
     orientation = "VERTICAL",
     flyoutVerticalDirection = "AUTO",
@@ -104,8 +100,6 @@ function ns.InitConfig()
     if type(BuffsmithDB.thanksMessage) ~= "string" or BuffsmithDB.thanksMessage == "" then BuffsmithDB.thanksMessage = "Thanks for the {buff}!" end
     BuffsmithDB.thanksMessage = BuffsmithDB.thanksMessage:gsub("[\r\n]+", " "):sub(1, 240)
     if type(BuffsmithDB.showPetBuffs) ~= "boolean" then BuffsmithDB.showPetBuffs = false end
-    if type(BuffsmithDB.showStartupMessage) ~= "boolean" then BuffsmithDB.showStartupMessage = true end
-    if type(BuffsmithDB.showMinimap) ~= "boolean" then BuffsmithDB.showMinimap = true end
     if type(BuffsmithDB.ignoreBuffsInRestedAreas) ~= "boolean" then BuffsmithDB.ignoreBuffsInRestedAreas = false end
     BuffsmithDB.scale = nil
     BuffsmithDB.iconSize = math.max(24, math.min(64, math.floor((tonumber(BuffsmithDB.iconSize) or 40) + 0.5)))
@@ -120,7 +114,6 @@ function ns.InitConfig()
         and BuffsmithDB.flyoutHorizontalDirection ~= "DOWN" then
         BuffsmithDB.flyoutHorizontalDirection = "AUTO"
     end
-    BuffsmithDB.minimapAngle = math.max(0, math.min(360, tonumber(BuffsmithDB.minimapAngle) or 225))
     BuffsmithDB.maxAlternatives = math.max(1, math.min(3,
         math.floor((tonumber(BuffsmithDB.maxAlternatives) or 3) + 0.5)))
     for _, category in ipairs({ "buff", "food", "scroll", "flask", "weapon" }) do
@@ -129,9 +122,6 @@ function ns.InitConfig()
     end
     if not validPoint(BuffsmithDB.palettePoint) then
         BuffsmithDB.palettePoint = { "CENTER", "CENTER", 0, -120 }
-    end
-    if not validPoint(BuffsmithDB.settingsPoint) then
-        BuffsmithDB.settingsPoint = { "CENTER", "CENTER", 0, 0 }
     end
     ns.db = BuffsmithDB
     return ns.db

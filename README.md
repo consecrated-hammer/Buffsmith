@@ -60,16 +60,32 @@ rearrange flyouts, or reconfigure secure actions until combat ends.
 
 ## Settings
 
-Use `/buffsmith` (or `/bs`) to open settings. The window has a preview mode that draws a
+Type `/buffsmith` (or `/bs`) for settings and `/buffsmith help` for every
+command. **Preview on screen**, at the foot of the settings rail, draws a
 test bar at the saved position, so you can place and size the bar even when
 nothing is missing.
 
 | Command | Effect |
 | --- | --- |
 | `/buffsmith` | Open settings |
+| `/buffsmith help` | List every command |
+| `/buffsmith version` | Print the loaded version and client |
+| `/buffsmith about` | Open the About page |
+| `/buffsmith debug` | Open a copyable diagnostic report |
+| `/buffsmith startup [on\|off]` | Show the startup message |
+| `/buffsmith minimap [on\|off]` | Show the minimap button |
+| `/buffsmith theme [modern\|classic]` | Choose the settings theme |
+| `/buffsmith reset position` | Move the bar back to the centre |
+| `/buffsmith reset settings` | Reset every setting after a confirmation |
+| `/buffsmith toggle` | Show or hide the bar |
+| `/buffsmith lock` / `unlock` | Hide or show the drag handle |
 | `/buffsmith preview` | Show or hide the on-screen preview |
-| `/buffsmith toggle` | Hide or show the bar |
-| `/buffsmith debug` | Selectable diagnostics report |
+| `/buffsmith scan` | Rescan your bags for consumables |
+
+Settings, commands, the minimap button and the reference pages come from
+[HammerCore](https://github.com/consecrated-hammer/HammerCore), shared by
+every Consecrated Hammer addon and vendored under `Libs/HammerCore`. Never edit
+that copy: change HammerCore, then run `python3 ../HammerCore/tools/sync.py .`.
 
 ## Development
 
@@ -81,7 +97,7 @@ WoW runs Lua 5.1, so that is what the checks use:
 ```sh
 docker run --rm -v "$PWD:/addon:ro" -w /addon nickblah/lua:5.1-alpine sh -lc \
   'find /addon -name "*.lua" -print0 | xargs -0 -n1 luac -p \
-   && lua tests/test_config.lua && lua tests/test_layout.lua'
+   && for t in tests/test_*.lua; do lua $t || exit 1; done'
 ```
 
 `tools/stage_addon.py` copies a runtime-only folder into a client's `AddOns`

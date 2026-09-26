@@ -20,19 +20,20 @@ jobs:
             | xargs -0 -n1 luac -p
 
       - name: Run tests
-        run: |
-          lua tests/test_config.lua
-          lua tests/test_layout.lua
-          lua tests/test_thanks.lua
-          lua tests/test_selfbuffs.lua
+        run: for test in tests/test_*.lua; do lua "$test" || exit 1; done
 
-      - name: Check each TOC lists exactly the addon's Lua files
-        run: |
-          find . -name '*.lua' -not -path './.git/*' -not -path './tests/*' \
-              -not -path './tools/*' -not -path './.scratch/*' -print \
-            | sed 's|^\./||' | sort > /tmp/on_disk
-          for toc in Buffsmith.toc Buffsmith_Camelot.toc; do
-            awk '!/^[[:space:]]*(#|$)/ { gsub(/\\/, "/"); if ($0 ~ /\.lua$/) print }' \
-              "$toc" | tr -d '\r' | sort > /tmp/in_toc
-            diff -u /tmp/in_toc /tmp/on_disk
-          done
+  hammercore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: addon
+      - uses: actions/checkout@v4
+        with:
+          repository: consecrated-hammer/HammerCore
+          path: hammercore
+          fetch-depth: 0
+      - name: Vendored HammerCore matches its pinned commit
+        run: python3 hammercore/tools/check.py addon
+      - name: Each TOC loads exactly the addon's Lua files
+        run: python3 hammercore/tools/toc_check.py addon

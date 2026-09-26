@@ -10,13 +10,11 @@ equal(ns.db.maxAlternatives, 3, "alternatives are capped")
 equal(type(ns.db.categories), "table", "categories are repaired")
 equal(ns.db.palettePoint[1], "CENTER", "palette point is repaired")
 equal(type(ns.db.excludedBuffs), "table", "buff exclusions are created")
-equal(ns.db.settingsPoint[1], "CENTER", "settings position defaults to centre")
-BuffsmithDB = { settingsPoint = { "NOWHERE", "CENTER", 1, 2 } }
+-- Settings-window position, startup message and minimap now live in
+-- HammerCore's state and are tested there.
+BuffsmithDB = { showStartupMessage = false, showMinimap = false, minimapAngle = 12 }
 ns.InitConfig()
-equal(ns.db.settingsPoint[1], "CENTER", "an invalid settings position is repaired")
-BuffsmithDB = { settingsPoint = { "TOPLEFT", "TOPLEFT", 40, -60 } }
-ns.InitConfig()
-equal(ns.db.settingsPoint[3], 40, "a valid settings position is kept")
+equal(ns.db.showStartupMessage, false, "legacy keys survive for HammerCore to adopt")
 BuffsmithDB = { palettePoint = "broken", categories = false, maxAlternatives = 99 }
 ns.InitConfig()
 equal(ns.db.visibilityMode, "ALWAYS", "an unset visibility mode defaults to always")
@@ -66,7 +64,7 @@ equal(buffs[1].spellID, 1126, "known self-buff is retained")
 
 local secret = {}
 issecretvalue = function(value) return value == secret end
-local coreNS = {}
+local coreNS = { HammerCore = { Print = function() end } }
 assert(loadfile("Core.lua"))("Buffsmith", coreNS)
 equal(coreNS.Plain(secret), nil, "secret values are never returned as plain")
 equal(coreNS.Plain("safe"), "safe", "plain values pass through")
