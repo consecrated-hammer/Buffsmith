@@ -113,13 +113,7 @@ HC:Init({
     about = {
         note = "FROM THE FORGE",
         tips = anvilLines,
-        extra = function(panel, y)
-            local polish = HC.UI.Button(panel, 160, 22)
-            polish:SetPoint("TOPLEFT", HC.UI.PAD, y)
-            polish:SetText("Polish the anvil")
-            polish:SetScript("OnClick", function() HC.Pages.NextTip() end)
-            return y - 34
-        end,
+        action = "Polish the anvil",
     },
 })
 
