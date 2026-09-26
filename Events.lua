@@ -48,7 +48,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         ns.Minimap:Create()
         ns.Minimap:Update()
         if ns.db.showStartupMessage then
-            ns.Print("loaded — version " .. tostring(ns.VERSION) .. "; type /buffsmith for settings")
+            ns.Print("loaded — version " .. tostring(ns.VERSION) .. "; type /buffsmith or /bs for settings")
         end
         frame:UnregisterEvent("ADDON_LOADED")
     elseif event == "PLAYER_LOGIN" then
