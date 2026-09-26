@@ -183,4 +183,35 @@ do
     equal(missingUnits(), "party1:20217,pet:20217,player:20217,target:20217", "the next member is offered after an exclusion")
 end
 
+-- Buffs under a minute are listed but off until the player ticks them.  An
+-- observed duration replaces the catalogue flag in either direction.
+do
+    playerClass, book = "PALADIN", nil
+    knownIDs = { [20154] = true, [19740] = true }
+    SPELL_NAMES[20154] = "Seal of Righteousness"
+    local db = { excludedBuffs = {}, buffDurations = {}, reminderPercent = { buff = 10 },
+        showTargetBuffs = false, showPartyBuffs = false, showPetBuffs = false, showPartyCoverage = false }
+    local ns = load("Camelot", db)
+    local seal = byLabel(ns.KnownSelfBuffCandidates())["Seal of Righteousness"]
+    assert(seal, "a short buff is still listed in settings")
+    equal(ns.IsBuffExcluded(seal), true, "a short buff is off by default")
+    db.excludedBuffs[20154] = false
+    equal(ns.IsBuffExcluded(seal), false, "an explicit tick turns a short buff on")
+    db.excludedBuffs[20154] = nil
+    db.buffDurations[20154] = 1800
+    equal(ns.IsBuffExcluded(seal), false, "an observed long duration overrides the catalogue flag")
+
+    IsInGroup = function() return false end
+    UnitExists = function(unit) return unit == "player" end
+    assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
+    auras = { player = { [19740] = { duration = 30, expirationTime = 120 } } }
+    ns.Actions:Entries()
+    equal(db.buffDurations[19740], 30, "the player's aura duration is learned")
+    equal(ns.IsBuffExcluded(byLabel(ns.KnownSelfBuffCandidates())["Blessing of Might"]), true,
+        "a buff observed under a minute becomes off by default")
+    db.buffDurations[20154] = nil
+    equal(ns.Actions:ReminderFor(seal), "Lasts under a minute, so it starts unticked.", "settings explain the default")
+    SPELL_NAMES[20154] = nil
+end
+
 print("self-buff tests passed")

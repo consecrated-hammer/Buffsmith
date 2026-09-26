@@ -10,6 +10,8 @@ local addonName, ns = ...
 --   group    mutually exclusive family: one active member satisfies the whole
 --            group, and only the first known, non-excluded member is offered.
 --   target   the effect is safe to cast on friendly players and pets.
+--   short    lasts under a minute, so it is listed but off by default.  A
+--            duration observed on the player replaces this flag.
 ns.SELF_BUFFS = {
     DRUID = {
         { spellID = 1126, auraID = 1126,
@@ -26,7 +28,7 @@ ns.SELF_BUFFS = {
     },
     PALADIN = {
         { spellID = 465, auraID = 465, label = "Devotion Aura", permanent = true },
-        { spellID = 20154, auraID = 20154, label = "Seal of Righteousness" },
+        { spellID = 20154, auraID = 20154, label = "Seal of Righteousness", short = true },
         -- A paladin maintains one of their own blessings per target.  Rank
         -- IDs above rank 1 are unverified on Forever, so the spellbook name
         -- resolves the learned rank there instead of an assumed list.
@@ -190,10 +192,24 @@ local function auraList(entry, castID)
     return ids
 end
 
-local function excluded(entry)
-    local exclusions = ns.db and ns.db.excludedBuffs
-    return exclusions and exclusions[entry.spellID] == true or false
+-- Anything under a minute is too short-lived to be worth a standing prompt.
+ns.SHORT_BUFF_SECONDS = 60
+
+function ns.IsShortBuff(entry)
+    local learned = ns.db and ns.db.buffDurations and ns.db.buffDurations[entry.spellID]
+    if type(learned) == "number" and learned > 0 then return learned < ns.SHORT_BUFF_SECONDS end
+    return entry.short == true
 end
+
+-- excludedBuffs holds the player's explicit choice: true is off, false is on.
+-- With no choice recorded, a short buff is off and anything else is on.
+function ns.IsBuffExcluded(entry)
+    local choice = ns.db and ns.db.excludedBuffs and ns.db.excludedBuffs[entry.spellID]
+    if choice ~= nil then return choice == true end
+    return ns.IsShortBuff(entry)
+end
+
+local excluded = ns.IsBuffExcluded
 
 -- Every catalogue entry the player knows, one per spell.  The settings page
 -- lists these so an excluded group member can be ticked back on.
@@ -211,7 +227,7 @@ function ns.KnownSelfBuffCandidates()
                 auraID = entry.auraID, auraIDs = auraList(entry, castID),
                 permanent = entry.permanent == true,
                 target = entry.target == true,
-                group = entry.group,
+                group = entry.group, short = entry.short == true,
                 name = name, icon = icon,
             }
             if castID ~= entry.spellID then source = source .. " " .. castID end

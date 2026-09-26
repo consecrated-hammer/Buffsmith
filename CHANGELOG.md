@@ -12,6 +12,10 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Forever Paladins get Blessing of Might, Kings and Wisdom as self and
   friendly-target actions. They share one slot: any active blessing satisfies
   it, and unticking one on the Buffs page offers the next.
+- Self-buffs lasting under a minute, such as Seal of Righteousness, are listed
+  on the Buffs page but start unticked. Buffsmith learns each buff's real
+  duration the first time it is seen on you; ticking or unticking one keeps
+  your choice.
 - Retail adds Evoker Blessing of the Bronze and Shaman Skyfury and Water
   Shield.
 - Diagnostics report how many spellbook spells were enumerated and the rank

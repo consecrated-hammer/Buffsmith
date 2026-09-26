@@ -305,8 +305,8 @@ function Options.BuildPage(id, parent)
             local refresh
             refresh, y = reminderRow(content, y, {
                 label = entry.name, icon = entry.icon, permanent = entry.permanent,
-                enabled = function() return not ns.db.excludedBuffs[entry.spellID] end,
-                toggle = function() ns.db.excludedBuffs[entry.spellID] = (not ns.db.excludedBuffs[entry.spellID]) or nil end,
+                enabled = function() return not ns.IsBuffExcluded(entry) end,
+                toggle = function() ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry) end,
                 get = function() return ns.Actions:Percent(entry) end,
                 set = function(value) ns.db.reminderPercent.buffBySpell[entry.spellID] = value end,
                 result = function() return ns.Actions:ReminderFor(entry) end,

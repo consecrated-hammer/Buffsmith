@@ -40,13 +40,24 @@ local function auraStatus(unit, auraID, auraIDs, auraName)
     return { state = "missing" }
 end
 
+-- The player's own aura gives each self-buff's real duration, which decides
+-- whether it is short enough to be off by default.
+local function learnDuration(unit, entry, status)
+    if unit ~= "player" or status.state ~= "active" then return end
+    local duration = tonumber(status.duration)
+    if not duration or duration <= 0 or not (ns.db and ns.db.buffDurations) then return end
+    ns.db.buffDurations[entry.spellID] = math.floor(duration + 0.5)
+end
+
 -- A grouped entry is satisfied by any known member of its group.
 local function entryStatus(unit, entry)
     local status = auraStatus(unit, entry.auraID, entry.auraIDs, entry.name)
+    learnDuration(unit, entry, status)
     if status.state == "active" or not entry.members then return status end
     for _, member in ipairs(entry.members) do
         if member ~= entry then
             local memberStatus = auraStatus(unit, member.auraID, member.auraIDs, member.name)
+            learnDuration(unit, member, memberStatus)
             if memberStatus.state == "active" then return memberStatus end
         end
     end
@@ -320,7 +331,7 @@ end
 -- through IsSuppressed, so exclusion composes with the session dismissals
 -- rather than needing its own check at each call site.
 function Actions:IsExcluded(entry)
-    return entry.kind == "spell" and ns.db.excludedBuffs[entry.spellID] == true
+    return entry.kind == "spell" and ns.IsBuffExcluded(entry)
 end
 
 function Actions:IsSuppressed(entry)
@@ -455,6 +466,7 @@ end
 
 function Actions:ReminderFor(entry)
     if entry.permanent then return "Shown only while inactive." end
+    if ns.IsShortBuff(entry) then return "Lasts under a minute, so it starts unticked." end
     local status = entryStatus("player", entry)
     if status.duration and status.duration > 0 then
         return "Reminds with " .. timeText(status.duration * self:Percent(entry) / 100) .. " left"

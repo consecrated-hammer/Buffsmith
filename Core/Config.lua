@@ -27,6 +27,7 @@ ns.defaults = {
     consumableAuras = {},
     excludedConsumables = {},
     excludedBuffs = {},
+    buffDurations = {},
     categories = { food = true, scroll = true, flask = true, weapon = true },
     maxAlternatives = 3,
     preferred = {},
@@ -65,6 +66,7 @@ function ns.InitConfig()
     if type(BuffsmithDB.consumableAuras) ~= "table" then BuffsmithDB.consumableAuras = {} end
     if type(BuffsmithDB.excludedConsumables) ~= "table" then BuffsmithDB.excludedConsumables = {} end
     if type(BuffsmithDB.excludedBuffs) ~= "table" then BuffsmithDB.excludedBuffs = {} end
+    if type(BuffsmithDB.buffDurations) ~= "table" then BuffsmithDB.buffDurations = {} end
     if type(BuffsmithDB.reminderPercent.buffBySpell) ~= "table" then BuffsmithDB.reminderPercent.buffBySpell = {} end
     if type(BuffsmithDB.reminderPercent.item) ~= "table" then BuffsmithDB.reminderPercent.item = {} end
     -- showPalette and the Never visibility mode were two switches for one
