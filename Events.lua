@@ -69,6 +69,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
     elseif event == "BAG_UPDATE_DELAYED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
         or event == "PLAYER_REGEN_ENABLED" then
+        if event == "SPELLS_CHANGED" then ns.ResetSpellbook() end
         refresh()
     end
 end)

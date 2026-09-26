@@ -40,6 +40,19 @@ local function auraStatus(unit, auraID, auraIDs, auraName)
     return { state = "missing" }
 end
 
+-- A grouped entry is satisfied by any known member of its group.
+local function entryStatus(unit, entry)
+    local status = auraStatus(unit, entry.auraID, entry.auraIDs, entry.name)
+    if status.state == "active" or not entry.members then return status end
+    for _, member in ipairs(entry.members) do
+        if member ~= entry then
+            local memberStatus = auraStatus(unit, member.auraID, member.auraIDs, member.name)
+            if memberStatus.state == "active" then return memberStatus end
+        end
+    end
+    return status
+end
+
 local function shouldShow(entry, status)
     if status.state ~= "active" then return true, status.state end
     if entry.permanent then return false, "active" end
@@ -93,7 +106,7 @@ function Actions:RangeState(entry)
     if entry.kind ~= "spell" or not entry.unit or entry.unit == "player" then return nil end
     local checker = C_Spell and C_Spell.IsSpellInRange
     if type(checker) ~= "function" then return nil end
-    local ok, inRange = pcall(checker, entry.spellID, entry.unit)
+    local ok, inRange = pcall(checker, entry.castID or entry.spellID, entry.unit)
     if not ok then return nil end
     inRange = ns.Plain(inRange)
     if inRange == false then return false end
@@ -105,7 +118,7 @@ function Actions:UpdateTargetRangeChecks(entries)
     if type(enable) ~= "function" then return end
     local wanted = {}
     for _, entry in ipairs(entries) do
-        if entry.kind == "spell" and entry.unit == "target" then wanted[entry.spellID] = true end
+        if entry.kind == "spell" and entry.unit == "target" then wanted[entry.castID or entry.spellID] = true end
     end
     self.rangeChecks = self.rangeChecks or {}
     for spellID in pairs(self.rangeChecks) do
@@ -183,7 +196,7 @@ function Actions:Entries()
         return entries
     end
     for _, entry in ipairs(ns.KnownSelfBuffs()) do
-        local status = auraStatus("player", entry.auraID, entry.auraIDs, entry.name)
+        local status = entryStatus("player", entry)
         self:ConsiderReminder(entry, status)
         local display, state = shouldShow(entry, status)
         entry.state, entry.auraDuration, entry.auraRemaining = state, status.duration, status.remaining
@@ -196,7 +209,7 @@ function Actions:Entries()
         ns.lastTargetProbe = {}
         for _, entry in ipairs(known) do
             if entry.target then
-                local status = auraStatus("target", entry.auraID, entry.auraIDs, entry.name)
+                local status = entryStatus("target", entry)
                 self:ConsiderReminder(entry, status)
                 local display, state = shouldShow(entry, status)
                 ns.lastTargetProbe[#ns.lastTargetProbe + 1] = entry.name .. "=" .. state
@@ -216,7 +229,7 @@ function Actions:Entries()
             if entry.target and not self:IsSuppressed(entry) then
                 for _, unit in ipairs({ "party1", "party2", "party3", "party4" }) do
                     if friendlyPlayer(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
-                        local status = auraStatus(unit, entry.auraID, entry.auraIDs, entry.name)
+                        local status = entryStatus(unit, entry)
                         self:ConsiderReminder(entry, status)
                         local display, state = shouldShow(entry, status)
                         if display then
@@ -237,7 +250,7 @@ function Actions:Entries()
             if entry.target and not self:IsSuppressed(entry) then
                 for _, unit in ipairs({ "pet", "party1pet", "party2pet", "party3pet", "party4pet" }) do
                     if friendlyPet(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
-                        local status = auraStatus(unit, entry.auraID, entry.auraIDs, entry.name)
+                        local status = entryStatus(unit, entry)
                         self:ConsiderReminder(entry, status)
                         local display, state = shouldShow(entry, status)
                         if display then
@@ -324,7 +337,7 @@ end
 function Actions:BeginAttempt(entry)
     local key = self:Key(entry)
     if not key then return end
-    self.lastAttempt = { key = key, spellID = entry.spellID, untilTime = (GetTime and GetTime() or 0) + 0.25 }
+    self.lastAttempt = { key = key, spellID = entry.castID or entry.spellID, untilTime = (GetTime and GetTime() or 0) + 0.25 }
 end
 
 function Actions:FinishAttempt(spellID)
@@ -432,7 +445,7 @@ end
 function Actions:ReminderSummary()
     local summaries = {}
     for _, entry in ipairs(ns.KnownSelfBuffs()) do
-        local status = auraStatus("player", entry.auraID, entry.auraIDs, entry.name)
+        local status = entryStatus("player", entry)
         if status.duration and status.duration > 0 then
             summaries[#summaries + 1] = entry.name .. ": " .. timeText(status.duration * self:Percent(entry) / 100)
         end
@@ -442,7 +455,7 @@ end
 
 function Actions:ReminderFor(entry)
     if entry.permanent then return "Shown only while inactive." end
-    local status = auraStatus("player", entry.auraID, entry.auraIDs, entry.name)
+    local status = entryStatus("player", entry)
     if status.duration and status.duration > 0 then
         return "Reminds with " .. timeText(status.duration * self:Percent(entry) / 100) .. " left"
     end

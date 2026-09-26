@@ -32,6 +32,7 @@ function Diagnostics:Report()
         "Spell APIs: C_SpellBook " .. (C_SpellBook and C_SpellBook.IsSpellKnown and "yes" or "no")
             .. ", IsPlayerSpell " .. (IsPlayerSpell and "yes" or "no")
             .. ", IsSpellKnown " .. (IsSpellKnown and "yes" or "no"),
+        "Spellbook: " .. ns.SpellbookSummary(),
         "Known self-buffs: " .. tostring(#ns.KnownSelfBuffs()),
         "Self-buff candidates: " .. table.concat(ns.lastSelfBuffProbe or {}, ", "),
         "Aura state: " .. table.concat(ns.lastAuraProbe or {}, ", "),

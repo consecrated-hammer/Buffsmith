@@ -300,7 +300,7 @@ function Options.BuildPage(id, parent)
             function(v) ns.db.showPartyCoverage = v end,
             "Show missing class buffs a party member may be able to provide. These icons report to chat; they never cast.")
         _, y = Options.SectionLabel(content, "YOUR BUFFS — UNTICK ONE TO IGNORE IT", y - 4)
-        for _, buff in ipairs(ns.KnownSelfBuffs()) do
+        for _, buff in ipairs(ns.KnownSelfBuffCandidates()) do
             local entry = buff
             local refresh
             refresh, y = reminderRow(content, y, {
@@ -313,7 +313,7 @@ function Options.BuildPage(id, parent)
             })
             refreshes[#refreshes + 1] = refresh
         end
-        if #ns.KnownSelfBuffs() == 0 then
+        if #ns.KnownSelfBuffCandidates() == 0 then
             _, y = Options.Text(content, "No self-buffs found for your class and level yet.", y)
         end
         content:SetHeight(math.max(470, -y + 24))

@@ -5,6 +5,27 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Forever Paladins get Blessing of Might, Kings and Wisdom as self and
+  friendly-target actions. They share one slot: any active blessing satisfies
+  it, and unticking one on the Buffs page offers the next.
+- Retail adds Evoker Blessing of the Bronze and Shaman Skyfury and Water
+  Shield.
+- Diagnostics report how many spellbook spells were enumerated and the rank
+  each self-buff resolved to.
+
+### Fixed
+
+- Mutually exclusive self-buffs no longer nag while another is active: a
+  Warlock with Fel Armor is not asked for Demon Skin, and a Shaman with Water
+  Shield is not asked for Lightning Shield.
+- On Forever, a self-buff whose catalogue ID is not recognised is found by its
+  spellbook name, and the highest learned rank is used for range checks and
+  cast matching.
+
 ## [0.1.4] - 2026-09-26
 
 ### Added
