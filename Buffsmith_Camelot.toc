@@ -10,6 +10,7 @@
 ## IconTexture: Interface\AddOns\Buffsmith\Textures\BuffsmithLogo
 ## X-License: GPL-3.0
 ## X-Website: https://github.com/consecrated-hammer/Buffsmith
+## X-CurseForge: https://www.curseforge.com/wow/addons/buffsmith
 ## X-Curse-Project-ID: 1704142
 ## X-Buffsmith-Target: Camelot
 
