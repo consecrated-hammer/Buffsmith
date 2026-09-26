@@ -16,8 +16,9 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   on the Buffs page but start unticked. Buffsmith learns each buff's real
   duration the first time it is seen on you; ticking or unticking one keeps
   your choice.
-- Shift-right-click a bar icon to ignore that item or buff. Tick it again on
-  the Consumables or Buffs page to bring it back.
+- Shift-right-click a bar icon to ignore that item or buff. The new Ignored
+  settings page lists everything ignored, including items no longer in your
+  bags, with a Restore button for each.
 - Retail adds Evoker Blessing of the Bronze and Shaman Skyfury and Water
   Shield.
 - Diagnostics report how many spellbook spells were enumerated and the rank

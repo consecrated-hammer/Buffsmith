@@ -7,6 +7,7 @@ Options.pageSpecs = {
     { id = "appearance", label = "Appearance" },
     { id = "buffs", label = "Buffs" },
     { id = "consumables", label = "Consumables" },
+    { id = "ignored", label = "Ignored" },
     { id = "keybindings", label = "Key Bindings" },
     { id = "thanks", label = "Thank You" },
     { id = "troubleshooting", label = "Troubleshooting" },
@@ -357,6 +358,54 @@ function Options.BuildPage(id, parent)
         category("weapon", "Weapon enhancements")
         content:SetHeight(math.max(470, -y + 24))
         parent.buffsmithRefresh = function() for _, refresh in ipairs(refreshes) do refresh() end end
+
+    elseif id == "ignored" then
+        local content = Options.Scroll(parent)
+        local top = Options.Header(content, "Ignored", "Shift-right-click a bar icon to ignore it.")
+        local rows, empty = {}, nil
+        local function row(index)
+            if rows[index] then return rows[index] end
+            local frame = CreateFrame("Frame", nil, content, "BackdropTemplate")
+            frame:SetSize(500, 40)
+            Options.Surface(frame, Options.theme.raised, Options.theme.edge)
+            frame.icon = frame:CreateTexture(nil, "ARTWORK")
+            frame.icon:SetSize(28, 28); frame.icon:SetPoint("LEFT", 10, 0)
+            frame.name = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+            frame.name:SetPoint("LEFT", frame.icon, "RIGHT", 8, 0)
+            frame.name:SetWidth(300); frame.name:SetJustifyH("LEFT"); frame.name:SetWordWrap(false)
+            frame.kind = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+            frame.kind:SetPoint("RIGHT", -110, 0)
+            frame.restore = Options.Button(frame, 90, "Restore")
+            frame.restore:SetPoint("RIGHT", -8, 0)
+            rows[index] = frame
+            return frame
+        end
+        local function rebuild()
+            local entries = ns.Actions:IgnoredEntries()
+            local y = top
+            for index, entry in ipairs(entries) do
+                local frame = row(index)
+                frame:ClearAllPoints(); frame:SetPoint("TOPLEFT", Options.LEFT, y)
+                frame.icon:SetTexture(entry.icon)
+                frame.name:SetText(entry.name)
+                frame.kind:SetText(entry.kind == "spell" and "Buff" or "Item")
+                frame.restore:SetScript("OnClick", function()
+                    ns.Actions:Restore(entry.kind, entry.id)
+                    if ns.Inventory then ns.Inventory:Refresh() end
+                    parent.buffsmithRefresh()
+                    if Options.Refresh then Options.Refresh() end
+                end)
+                frame:Show()
+                y = y - 46
+            end
+            for index = #entries + 1, #rows do rows[index]:Hide() end
+            if not empty then empty = content:CreateFontString(nil, "ARTWORK", "GameFontHighlight") end
+            empty:ClearAllPoints(); empty:SetPoint("TOPLEFT", Options.LEFT, top)
+            empty:SetText("Nothing ignored."); empty:SetShown(#entries == 0)
+            content:SetHeight(math.max(470, -y + 24))
+        end
+        parent.buffsmithRefresh = rebuild
+        rebuild()
 
     elseif id == "keybindings" then
         local y = Options.Header(parent, "Key Bindings", "One key for your next missing buff.")

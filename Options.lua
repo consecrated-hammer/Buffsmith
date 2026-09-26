@@ -75,6 +75,7 @@ function Options:RefreshPreviewToggle()
 end
 
 function Options:ShowPage(id)
+    self.currentPage = id
     for key, page in pairs(self.pages) do
         page:SetShown(key == id)
         if key == id and page.buffsmithRefresh then page.buffsmithRefresh() end
@@ -86,7 +87,9 @@ end
 
 function Options:Toggle()
     if ns.IsCombatLocked() then return end
-    local frame = self:Create(); frame:SetShown(not frame:IsShown()); if frame:IsShown() then frame:Raise() end
+    local frame = self:Create(); frame:SetShown(not frame:IsShown())
+    -- Bar clicks can change settings while the window is closed.
+    if frame:IsShown() then frame:Raise(); self:ShowPage(self.currentPage or "overview") end
 end
 
 Options.Refresh = function() ns.RefreshAll() end

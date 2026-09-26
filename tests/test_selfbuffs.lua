@@ -230,4 +230,24 @@ do
     equal(ns.Actions.suppressed[ns.Actions:Key(notice)], true, "a party notice is dismissed")
 end
 
+-- The Ignored page lists explicit exclusions only, and restores them.
+do
+    C_Spell = { GetSpellInfo = function(spellID) return { name = SPELL_NAMES[spellID], iconID = 1 } end }
+    C_Item = nil
+    local ns = { Plain = function(value) return value end,
+        db = { excludedBuffs = { [19740] = true, [20154] = false, [465] = nil },
+            excludedConsumables = { [4599] = true } },
+        Inventory = { ItemInfo = function(itemID) return itemID == 4599 and "Cured Ham Steak" or nil, nil, nil, nil, 2 end } }
+    assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
+    local ignored = ns.Actions:IgnoredEntries()
+    equal(#ignored, 2, "only explicit exclusions are listed")
+    equal(ignored[1].name, "Blessing of Might", "buffs are listed first")
+    equal(ignored[2].name, "Cured Ham Steak", "items are listed by name")
+    ns.Actions:Restore("spell", 19740)
+    ns.Actions:Restore("item", 4599)
+    equal(ns.db.excludedBuffs[19740], false, "a restored buff is explicitly on")
+    equal(ns.db.excludedConsumables[4599], nil, "a restored item is included")
+    equal(#ns.Actions:IgnoredEntries(), 0, "nothing remains ignored")
+end
+
 print("self-buff tests passed")

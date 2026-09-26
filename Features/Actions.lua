@@ -357,6 +357,48 @@ function Actions:Ignore(entry)
     end
 end
 
+-- Everything the player has explicitly ignored, including items no longer in
+-- their bags.  Short buffs that are merely off by default are not listed.
+function Actions:IgnoredEntries()
+    local entries = {}
+    for spellID, ignored in pairs(ns.db.excludedBuffs) do
+        if ignored == true then
+            local name, icon
+            if C_Spell and C_Spell.GetSpellInfo then
+                local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
+                if ok and type(info) == "table" then name, icon = ns.Plain(info.name), ns.Plain(info.iconID) end
+            end
+            entries[#entries + 1] = { kind = "spell", id = spellID,
+                name = name or ("Spell " .. spellID), icon = icon or 134400 }
+        end
+    end
+    for itemID, ignored in pairs(ns.db.excludedConsumables) do
+        if ignored == true then
+            local name, _, _, _, icon = ns.Inventory.ItemInfo(itemID)
+            if not name and C_Item and C_Item.RequestLoadItemDataByID then
+                pcall(C_Item.RequestLoadItemDataByID, itemID)
+            end
+            entries[#entries + 1] = { kind = "item", id = itemID,
+                name = name or ("Item " .. itemID), icon = icon or 134400 }
+        end
+    end
+    table.sort(entries, function(a, b)
+        if a.kind ~= b.kind then return a.kind == "spell" end
+        return a.name < b.name
+    end)
+    return entries
+end
+
+-- A restored buff is recorded as explicitly on, so a short buff the player
+-- chose to ignore comes back rather than returning to its unticked default.
+function Actions:Restore(kind, id)
+    if kind == "spell" then
+        ns.db.excludedBuffs[id] = false
+    else
+        ns.db.excludedConsumables[id] = nil
+    end
+end
+
 function Actions:BeginAttempt(entry)
     local key = self:Key(entry)
     if not key then return end

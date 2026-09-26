@@ -132,6 +132,8 @@ local function itemInfo(itemID)
     return ns.Plain(name), ns.Plain(link), ns.Plain(itemType), ns.Plain(itemSubType), ns.Plain(icon)
 end
 
+Inventory.ItemInfo = itemInfo
+
 function Inventory:Refresh()
     if ns.IsCombatLocked() then
         self.lastStatus = "deferred: combat lockdown"
