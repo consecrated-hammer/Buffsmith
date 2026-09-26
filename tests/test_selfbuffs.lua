@@ -217,4 +217,17 @@ do
     SPELL_NAMES[20154] = nil
 end
 
+-- Shift-right-click ignores items and spells lastingly; notices only dismiss.
+do
+    local ns = { db = { excludedConsumables = {}, excludedBuffs = {} } }
+    assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
+    ns.Actions:Ignore({ kind = "item", itemID = 4599 })
+    equal(ns.db.excludedConsumables[4599], true, "an ignored item is excluded")
+    ns.Actions:Ignore({ kind = "spell", spellID = 19740 })
+    equal(ns.db.excludedBuffs[19740], true, "an ignored buff is excluded")
+    local notice = { kind = "notice", providerClass = "MAGE", spellID = 1459 }
+    ns.Actions:Ignore(notice)
+    equal(ns.Actions.suppressed[ns.Actions:Key(notice)], true, "a party notice is dismissed")
+end
+
 print("self-buff tests passed")

@@ -42,6 +42,9 @@ local function button(parent, small)
             GameTooltip:AddLine("Out of range.", 1, 0.35, 0.35)
         end
         GameTooltip:AddLine("Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
+        if entry.kind ~= "notice" then
+            GameTooltip:AddLine("Shift-right-click: ignore.", 0.7, 0.7, 0.7)
+        end
         if self.buffsmithFlyout and not self.buffsmithSmall then
             GameTooltip:AddLine("Hover: show your other choices.", 0.7, 0.7, 0.7)
         end
@@ -61,7 +64,12 @@ local function button(parent, small)
     frame:SetScript("PostClick", function(self, mouseButton)
         local entry = self.buffsmithEntry
         if entry and mouseButton == "RightButton" then
-            ns.Actions:Dismiss(entry)
+            if IsShiftKeyDown and IsShiftKeyDown() then
+                ns.Actions:Ignore(entry)
+                Palette:CloseFlyout()
+            else
+                ns.Actions:Dismiss(entry)
+            end
             ns.Palette:Refresh()
             return
         end

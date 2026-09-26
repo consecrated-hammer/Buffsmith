@@ -345,6 +345,18 @@ function Actions:Dismiss(entry)
     if key then self.suppressed[key] = true end
 end
 
+-- Shift-right-click: a lasting exclusion, reversible from the Buffs or
+-- Consumables page.  Party notices have no saved exclusion, so they dismiss.
+function Actions:Ignore(entry)
+    if entry.kind == "item" then
+        ns.db.excludedConsumables[entry.itemID] = true
+    elseif entry.kind == "spell" then
+        ns.db.excludedBuffs[entry.spellID] = true
+    else
+        self:Dismiss(entry)
+    end
+end
+
 function Actions:BeginAttempt(entry)
     local key = self:Key(entry)
     if not key then return end
