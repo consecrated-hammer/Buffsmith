@@ -18,7 +18,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   your choice.
 - Shift-right-click a bar icon to ignore that item or buff. The new Ignored
   settings page lists everything ignored, including items no longer in your
-  bags, with a Restore button for each.
+  bags, with a Restore button for each. Ignored entries leave the Buffs and
+  Consumables lists, which link to that page while anything is ignored.
 - `/bs` opens Buffsmith, alongside `/buffsmith` and `/bsmith`.
 - Retail adds Evoker Blessing of the Bronze and Shaman Skyfury and Water
   Shield.

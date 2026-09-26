@@ -67,6 +67,10 @@ local function button(parent, small)
             if IsShiftKeyDown and IsShiftKeyDown() then
                 ns.Actions:Ignore(entry)
                 Palette:CloseFlyout()
+                local options = ns.Options
+                if options and options.frame and options.frame:IsShown() then
+                    options:ShowPage(options.currentPage or "overview")
+                end
             else
                 ns.Actions:Dismiss(entry)
             end

@@ -134,9 +134,54 @@ local function reminderRow(parent, y, item)
     row:SetScript("OnClick", function()
         item.toggle(); refresh()
         if Options.Refresh then Options.Refresh() end
+        if item.changed then item.changed() end
     end)
     refresh()
-    return refresh, y - ROW_HEIGHT - 6
+    return refresh, y - ROW_HEIGHT - 6, row
+end
+
+-- Rows whose set changes while the page exists (ignoring, learning a spell,
+-- looting an item).  Each key gets one frame, reused and re-anchored on every
+-- layout; frames whose entry dropped out stay hidden.
+local function rowPool(content)
+    local pool = { frames = {} }
+    function pool:Begin()
+        for _, frame in pairs(self.frames) do frame:Hide() end
+    end
+    function pool:Place(key, y, build)
+        local frame = self.frames[key]
+        if not frame then
+            local refresh, _, row = reminderRow(content, y, build())
+            frame = row; frame.refresh = refresh; self.frames[key] = frame
+        end
+        frame:ClearAllPoints(); frame:SetPoint("TOPLEFT", Options.LEFT, y)
+        frame:Show(); frame.refresh()
+        return y - ROW_HEIGHT - 6
+    end
+    return pool
+end
+
+local function ignoredCount(kind)
+    local count = 0
+    for _, entry in ipairs(ns.Actions:IgnoredEntries()) do
+        if entry.kind == kind then count = count + 1 end
+    end
+    return count
+end
+
+-- A link to the Ignored page, shown only while something of this kind is
+-- ignored.  Returns the y below it.
+local function ignoredLink(content)
+    local button = Options.Button(content, 160, "")
+    button:SetScript("OnClick", function() Options:ShowPage("ignored") end)
+    return function(kind, y)
+        local count = ignoredCount(kind)
+        button:SetShown(count > 0)
+        if count == 0 then return y end
+        button.Text:SetText("View ignored (" .. count .. ")")
+        button:ClearAllPoints(); button:SetPoint("TOPLEFT", Options.LEFT, y)
+        return y - 33
+    end
 end
 
 local function visibilityItems()
@@ -303,61 +348,77 @@ function Options.BuildPage(id, parent)
             "Show missing class buffs a party member may be able to provide. These icons report to chat; they never cast.")
         _, y = Options.SectionLabel(content, "Detected buffs", y - 4)
         _, y = Options.Text(content, "Short buffs are off by default.", y)
-        for _, buff in ipairs(ns.KnownSelfBuffCandidates()) do
-            local entry = buff
-            local refresh
-            refresh, y = reminderRow(content, y, {
-                label = entry.name, icon = entry.icon, permanent = entry.permanent,
-                enabled = function() return not ns.IsBuffExcluded(entry) end,
-                toggle = function() ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry) end,
-                get = function() return ns.Actions:Percent(entry) end,
-                set = function(value) ns.db.reminderPercent.buffBySpell[entry.spellID] = value end,
-                result = function() return ns.Actions:ReminderFor(entry) end,
-            })
-            refreshes[#refreshes + 1] = refresh
+        local listTop, pool, link = y, rowPool(content), ignoredLink(content)
+        local none = content:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        none:SetText("No self-buffs found for your class and level yet.")
+        local function layout()
+            local y = link("spell", listTop)
+            pool:Begin()
+            local shown = 0
+            for _, buff in ipairs(ns.KnownSelfBuffCandidates()) do
+                local entry = buff
+                if ns.db.excludedBuffs[entry.spellID] ~= true then
+                    shown = shown + 1
+                    y = pool:Place(entry.spellID .. ":" .. entry.castID, y, function() return {
+                        label = entry.name, icon = entry.icon, permanent = entry.permanent,
+                        enabled = function() return not ns.IsBuffExcluded(entry) end,
+                        toggle = function() ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry) end,
+                        get = function() return ns.Actions:Percent(entry) end,
+                        set = function(value) ns.db.reminderPercent.buffBySpell[entry.spellID] = value end,
+                        result = function() return ns.Actions:ReminderFor(entry) end,
+                        changed = function() parent.buffsmithRefresh() end,
+                    } end)
+                end
+            end
+            none:ClearAllPoints(); none:SetPoint("TOPLEFT", Options.LEFT, y)
+            none:SetShown(shown == 0)
+            if shown == 0 then y = y - 24 end
+            content:SetHeight(math.max(470, -y + 24))
         end
-        if #ns.KnownSelfBuffCandidates() == 0 then
-            _, y = Options.Text(content, "No self-buffs found for your class and level yet.", y)
-        end
-        content:SetHeight(math.max(470, -y + 24))
-        parent.buffsmithRefresh = function() for _, refresh in ipairs(refreshes) do refresh() end end
+        parent.buffsmithRefresh = layout
+        layout()
 
     elseif id == "consumables" then
         local content = Options.Scroll(parent)
         local y = Options.Header(content, "Consumables", "Enable, time and exclude each available consumable.")
         _, y = Options.Text(content, "Items appear here while they are in your bags. Each item's reminder time is set after you use it once.", y)
-        local refreshes = {}
-        local function category(key, label)
-            local refresh
-            refresh, y = reminderRow(content, y, {
-                label = label,
-                enabled = function() return ns.db.categories[key] end,
-                toggle = function() ns.db.categories[key] = not ns.db.categories[key]; ns.Inventory:Refresh() end,
-                get = function() return ns.db.reminderPercent[key] end,
-                set = function(value) ns.db.reminderPercent[key] = value end,
-                result = function() return ns.Inventory:ReminderSummary(key) end,
-            })
-            refreshes[#refreshes + 1] = refresh
-            for _, item in ipairs(ns.Inventory:Choices(key)) do
-                local entry = item
-                refresh, y = reminderRow(content, y, {
-                    label = entry.name, icon = entry.icon,
-                    enabled = function() return not ns.db.excludedConsumables[entry.itemID] end,
-                    toggle = function() ns.db.excludedConsumables[entry.itemID] = (not ns.db.excludedConsumables[entry.itemID]) or nil end,
-                    get = function() return ns.Actions:Percent(entry) end,
-                    set = function(value) ns.db.reminderPercent.item[entry.itemID] = value end,
-                    result = function() return ns.Inventory:ReminderFor(entry) end,
-                })
-                refreshes[#refreshes + 1] = refresh
+        local listTop, pool, link = y, rowPool(content), ignoredLink(content)
+        local function layout()
+            local y = link("item", listTop)
+            pool:Begin()
+            local function category(key, label)
+                y = pool:Place("category:" .. key, y, function() return {
+                    label = label,
+                    enabled = function() return ns.db.categories[key] end,
+                    toggle = function() ns.db.categories[key] = not ns.db.categories[key]; ns.Inventory:Refresh() end,
+                    get = function() return ns.db.reminderPercent[key] end,
+                    set = function(value) ns.db.reminderPercent[key] = value end,
+                    result = function() return ns.Inventory:ReminderSummary(key) end,
+                } end)
+                for _, item in ipairs(ns.Inventory:Choices(key)) do
+                    local entry = item
+                    if not ns.db.excludedConsumables[entry.itemID] then
+                        y = pool:Place("item:" .. entry.itemID, y, function() return {
+                            label = entry.name, icon = entry.icon,
+                            enabled = function() return not ns.db.excludedConsumables[entry.itemID] end,
+                            toggle = function() ns.db.excludedConsumables[entry.itemID] = (not ns.db.excludedConsumables[entry.itemID]) or nil end,
+                            get = function() return ns.Actions:Percent(entry) end,
+                            set = function(value) ns.db.reminderPercent.item[entry.itemID] = value end,
+                            result = function() return ns.Inventory:ReminderFor(entry) end,
+                            changed = function() parent.buffsmithRefresh() end,
+                        } end)
+                    end
+                end
+                y = y - 8
             end
-            y = y - 8
+            category("food", "Food")
+            category("scroll", "Scrolls")
+            category("flask", "Flasks")
+            category("weapon", "Weapon enhancements")
+            content:SetHeight(math.max(470, -y + 24))
         end
-        category("food", "Food")
-        category("scroll", "Scrolls")
-        category("flask", "Flasks")
-        category("weapon", "Weapon enhancements")
-        content:SetHeight(math.max(470, -y + 24))
-        parent.buffsmithRefresh = function() for _, refresh in ipairs(refreshes) do refresh() end end
+        parent.buffsmithRefresh = layout
+        layout()
 
     elseif id == "ignored" then
         local content = Options.Scroll(parent)
