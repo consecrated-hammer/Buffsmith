@@ -101,6 +101,9 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
 
     HC.Settings:Show("Buffs")
     equal(wow.FindText("Find Minerals") ~= nil, true, toc .. ": the Buffs page lists tracking")
+    HC.Settings:Show("Thank You")
+    equal(wow.FindText("WoW Forever may report a new buff without telling addons who cast it. Whispers still need a known caster.") ~= nil,
+        true, toc .. ": Thank You explains unknown casters")
 
     SlashCmdList.BUFFSMITH("toggle")
     equal(ns.db.visibilityMode, "NEVER", toc .. ": toggle hides the bar")
@@ -115,6 +118,47 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(ns.db.palettePoint[1], "CENTER", toc .. ": reset position centres the bar")
     SlashCmdList.BUFFSMITH("scan")
     equal(wow.LastPrint(), "Buffsmith: bags scanned: food 0, scroll 0, flask 0, weapon 0", toc .. ": scan reports")
+
+    -- A consumable on cooldown is still in the bag inventory, but must never
+    -- occupy the bar or block a ready alternative in its category.
+    ns.Inventory.items.food = {
+        { kind = "item", itemID = 111, name = "Fish Liver Oil", category = "food" },
+        { kind = "item", itemID = 222, name = "Redridge Goulash", category = "food" },
+    }
+    GetItemCooldown = function(itemID)
+        if itemID == 111 then return 100, 120, 1 end
+        return 0, 0, 1
+    end
+    local foodChoices = ns.Actions:VisibleChoices("food")
+    equal(#foodChoices, 1, toc .. ": a cooling bag item is hidden")
+    equal(foodChoices[1].itemID, 222, toc .. ": a ready alternative remains usable")
+    equal(ns.Inventory.items.food[1].state, "cooldown", toc .. ": cooldown state is recorded")
+
+    -- Class-restricted bag items must not be offered merely because their
+    -- subtype is Scroll.  A temporary no-mana result remains usable.
+    C_Item = C_Item or {}
+    C_Item.IsUsableItem = function(itemID)
+        if itemID == 333 then return false, false end
+        if itemID == 444 then return false, true end
+        return true, false
+    end
+    equal(ns.Inventory:IsUsableItem(333), false, toc .. ": a mage-only scroll is rejected for this character")
+    equal(ns.Inventory:IsUsableItem(444), true, toc .. ": a temporary no-mana result is not treated as a restriction")
+    C_Item.GetItemCooldown = function() return { startTime = 100, duration = 120, isEnabled = false } end
+    equal(ns.Inventory:CooldownRemaining({ itemID = 555 }), nil,
+        toc .. ": a disabled table cooldown does not hide an item")
+    C_Item.GetItemCooldown = nil
+
+    -- The generic icon is not reliable on every client.  A named Well Fed
+    -- aura still suppresses all food choices while its 15-minute effect lasts.
+    GetItemCooldown = nil
+    C_UnitAuras.GetAuraDataByIndex = function(_, index)
+        if index == 1 then return { spellId = 333, name = "Well Fed", duration = 900,
+            expirationTime = 1000, icon = 1 } end
+        return nil
+    end
+    equal(#ns.Actions:VisibleChoices("food"), 0, toc .. ": an active Well Fed aura suppresses food")
+    C_UnitAuras.GetAuraDataByIndex = function() return nil end
     SlashCmdList.BUFFSMITH("version")
     equal(wow.LastPrint():find(toc:find("Camelot") and "(WoW Forever)" or "(Retail)", 1, true) ~= nil, true,
         toc .. ": version names the client")

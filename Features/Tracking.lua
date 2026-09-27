@@ -83,6 +83,19 @@ local function offered(entry)
     return not ns.IsBuffExcluded(entry) and not (ns.Actions and ns.Actions:IsSuppressed(entry))
 end
 
+function Tracking:SelectedID()
+    return ns.db and ns.db.trackingChoice or nil
+end
+
+-- Forever normally permits one tracking type at a time.  Keep the player's
+-- choice explicit instead of silently preferring whichever entry the client
+-- happened to list first.
+function Tracking:Select(spellID)
+    if not ns.db then return end
+    ns.db.trackingChoice = ns.db.trackingChoice == spellID and nil or spellID
+    if spellID then ns.db.excludedBuffs[spellID] = false end
+end
+
 -- The tracking actions the bar should show now.
 function Tracking:Entries()
     local shown, ticked = {}, {}
@@ -90,11 +103,14 @@ function Tracking:Entries()
         if not ns.IsBuffExcluded(entry) then ticked[#ticked + 1] = entry end
     end
     if Tracking.Exclusive() then
+        local selected = self:SelectedID()
         for _, entry in ipairs(ticked) do
-            if entry.active then return shown end
+            -- An active different tracker is exactly when the selected one
+            -- needs to be offered: clicking Minerals replaces active Herbs.
+            if entry.active and entry.spellID == selected then return shown end
         end
         for _, entry in ipairs(ticked) do
-            if offered(entry) then
+            if entry.spellID == selected and offered(entry) then
                 shown[1] = entry
                 return shown
             end

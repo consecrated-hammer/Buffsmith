@@ -49,22 +49,33 @@ do
     equal(available[1].permanent, true, "tracking has no expiry reminder")
 end
 
--- WoW Forever: one slot, satisfied by any ticked tracking.
+-- WoW Forever: the one slot needs an explicit player choice, never list order.
 do
     local ns, db = load("Camelot")
     equal(ns.Tracking.Exclusive(), true, "Forever is assumed to track one thing at a time")
-    equal(names(ns.Tracking:Entries()), "Find Herbs", "with nothing on, the first ticked tracking is offered")
+    equal(names(ns.Tracking:Entries()), "", "with nothing on, no tracking is picked implicitly")
+    db.excludedBuffs[2580] = true
+    ns.Tracking:Select(2580)
+    equal(names(ns.Tracking:Entries()), "Find Minerals", "the selected tracking is offered")
+    equal(db.excludedBuffs[2580], false, "selecting a tracker restores an old off choice")
+    tracking[1].active = true
+    equal(names(ns.Tracking:Entries()), "Find Minerals", "the selected tracker replaces a different active tracker")
+    tracking[1].active = false
     tracking[3].active = true
-    equal(names(ns.Tracking:Entries()), "", "any ticked tracking being on satisfies the slot")
+    equal(names(ns.Tracking:Entries()), "", "an active tracking satisfies the slot")
     tracking[3].active = false
     db.excludedBuffs[2383] = true
     equal(names(ns.Tracking:Entries()), "Find Minerals", "unticking Find Herbs offers the next")
+    ns.Tracking:Select(2383)
+    equal(names(ns.Tracking:Entries()), "Find Herbs", "the selection can be changed explicitly")
     db.excludedBuffs[2481] = false
+    ns.Tracking:Select(2481)
     tracking[4].active = true
-    equal(names(ns.Tracking:Entries()), "", "a ticked Find Treasure satisfies it too")
+    equal(names(ns.Tracking:Entries()), "", "the selected tracking is satisfied when active")
     tracking[4].active = false
     ns.Actions = { IsSuppressed = function(_, entry) return entry.spellID == 2580 end }
-    equal(names(ns.Tracking:Entries()), "Find Treasure", "a dismissed tracking yields to the next ticked one")
+    ns.Tracking:Select(2580)
+    equal(names(ns.Tracking:Entries()), "", "a dismissed selected tracking does not fall through to another")
 end
 
 -- A client seen running two tracking types at once is remembered as allowing it.
@@ -110,8 +121,10 @@ do
     UnitIsUnit, UnitGUID = function(a, b) return a == b end, function(unit) return "guid-" .. unit end
     assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
     local entries = ns.Actions:Entries()
+    db.trackingChoice = 2383
+    entries = ns.Actions:Entries()
     equal(#entries, 1, "one bar entry")
-    equal(entries[1].name, "Find Herbs", "the bar offers Find Herbs")
+    equal(entries[1].name, "Find Herbs", "the bar offers the selected tracking")
     equal(entries[1].kind, "spell", "as a castable spell")
     equal(ns.lastTrackingProbe[1], "Find Herbs", "diagnostics record it")
     tracking[1].active = true

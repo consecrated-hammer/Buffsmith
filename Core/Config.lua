@@ -10,6 +10,7 @@ ns.defaults = {
     thanksEnabled = false,
     thanksChannel = "WHISPER",
     thanksEmote = "THANK",
+    thanksUnknownEmote = false,
     thanksDelay = 1,
     thanksMessage = "Thanks for the {buff}!",
     showPetBuffs = false,
@@ -96,6 +97,8 @@ function ns.InitConfig()
     if type(BuffsmithDB.thanksEnabled) ~= "boolean" then BuffsmithDB.thanksEnabled = false end
     if BuffsmithDB.thanksChannel ~= "WHISPER" and BuffsmithDB.thanksChannel ~= "SAY" and BuffsmithDB.thanksChannel ~= "PARTY" and BuffsmithDB.thanksChannel ~= "EMOTE" then BuffsmithDB.thanksChannel = "WHISPER" end
     if type(BuffsmithDB.thanksEmote) ~= "string" or not BuffsmithDB.thanksEmote:match("^[A-Z0-9_]+$") then BuffsmithDB.thanksEmote = "THANK" end
+    if type(BuffsmithDB.thanksUnknownEmote) ~= "boolean" then BuffsmithDB.thanksUnknownEmote = false end
+    if type(BuffsmithDB.trackingChoice) ~= "number" then BuffsmithDB.trackingChoice = nil end
     BuffsmithDB.thanksDelay = math.max(1, math.min(5, math.floor((tonumber(BuffsmithDB.thanksDelay) or 1) + 0.5)))
     if type(BuffsmithDB.thanksMessage) ~= "string" or BuffsmithDB.thanksMessage == "" then BuffsmithDB.thanksMessage = "Thanks for the {buff}!" end
     BuffsmithDB.thanksMessage = BuffsmithDB.thanksMessage:gsub("[\r\n]+", " "):sub(1, 240)

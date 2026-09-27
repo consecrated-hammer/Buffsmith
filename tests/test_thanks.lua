@@ -221,4 +221,22 @@ equal(#scheduled, 13, "a different caster refreshing the same aura instance is t
 scheduled[13].callback()
 equal(#sent, 5, "the refreshed buff sends one whisper to its new caster")
 
+-- The optional Forever fallback is deliberately an untargeted emote.  It is
+-- used only after both direct source reads fail, never as a guessed whisper.
+ns.db.thanksChannel, ns.db.thanksUnknownEmote, ns.db.thanksEmote = "EMOTE", true, "THANK"
+ns.Thanks.seen, ns.Thanks.seenAuras, ns.Thanks.eligibleAuras, ns.Thanks.attributedAuras = {}, {}, {}, {}
+C_UnitAuras.GetAuraDataByIndex = function(_, index)
+    if index == 1 then return { spellId = 1244, auraInstanceID = 104, name = "Power Word: Fortitude" } end
+end
+C_UnitAuras.GetAuraDataByAuraInstanceID = function(_, instanceID)
+    if instanceID == 104 then return { spellId = 1244, auraInstanceID = 104, name = "Power Word: Fortitude" } end
+end
+local firstRetry = #scheduled + 1
+ns.Thanks:Observe(false)
+scheduled[firstRetry].callback()
+scheduled[firstRetry + 1].callback()
+equal(#emotes, 4, "an opted-in unknown caster gets one untargeted Forever emote")
+equal(emotes[4].target, nil, "the fallback never invents an emote target")
+equal(ns.Thanks.lastStatus, "emoted without caster: THANK", "the fallback is visible in diagnostics")
+
 print("thanks tests passed")

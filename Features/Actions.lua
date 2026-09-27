@@ -368,8 +368,22 @@ end
 -- their bags.  Short buffs that are merely off by default are not listed.
 function Actions:IgnoredEntries()
     local entries = {}
+    -- Exclusions are retained so changing characters does not destroy a
+    -- player's choices, but the Ignored page is character-specific.  A Druid
+    -- must not be offered an old Paladin exclusion to restore.
+    local currentBuffs
+    if type(ns.KnownSelfBuffCandidates) == "function" then
+        currentBuffs = {}
+        for _, entry in ipairs(ns.KnownSelfBuffCandidates()) do currentBuffs[entry.spellID] = true end
+        -- Tracking uses the same exclusion store, but is not a self-buff.
+        -- Keep an ignored tracker restorable, especially on Retail where
+        -- several trackers can be independently disabled.
+        if ns.Tracking and type(ns.Tracking.Available) == "function" then
+            for _, entry in ipairs(ns.Tracking:Available()) do currentBuffs[entry.spellID] = true end
+        end
+    end
     for spellID, ignored in pairs(ns.db.excludedBuffs) do
-        if ignored == true then
+        if ignored == true and (not currentBuffs or currentBuffs[spellID]) then
             local name, icon
             if C_Spell and C_Spell.GetSpellInfo then
                 local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
@@ -485,17 +499,26 @@ function Actions:VisibleChoices(category)
         if ns.db.excludedConsumables[choice.itemID] then
             choice.state = "excluded"
         else
-        local mapping = ns.db.consumableAuras[choice.itemID]
-        if mapping then
-            local status = auraStatus("player", mapping.spellID, nil, mapping.name)
-            self:ConsiderReminder(choice, status)
-            local display, state = shouldShow(choice, status)
-            choice.state, choice.auraDuration, choice.auraRemaining = state, status.duration, status.remaining
-            if display and not self:IsSuppressed(choice) then choices[#choices + 1] = choice end
-        elseif not self:IsSuppressed(choice) then
-            choice.state = "untracked"
-            choices[#choices + 1] = choice
-        end
+            local cooldown = ns.Inventory:CooldownRemaining(choice)
+            if cooldown then
+                -- A bag item remains in the scan while it is cooling down, but is
+                -- not actionable.  Leave another ready choice in the category
+                -- available instead of presenting a click that the game rejects.
+                choice.state = "cooldown"
+                ns.Inventory:RefreshAfterCooldown(choice, cooldown)
+            else
+                local mapping = ns.db.consumableAuras[choice.itemID]
+                if mapping then
+                    local status = auraStatus("player", mapping.spellID, nil, mapping.name)
+                    self:ConsiderReminder(choice, status)
+                    local display, state = shouldShow(choice, status)
+                    choice.state, choice.auraDuration, choice.auraRemaining = state, status.duration, status.remaining
+                    if display and not self:IsSuppressed(choice) then choices[#choices + 1] = choice end
+                elseif not self:IsSuppressed(choice) then
+                    choice.state = "untracked"
+                    choices[#choices + 1] = choice
+                end
+            end
         end
     end
     return choices
