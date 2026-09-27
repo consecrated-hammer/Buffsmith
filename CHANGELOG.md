@@ -5,7 +5,27 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-09-27
+
+### Added
+
+- Tracking. Buffsmith reads your minimap tracking list and offers each
+  tracking spell (Find Herbs, Find Minerals, class and racial senses) on the
+  Buffs page. On WoW Forever, choose one tracker explicitly; selecting a
+  different tracker puts it on the bar so it can replace the active one.
+- Thank You gains an opt-in, untargeted emote fallback when WoW Forever cannot
+  identify who applied a recognised buff. The settings page explains why
+  attribution is sometimes unavailable; recipient-specific messages still
+  require a known caster.
+
+### Fixed
+
+- Consumables on cooldown are hidden until they are usable again.
+- An active Well Fed aura suppresses food reminders, including food whose
+  generic icon differs between clients.
+- Consumables restricted to another class no longer appear for this character.
+- Ignored buffs are scoped to the current character, while ignored tracking
+  entries remain visible and restorable.
 
 ## [0.2.0] - 2026-09-26
 

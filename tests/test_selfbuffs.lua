@@ -232,18 +232,25 @@ end
 
 -- The Ignored page lists explicit exclusions only, and restores them.
 do
-    C_Spell = { GetSpellInfo = function(spellID) return { name = SPELL_NAMES[spellID], iconID = 1 } end }
+    C_Spell = { GetSpellInfo = function(spellID)
+        return { name = spellID == 43308 and "Find Fish" or SPELL_NAMES[spellID], iconID = 1 }
+    end }
     C_Item = nil
     local ns = { Plain = function(value) return value end,
-        db = { excludedBuffs = { [19740] = true, [20154] = false, [465] = nil },
+        db = { excludedBuffs = { [19740] = true, [1126] = true, [20154] = false, [465] = nil },
             excludedConsumables = { [4599] = true } },
-        Inventory = { ItemInfo = function(itemID) return itemID == 4599 and "Cured Ham Steak" or nil, nil, nil, nil, 2 end } }
+        Inventory = { ItemInfo = function(itemID) return itemID == 4599 and "Cured Ham Steak" or nil, nil, nil, nil, 2 end },
+        Tracking = { Available = function() return { { spellID = 43308, name = "Find Fish" } } end },
+        KnownSelfBuffCandidates = function() return { { spellID = 19740 } } end }
     assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
+    ns.db.excludedBuffs[43308] = true
     local ignored = ns.Actions:IgnoredEntries()
-    equal(#ignored, 2, "only explicit exclusions are listed")
+    equal(#ignored, 3, "current-character buffs and tracking exclusions are listed")
     equal(ignored[1].name, "Blessing of Might", "buffs are listed first")
-    equal(ignored[2].name, "Cured Ham Steak", "items are listed by name")
+    equal(ignored[2].name, "Find Fish", "ignored tracking remains restorable")
+    equal(ignored[3].name, "Cured Ham Steak", "items are listed by name")
     ns.Actions:Restore("spell", 19740)
+    ns.Actions:Restore("spell", 43308)
     ns.Actions:Restore("item", 4599)
     equal(ns.db.excludedBuffs[19740], false, "a restored buff is explicitly on")
     equal(ns.db.excludedConsumables[4599], nil, "a restored item is included")

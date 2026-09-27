@@ -106,6 +106,56 @@ local function weaponEnchantStatus()
     return { state = "active", duration = 0, remaining = remaining > 0 and remaining or nil }
 end
 
+-- Item cooldown APIs have existed in both namespace and global forms, with
+-- some clients returning a table and others returning separate values.  Keep
+-- this at the inventory boundary so an unavailable or differently shaped API
+-- never prevents the bar from offering an item.
+local function itemCooldown(itemID)
+    local function read(getter)
+        if type(getter) ~= "function" then return nil end
+        local ok, first, duration, enabled = pcall(getter, itemID)
+        if not ok then return nil end
+        if type(first) == "table" then
+            duration = first.duration or first.cooldownDuration
+            enabled = first.isEnabled
+            first = first.startTime or first.start
+        end
+        first, duration = tonumber(ns.Plain(first)) or 0, tonumber(ns.Plain(duration)) or 0
+        local usable = ns.Plain(enabled)
+        if usable == false or usable == 0 then return nil end
+        if first <= 0 or duration <= 0 then return nil end
+        local remaining = first + duration - (GetTime and GetTime() or 0)
+        return remaining > 0 and remaining or nil
+    end
+
+    local remaining = read(C_Item and C_Item.GetItemCooldown)
+    if remaining ~= nil then return remaining end
+    return read(GetItemCooldown)
+end
+
+-- Class, level and similar item restrictions belong to the client.  Do not
+-- offer a bag consumable unless its on-use action is usable by this character.
+-- Running out of mana is temporary, so it remains a choice rather than being
+-- confused with a class restriction.
+local function itemUsable(itemID)
+    local function read(getter)
+        if type(getter) ~= "function" then return nil end
+        local ok, usable, noMana = pcall(getter, itemID)
+        if not ok or usable == nil then return nil end
+        if ns.Plain(usable) == false and ns.Plain(noMana) ~= true then return false end
+        return true
+    end
+
+    local usable = read(C_Item and C_Item.IsUsableItem)
+    if usable ~= nil then
+        Inventory.lastUsabilityAPI = "C_Item.IsUsableItem"
+        return usable
+    end
+    usable = read(IsUsableItem)
+    if usable ~= nil then Inventory.lastUsabilityAPI = "IsUsableItem" end
+    return usable ~= false
+end
+
 local function itemInfo(itemID)
     -- C_Item uses an ItemInfo table; legacy clients return multiple values.
     if C_Item and type(C_Item.GetItemInfo) == "function" then
@@ -142,6 +192,7 @@ function Inventory:Refresh()
     local found, unresolved = { food = {}, scroll = {}, flask = {}, weapon = {} }, 0
     self.lastItemInfoAPI = "not queried"
     self.lastContainerAPI = "not queried"
+    self.lastUsabilityAPI = "not queried"
     local maxBags = NUM_BAG_SLOTS or 4
     for bag = 0, maxBags do
         for slot = 1, bagSlots(bag) do
@@ -153,7 +204,7 @@ function Inventory:Refresh()
                     unresolved = unresolved + 1
                 else
                     local category = classify(itemType, itemSubType, name, itemID)
-                    if category then
+                    if category and itemUsable(itemID) then
                         local record = found[category][itemID]
                         if not record then
                             record = { kind = "item", itemID = itemID, name = name,
@@ -183,6 +234,33 @@ end
 function Inventory:BeginConsumableUse(entry)
     if not entry or entry.kind ~= "item" then return end
     self.pendingConsumable = { itemID = entry.itemID, before = helpfulAuras() }
+end
+
+function Inventory:CooldownRemaining(item)
+    if not item or not item.itemID then return nil end
+    return itemCooldown(item.itemID)
+end
+
+function Inventory:IsUsableItem(itemID)
+    return itemUsable(itemID)
+end
+
+function Inventory:RefreshAfterCooldown(item, remaining)
+    remaining = remaining or self:CooldownRemaining(item)
+    if not remaining or not (C_Timer and type(C_Timer.After) == "function") then return end
+    local now = GetTime and GetTime() or 0
+    local wakeAt = now + remaining
+    self.cooldownWakeups = self.cooldownWakeups or {}
+    -- Palette refreshes can happen several times during one cooldown.  One
+    -- wake-up per item is enough to put it back on the bar when it becomes
+    -- usable; scheduling on every refresh would accumulate timers.
+    if self.cooldownWakeups[item.itemID] and self.cooldownWakeups[item.itemID] >= wakeAt - 0.1 then return end
+    self.cooldownWakeups[item.itemID] = wakeAt
+    C_Timer.After(remaining + 0.1, function()
+        if not ns.Inventory or ns.Inventory.cooldownWakeups[item.itemID] ~= wakeAt then return end
+        ns.Inventory.cooldownWakeups[item.itemID] = nil
+        if ns.Inventory and not ns.IsCombatLocked() then ns.Inventory:Refresh() end
+    end)
 end
 
 function Inventory:FinishConsumableUse()
@@ -216,7 +294,11 @@ function Inventory:CategoryStatus(category)
     for _, aura in pairs(auras) do
         -- Blizzard's generic Well Fed icon covers the food effects that should
         -- suppress every food choice, regardless of which bag item applied it.
-        if category == "food" and aura.icon == 136000 then
+        -- The generic icon is present on many clients, but not all food buffs
+        -- use it.  The client-facing Well Fed name is a second safe signal;
+        -- item-specific effects continue to use the learned mapping below.
+        if category == "food" and (aura.icon == 136000
+            or (type(aura.name) == "string" and string.find(string.lower(aura.name), "well fed", 1, true))) then
             return { state = "active", duration = aura.duration, remaining = aura.remaining }
         end
         if category == "flask" and type(aura.name) == "string"

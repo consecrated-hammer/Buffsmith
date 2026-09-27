@@ -1,8 +1,8 @@
 ## Interface: 120100
 ## Title: Buffsmith
 ## Author: consecrated-hammer
-## Version: 0.2.0
-## X-ReleaseDate: 2026-09-26
+## Version: 1.0.0
+## X-ReleaseDate: 2026-09-27
 ## Notes: Out-of-combat self-buff and consumable bar.
 ## SavedVariables: BuffsmithDB
 ## LoadSavedVariablesFirst: 1
@@ -22,6 +22,7 @@ Data\RetailBuffs.lua
 Data\Consumables.lua
 Features\Inventory.lua
 Features\Actions.lua
+Features\Tracking.lua
 Features\Thanks.lua
 Features\Visibility.lua
 UI\Layout.lua

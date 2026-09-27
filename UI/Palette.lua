@@ -33,6 +33,8 @@ local function button(parent, small)
             GameTooltip:AddLine("Friendly target — left-click to cast on them.", 0.7, 0.7, 0.7)
         elseif entry.scope == "party" then
             GameTooltip:AddLine("Party member — left-click to cast on them.", 0.7, 0.7, 0.7)
+        elseif entry.tracking then
+            GameTooltip:AddLine("Tracking — left-click to turn it on.", 0.7, 0.7, 0.7)
         elseif entry.scope == "pet" then
             GameTooltip:AddLine("Friendly pet — left-click to cast on them.", 0.7, 0.7, 0.7)
         else

@@ -31,6 +31,7 @@ BuffsmithDB = { thanksDelay = "broken" }
 ns.InitConfig()
 equal(ns.db.thanksDelay, 1, "an invalid thank-you delay defaults to one second")
 equal(ns.db.thanksEmote, "THANK", "the default emote is Thank")
+equal(ns.db.thanksUnknownEmote, false, "untargeted emotes stay opt-in")
 BuffsmithDB = { thanksChannel = "EMOTE", thanksEmote = "RANDOM" }
 ns.InitConfig()
 equal(ns.db.thanksChannel, "EMOTE", "emote delivery persists")

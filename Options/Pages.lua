@@ -66,7 +66,9 @@ local function reminderRow(panel, y, item)
     local changing = false
     local function refresh()
         tick:SetChecked(item.enabled())
-        if item.permanent then
+        if item.detail then
+            detail:SetText(item.detail)
+        elseif item.permanent then
             detail:SetText("Permanent effect")
         else
             changing = true
@@ -243,6 +245,14 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local none = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     none:SetText("No self-buffs found for your class and level yet.")
+    local trackingHeader, trackingRule = UI.FontString(panel, "GameFontNormalLarge", "section"), nil
+    trackingHeader:SetText("Tracking")
+    trackingRule = T.Fill(panel:CreateTexture(nil, "ARTWORK"), "edge")
+    trackingRule:SetHeight(1)
+    trackingRule:SetPoint("LEFT", trackingHeader, "RIGHT", 10, 0)
+    trackingRule:SetPoint("RIGHT", panel.hcHeaderOwner or panel, "RIGHT", -20, 0)
+    local trackingNote = UI.FontString(panel, "GameFontHighlightSmall", "muted")
+    trackingNote:SetText("Choose Herbs or Minerals. WoW Forever tracks one at a time.")
     local function layout()
         local y = link("spell", listTop)
         pool:Begin()
@@ -266,6 +276,45 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
         none:SetPoint("TOPLEFT", UI.PAD, y)
         none:SetShown(shown == 0)
         if shown == 0 then y = y - 24 end
+
+        -- Tracking this character has, from the minimap's own list.
+        local tracking = {}
+        for _, entry in ipairs(ns.Tracking:Available()) do
+            -- On Forever this is a picker, not the old independent set of
+            -- ticks.  Retained pre-picker exclusions must not hide Minerals
+            -- and make it impossible to choose it again.
+            if ns.Tracking.Exclusive() or ns.db.excludedBuffs[entry.spellID] ~= true then
+                tracking[#tracking + 1] = entry
+            end
+        end
+        trackingHeader:ClearAllPoints()
+        trackingHeader:SetPoint("TOPLEFT", UI.PAD, y - 10)
+        trackingHeader:SetShown(#tracking > 0)
+        trackingRule:SetShown(#tracking > 0)
+        trackingNote:ClearAllPoints()
+        trackingNote:SetPoint("TOPLEFT", UI.PAD, y - 38)
+        trackingNote:SetShown(#tracking > 0 and ns.Tracking.Exclusive())
+        if #tracking > 0 then
+            y = y - 38 - (ns.Tracking.Exclusive() and 20 or 0)
+            for _, found in ipairs(tracking) do
+                local entry = found
+                y = pool:Place("tracking:" .. entry.spellID, y, function() return {
+                    label = entry.name, icon = entry.icon, permanent = true, detail = "Tracking",
+                    enabled = function()
+                        return ns.Tracking.Exclusive() and ns.Tracking:SelectedID() == entry.spellID
+                            or not ns.Tracking.Exclusive() and not ns.IsBuffExcluded(entry)
+                    end,
+                    toggle = function()
+                        if ns.Tracking.Exclusive() then
+                            ns.Tracking:Select(entry.spellID)
+                        else
+                            ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry)
+                        end
+                    end,
+                    changed = function() panel.hcRefreshAll() end,
+                } end)
+            end
+        end
         panel.hcSetBottom(y)
         return y
     end
@@ -428,9 +477,9 @@ end)
 
 local CHANNELS = { values = { "WHISPER", "SAY", "PARTY", "EMOTE" }, labels = { "Whisper", "Say chat", "Party chat", "Emote" } }
 
-HC.Settings:NewPage({ name = "Thank You", description = "Thank the player who gave you a recognised buff." }, function(panel, y)
+HC.Settings:NewPage({ name = "Thank You", description = "Thank recognised buffs when the client can identify their caster." }, function(panel, y)
     _, y = UI.Check(panel, "Thank players for buffs",
-        "Thank an identifiable friendly player for a recognised buff. Buffs you already have never trigger one.", y,
+        "Caster details can be unavailable on WoW Forever, so a thank-you is not guaranteed. Buffs you already have never trigger one.", y,
         function() return ns.db.thanksEnabled end, function(value) ns.db.thanksEnabled = value end)
     _, y = UI.Dropdown(panel, "Send thanks as", nil, y, CHANNELS.values, CHANNELS.labels,
         function() return ns.db.thanksChannel end, function(value) ns.db.thanksChannel = value end)
@@ -440,8 +489,9 @@ HC.Settings:NewPage({ name = "Thank You", description = "Thank the player who ga
 
     -- The emote picker and the message field share one row: only the one
     -- matching the chosen channel is shown.
-    local emoteRow, messageRow
-    emoteRow = UI.SearchPicker(panel, "Emote", "Random picks a different emote each time.", y, {
+    local emoteRow, messageRow, unknownEmoteRow, unknownEmoteNote
+    local emoteY, messageY
+    emoteRow, emoteY = UI.SearchPicker(panel, "Emote", "Random picks a different emote each time.", y, {
         width = 220,
         items = function()
             local items = {}
@@ -453,9 +503,22 @@ HC.Settings:NewPage({ name = "Thank You", description = "Thank the player who ga
         get = function() return ns.db.thanksEmote end,
         set = function(token) ns.db.thanksEmote = token end,
     })
-    messageRow, y = UI.TextInput(panel, "Message", "{buff} and {player} are filled in when it is sent.", y,
+    unknownEmoteRow, emoteY = UI.Check(panel, "Emote when caster is unknown",
+        "Use the selected emote without a target when the caster cannot be identified.", emoteY,
+        function() return ns.db.thanksUnknownEmote end, function(value) ns.db.thanksUnknownEmote = value end)
+    -- This is intentionally the one wrapped explanation on the page: the
+    -- limitation needs plain language, not a clipped tooltip.
+    unknownEmoteNote = UI.FontString(panel, "GameFontHighlightSmall", "muted")
+    unknownEmoteNote:SetPoint("TOPLEFT", UI.PAD, emoteY)
+    unknownEmoteNote:SetWidth(UI.CONTENT_WIDTH)
+    unknownEmoteNote:SetJustifyH("LEFT")
+    if unknownEmoteNote.SetWordWrap then unknownEmoteNote:SetWordWrap(true) end
+    unknownEmoteNote:SetText("WoW Forever may report a new buff without telling addons who cast it. Whispers still need a known caster.")
+    emoteY = emoteY - 36
+    messageRow, messageY = UI.TextInput(panel, "Message", "{buff} and {player} are filled in when it is sent.", y,
         function() return ns.db.thanksMessage end,
         function(text) ns.db.thanksMessage = text end, nil, 330)
+    y = math.min(emoteY, messageY)
     local preview = UI.Button(panel, 150, 22)
     preview:SetPoint("TOPLEFT", UI.PAD, y - 2)
     preview:SetText("Preview message")
@@ -466,7 +529,10 @@ HC.Settings:NewPage({ name = "Thank You", description = "Thank the player who ga
     end)
     UI.OnRefresh(panel, function()
         local emote = ns.db.thanksChannel == "EMOTE"
+        local unknownFallback = emote and ns.TARGET == "Camelot"
         emoteRow:SetShown(emote)
+        unknownEmoteRow:SetShown(unknownFallback)
+        unknownEmoteNote:SetShown(unknownFallback)
         messageRow:SetShown(not emote)
         preview:SetShown(not emote)
     end)

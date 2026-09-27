@@ -20,6 +20,8 @@ frame:RegisterEvent("UNIT_AURA")
 pcall(frame.RegisterEvent, frame, "UNIT_CONNECTION")
 pcall(frame.RegisterEvent, frame, "UNIT_PHASE")
 pcall(frame.RegisterEvent, frame, "PLAYER_UPDATE_RESTING")
+-- Tracking switched on or off, from the bar or the minimap menu.
+pcall(frame.RegisterEvent, frame, "MINIMAP_UPDATE_TRACKING")
 
 local function refresh()
     if ns.IsCombatLocked() then return end
@@ -65,7 +67,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         refresh()
     elseif event == "BAG_UPDATE_DELAYED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
-        or event == "UNIT_CONNECTION" or event == "UNIT_PHASE"
+        or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "MINIMAP_UPDATE_TRACKING"
         or event == "PLAYER_REGEN_ENABLED" then
         if event == "SPELLS_CHANGED" then ns.ResetSpellbook() end
         refresh()

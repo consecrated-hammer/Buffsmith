@@ -183,6 +183,29 @@ function Thanks:Send(buff, provider, providerKey, sourceUnit)
     self.lastStatus = "sent"
 end
 
+-- Forever can expose a newly applied buff without any usable caster token.
+-- An opt-in untargeted emote is the only safe fallback: whispers need a
+-- recipient, and we must never guess one from the roster.
+function Thanks:FallbackEmote(buff, auraKey)
+    if not ns.db.thanksUnknownEmote or ns.db.thanksChannel ~= "EMOTE" then return false end
+    local token = selectedEmote()
+    local ok, success
+    if ns.TARGET == "Camelot" and type(DoEmote) == "function" then
+        ok, success = pcall(DoEmote, token)
+    elseif C_ChatInfo and type(C_ChatInfo.PerformEmote) == "function" then
+        ok, success = pcall(C_ChatInfo.PerformEmote, token)
+    elseif type(DoEmote) == "function" then
+        ok, success = pcall(DoEmote, token)
+    end
+    if not ok or success == false then
+        self.lastStatus = "skipped: untargeted emote rejected"
+        return false
+    end
+    self.attributedAuras[auraKey] = "untargeted"
+    self.lastStatus = "emoted without caster: " .. token
+    return true
+end
+
 local function combinedBuffs(job)
     if #job.buffs == 1 then return job.buffs[1] end
     if #job.buffs == 2 then return job.buffs[1] .. " and " .. job.buffs[2] end
@@ -246,9 +269,10 @@ function Thanks:RetryAttribution(aura, buff, auraKey)
     local instanceID = ns.Plain(aura.auraInstanceID)
     if type(instanceID) ~= "number" then
         self.lastAttribution = buff.label .. ": no aura instance ID for retry; " .. legacyProbe(aura)
-        return
+        return false
     end
-    if self.retrying[auraKey] or not C_Timer or type(C_Timer.After) ~= "function" then return end
+    if self.retrying[auraKey] then return true end
+    if not C_Timer or type(C_Timer.After) ~= "function" then return false end
     local spellID = ns.Plain(aura.spellId)
     local marker = {}
     self.retrying[auraKey] = marker
@@ -278,10 +302,12 @@ function Thanks:RetryAttribution(aura, buff, auraKey)
             else
                 self.retrying[auraKey] = nil
                 self.lastAttribution = buff.label .. ": no caster after 0.7 seconds; " .. legacyProbe(current)
+                self:FallbackEmote(buff, auraKey)
             end
         end)
     end
     check(1)
+    return true
 end
 
 function Thanks:Observe(primeOnly, updateInfo)
@@ -345,7 +371,10 @@ function Thanks:Observe(primeOnly, updateInfo)
                 noProvider = noProvider + 1
                 if not self.seenAuras[auraKey] then
                     skipped = buff.label .. " (" .. tostring(sourceReason) .. ")"
-                    if ns.TARGET == "Camelot" and ns.db.thanksEnabled then self:RetryAttribution(aura, buff, auraKey) end
+                    if ns.TARGET == "Camelot" and ns.db.thanksEnabled
+                        and not self:RetryAttribution(aura, buff, auraKey) then
+                        self:FallbackEmote(buff, auraKey)
+                    end
                 end
             end
         end
