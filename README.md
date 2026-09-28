@@ -102,6 +102,11 @@ docker run --rm -v "$PWD:/addon:ro" -w /addon nickblah/lua:5.1-alpine sh -lc \
 `tools/stage_addon.py` copies a runtime-only folder into a client's `AddOns`
 directory for local testing.
 
+## Support
+
+Bug reports, ideas and questions: the [Consecrated Hammer Discord](https://discord.gg/z3xKxRygDc)
+(`#bug-reports`, `#suggestions`, `#help`).
+
 ## Licence
 
 GPL v3. See [LICENSE.txt](LICENSE.txt). Buffsmith is independently
