@@ -18,6 +18,7 @@ function Diagnostics:Report()
         "Combat lockdown: " .. (ns.IsCombatLocked() and "yes" or "no"),
         "Rested-area pause: " .. (ns.db.ignoreBuffsInRestedAreas and "enabled" or "disabled")
             .. "; currently resting " .. (IsResting and IsResting() and "yes" or "no"),
+        "Eating or drinking (casting paused): " .. (ns.Actions:IsEating() and "yes" or "no"),
         "Reminder thresholds: buffs " .. tostring(ns.db.reminderPercent.buff) .. "%"
             .. ", food " .. tostring(ns.db.reminderPercent.food) .. "%"
             .. ", scrolls " .. tostring(ns.db.reminderPercent.scroll) .. "%"

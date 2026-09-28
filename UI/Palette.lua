@@ -43,6 +43,9 @@ local function button(parent, small)
         if entry.outOfRange then
             GameTooltip:AddLine("Out of range.", 1, 0.35, 0.35)
         end
+        if ns.Actions.eatingPaused and entry.kind ~= "notice" then
+            GameTooltip:AddLine("Eating or drinking: waits until you finish.", 1, 0.82, 0)
+        end
         GameTooltip:AddLine("Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
         if entry.kind ~= "notice" then
             GameTooltip:AddLine("Shift-right-click: ignore.", 0.7, 0.7, 0.7)
@@ -58,7 +61,7 @@ local function button(parent, small)
     end)
     frame:SetScript("PreClick", function(self, mouseButton)
         local entry = self.buffsmithEntry
-        if mouseButton == "LeftButton" and entry then
+        if mouseButton == "LeftButton" and entry and not ns.Actions.eatingPaused then
             ns.Actions:BeginAttempt(entry)
             if entry.kind == "item" then ns.Inventory:BeginConsumableUse(entry) end
         end

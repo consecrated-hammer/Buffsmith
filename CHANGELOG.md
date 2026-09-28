@@ -5,6 +5,14 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- While you're eating or drinking, Buffsmith's icons and Buff trigger no
+  longer cast anything, so a stray click or key press can't stand you up
+  mid-meal. The bar stays visible and each icon's tooltip says it's waiting.
+
 ## [1.0.0] - 2026-09-27
 
 ### Added

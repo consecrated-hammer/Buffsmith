@@ -198,9 +198,43 @@ function Actions:IsRestedPaused()
     return ns.db.ignoreBuffsInRestedAreas and IsResting and IsResting() or false
 end
 
+-- Eating and drinking auras, by localised name.  Food and drink items apply
+-- their own spell IDs, but every client names the sitting aura after one of
+-- these few spells.
+local EATING_SPELLS = { 433, 430, 192002, 167152 } -- Food, Drink, Food & Drink, Refreshment
+local eatingNames
+local function eatingAuraNames()
+    if eatingNames then return eatingNames end
+    eatingNames = { Food = true, Drink = true, ["Food & Drink"] = true, Refreshment = true }
+    for _, spellID in ipairs(EATING_SPELLS) do
+        local name = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID)
+            or GetSpellInfo and GetSpellInfo(spellID)
+        name = ns.Plain(name)
+        if type(name) == "string" and name ~= "" then eatingNames[name] = true end
+    end
+    return eatingNames
+end
+
+function Actions:IsEating()
+    local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+    if not getter or ns.IsCombatLocked() then return false end
+    local names = eatingAuraNames()
+    for index = 1, 128 do
+        local ok, aura = pcall(getter, "player", index, "HELPFUL")
+        if not ok or not aura or ns.IsSecret(aura) then return false end
+        if names[ns.Plain(aura.name)] then return true end
+    end
+    return false
+end
+
+
+
 function Actions:Entries()
     local entries = {}
     self.nextReminderDelay = nil
+    -- Casting mid-meal would stand the player up, so while eating or drinking
+    -- the bar stays visible but its icons and trigger cast nothing.
+    self.eatingPaused = self:IsEating()
     ns.lastAuraProbe = {}
     if self:IsRestedPaused() then
         ns.lastAuraProbe[1] = "self-buff checks paused: rested area"
@@ -576,7 +610,10 @@ function Actions:Configure(button, entry)
     -- Only LeftButton is an action; right-click is strictly a local dismissal.
     button:SetAttribute("type", nil); button:SetAttribute("spell", nil); button:SetAttribute("item", nil)
     button:SetAttribute("unit", entry.unit or "player")
-    if entry.kind == "spell" then
+    if self.eatingPaused and entry.kind ~= "none" then
+        button.buffsmithEntry = entry
+        return false
+    elseif entry.kind == "spell" then
         button:SetAttribute("type1", "spell")
         button:SetAttribute("spell1", entry.name)
     elseif entry.kind == "item" then
