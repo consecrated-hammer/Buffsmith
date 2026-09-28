@@ -15,7 +15,7 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
 ## What it does
 
 - **Missing self-buffs**, picked up from your spellbook. Buffs shorter than a minute are listed but start switched off, so things like seals don't nag you.
-- **Consumables from your bags**, like food, flasks, scrolls and weapon enhancements. Hover a consumable to see your other choices, and whichever you use becomes the new default.
+- **Consumables from your bags**, like food, flasks, elixirs, scrolls and weapon enhancements. Drinks and other items that give a timed buff, such as the Keg of Thunderbrew, go under **Other buffs**. Hover a consumable to see your other choices, and whichever you use becomes the new default.
 - **Party buffs.** Buffs you can give to your target, party or pet show up too, and grey out when the game can tell the player is out of range.
 - **Party coverage reminders.** When someone's missing a buff another class in the party could give, an icon says so. Clicking it reports it in chat; it never casts anything.
 - **Tracking.** Find Herbs, Find Minerals and other tracking spells can sit on the bar until you turn them on. Gathering tracking starts ticked, class and racial tracking start off.

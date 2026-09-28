@@ -7,6 +7,14 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Other buffs**, a new consumable category for elixirs, and for drinks or
+  other items whose "Use:" line gives a timed buff that isn't Well Fed, such
+  as the Keg of Thunderbrew. Each item is tracked by its own effect, so an
+  agility elixir still shows while a stamina drink is active. Potions are
+  left out because they're for combat.
+
 ### Changed
 
 - While you're eating or drinking, Buffsmith's icons and Buff trigger no

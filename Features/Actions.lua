@@ -572,7 +572,7 @@ function Actions:BindingEntries()
     for _, entry in ipairs(displayed) do
         if entry.kind == "spell" or entry.kind == "item" then entries[#entries + 1] = entry end
     end
-    for _, category in ipairs({ "food", "scroll", "flask", "weapon" }) do
+    for _, category in ipairs(ns.CONSUMABLE_ORDER) do
         local choices = self:VisibleChoices(category)
         local primary = self:Preferred(category, choices)
         if primary then entries[#entries + 1] = choices[primary] end

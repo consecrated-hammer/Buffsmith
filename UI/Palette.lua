@@ -210,7 +210,7 @@ function Palette:Items()
         items[#items + 1] = {}
         mainEntries[#mainEntries + 1] = entry
     end
-    for _, category in ipairs({ "food", "scroll", "flask", "weapon" }) do
+    for _, category in ipairs(ns.CONSUMABLE_ORDER) do
         local choices = ns.Actions:VisibleChoices(category)
         if #choices > 0 then
             local entry = choices[ns.Actions:Preferred(category, choices)]

@@ -63,7 +63,7 @@ end
 
 local function bagSummary()
     local parts = {}
-    for _, category in ipairs({ "food", "scroll", "flask", "weapon" }) do
+    for _, category in ipairs(ns.CONSUMABLE_ORDER) do
         parts[#parts + 1] = category .. " " .. #ns.Inventory:Choices(category)
     end
     return table.concat(parts, ", ")

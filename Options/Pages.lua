@@ -324,7 +324,7 @@ end)
 
 -- ── Consumables ────────────────────────────────────────────────────────────
 
-local CATEGORIES = { { "food", "Food" }, { "scroll", "Scrolls" }, { "flask", "Flasks" }, { "weapon", "Weapon enhancements" } }
+local CATEGORIES = { { "food", "Food" }, { "scroll", "Scrolls" }, { "flask", "Flasks" }, { "other", "Other buffs" }, { "weapon", "Weapon enhancements" } }
 
 HC.Settings:NewPage({ name = "Consumables", description = "Items appear while they are in your bags." }, function(panel, y)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)

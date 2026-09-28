@@ -74,10 +74,34 @@ local function foodProvidesBuff(itemID)
     return false
 end
 
+-- A "Use:" line that increases something for minutes or hours is a timed
+-- buff worth a reminder.  Seconds-long effects and plain restores are not.
+local function itemGivesTimedBuff(itemID)
+    if not (C_TooltipInfo and C_TooltipInfo.GetItemByID) then return false end
+    local ok, tooltip = pcall(C_TooltipInfo.GetItemByID, itemID)
+    if not ok or type(tooltip) ~= "table" or type(tooltip.lines) ~= "table" then return false end
+    for _, line in ipairs(tooltip.lines) do
+        local text = line.leftText
+        if type(text) == "string" then
+            text = string.lower(text)
+            if string.find(text, "^use:") and string.find(text, "increase", 1, true)
+                and (string.find(text, "%d+%s*min") or string.find(text, "%d+%s*hour")) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local POTION = ITEM_SUBCLASS_CONSUMABLE_POTION or "Potion"
+
 local function classify(itemType, itemSubType, itemName, itemID)
     if itemType ~= ITEM_CLASS_CONSUMABLE and itemType ~= "Consumable" then return nil end
     local food = ns.CONSUMABLE_CATEGORIES.food.subtypes[itemSubType] or itemSubType == "Food & Drink"
-    if food then return foodProvidesBuff(itemID) and "food" or nil end
+    if food then
+        if foodProvidesBuff(itemID) then return "food" end
+        return itemGivesTimedBuff(itemID) and "other" or nil
+    end
 
     local scroll = ns.CONSUMABLE_CATEGORIES.scroll.subtypes[itemSubType] or itemSubType == "Scroll"
     if scroll then return "scroll" end
@@ -95,6 +119,10 @@ local function classify(itemType, itemSubType, itemName, itemID)
             return "weapon"
         end
     end
+
+    if ns.CONSUMABLE_CATEGORIES.other.subtypes[itemSubType] or itemSubType == "Elixir" then return "other" end
+    -- Potions are for combat; anything else with a timed buff counts.
+    if itemSubType ~= POTION and itemGivesTimedBuff(itemID) then return "other" end
     return nil
 end
 
@@ -189,7 +217,8 @@ function Inventory:Refresh()
         self.lastStatus = "deferred: combat lockdown"
         return false
     end
-    local found, unresolved = { food = {}, scroll = {}, flask = {}, weapon = {} }, 0
+    local found, unresolved = {}, 0
+    for _, category in ipairs(ns.CONSUMABLE_ORDER) do found[category] = {} end
     self.lastItemInfoAPI = "not queried"
     self.lastContainerAPI = "not queried"
     self.lastUsabilityAPI = "not queried"
@@ -224,8 +253,8 @@ function Inventory:Refresh()
         for _, record in pairs(records) do self.items[category][#self.items[category] + 1] = record end
         table.sort(self.items[category], function(a, b) return a.name < b.name end)
     end
-    self.lastStatus = ("ready: %d food, %d scroll, %d flask, %d weapon, %d uncached item(s)"):format(
-        #self.items.food, #self.items.scroll, #self.items.flask, #self.items.weapon, unresolved)
+    self.lastStatus = ("ready: %d food, %d scroll, %d flask, %d other, %d weapon, %d uncached item(s)"):format(
+        #self.items.food, #self.items.scroll, #self.items.flask, #self.items.other, #self.items.weapon, unresolved)
     if ns.Actions then ns.Actions:Refresh() end
     if ns.Palette then ns.Palette:Refresh() end
     return true
@@ -290,6 +319,9 @@ end
 
 function Inventory:CategoryStatus(category)
     if category == "weapon" then return weaponEnchantStatus() end
+    -- Other buffs are unrelated to each other (a stamina drink doesn't cover an
+    -- agility elixir), so each item is judged by its own learned effect.
+    if category == "other" then return nil end
     local auras = helpfulAuras()
     for _, aura in pairs(auras) do
         -- Blizzard's generic Well Fed icon covers the food effects that should

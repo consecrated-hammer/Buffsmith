@@ -117,7 +117,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     SlashCmdList.BUFFSMITH("reset position")
     equal(ns.db.palettePoint[1], "CENTER", toc .. ": reset position centres the bar")
     SlashCmdList.BUFFSMITH("scan")
-    equal(wow.LastPrint(), "Buffsmith: bags scanned: food 0, scroll 0, flask 0, weapon 0", toc .. ": scan reports")
+    equal(wow.LastPrint(), "Buffsmith: bags scanned: food 0, scroll 0, flask 0, other 0, weapon 0", toc .. ": scan reports")
 
     -- A consumable on cooldown is still in the bag inventory, but must never
     -- occupy the bar or block a ready alternative in its category.

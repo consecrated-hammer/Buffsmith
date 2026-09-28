@@ -14,6 +14,12 @@ ns.CONSUMABLE_CATEGORIES = {
         label = "Flask", icon = 236884,
         subtypes = { [ITEM_SUBCLASS_CONSUMABLE_FLASK or "Flask"] = true },
     },
+    -- Elixirs, and drinks or other consumables whose "Use:" line gives a
+    -- timed stat buff that isn't Well Fed (Keg of Thunderbrew, for one).
+    other = {
+        label = "Other buffs", icon = 134821,
+        subtypes = { [ITEM_SUBCLASS_CONSUMABLE_ELIXIR or "Elixir"] = true },
+    },
     weapon = {
         label = "Weapon enhancement", icon = 134712,
         subtypes = {
@@ -23,3 +29,6 @@ ns.CONSUMABLE_CATEGORIES = {
         },
     },
 }
+
+-- The order categories appear on the bar, the trigger and the settings page.
+ns.CONSUMABLE_ORDER = { "food", "scroll", "flask", "other", "weapon" }

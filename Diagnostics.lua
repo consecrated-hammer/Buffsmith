@@ -7,6 +7,7 @@ function Diagnostics:Report()
     local foods = #ns.Inventory:Choices("food")
     local scrolls = #ns.Inventory:Choices("scroll")
     local flasks = #ns.Inventory:Choices("flask")
+    local others = #ns.Inventory:Choices("other")
     local weapons = #ns.Inventory:Choices("weapon")
     local bar = ns.Palette.frame
     local point, _, relativePoint, x, y = bar and bar:GetPoint()
@@ -23,6 +24,7 @@ function Diagnostics:Report()
             .. ", food " .. tostring(ns.db.reminderPercent.food) .. "%"
             .. ", scrolls " .. tostring(ns.db.reminderPercent.scroll) .. "%"
             .. ", flasks " .. tostring(ns.db.reminderPercent.flask) .. "%"
+            .. ", other buffs " .. tostring(ns.db.reminderPercent.other) .. "%"
             .. ", weapon enhancements " .. tostring(ns.db.reminderPercent.weapon) .. "%",
         "",
         "Self-buffs",
@@ -48,7 +50,8 @@ function Diagnostics:Report()
         "",
         "Consumables",
         "Bag discovery: food " .. tostring(foods) .. ", scroll " .. tostring(scrolls)
-            .. ", flask " .. tostring(flasks) .. ", weapon enhancement " .. tostring(weapons),
+            .. ", flask " .. tostring(flasks) .. ", other buffs " .. tostring(others)
+            .. ", weapon enhancement " .. tostring(weapons),
         "Inventory: " .. tostring(ns.Inventory.lastStatus),
         "Item API: " .. tostring(ns.Inventory.lastItemInfoAPI or "not queried"),
         "Container API: " .. tostring(ns.Inventory.lastContainerAPI or "not queried"),

@@ -20,12 +20,12 @@ ns.defaults = {
     orientation = "VERTICAL",
     flyoutVerticalDirection = "AUTO",
     flyoutHorizontalDirection = "AUTO",
-    reminderPercent = { buff = 10, food = 10, scroll = 10, flask = 10, weapon = 10, buffBySpell = {}, item = {} },
+    reminderPercent = { buff = 10, food = 10, scroll = 10, flask = 10, other = 10, weapon = 10, buffBySpell = {}, item = {} },
     consumableAuras = {},
     excludedConsumables = {},
     excludedBuffs = {},
     buffDurations = {},
-    categories = { food = true, scroll = true, flask = true, weapon = true },
+    categories = { food = true, scroll = true, flask = true, other = true, weapon = true },
     maxAlternatives = 3,
     preferred = {},
 }
@@ -119,7 +119,7 @@ function ns.InitConfig()
     end
     BuffsmithDB.maxAlternatives = math.max(1, math.min(3,
         math.floor((tonumber(BuffsmithDB.maxAlternatives) or 3) + 0.5)))
-    for _, category in ipairs({ "buff", "food", "scroll", "flask", "weapon" }) do
+    for _, category in ipairs({ "buff", "food", "scroll", "flask", "other", "weapon" }) do
         BuffsmithDB.reminderPercent[category] = math.max(0, math.min(50,
             math.floor((tonumber(BuffsmithDB.reminderPercent[category]) or 10) + 0.5)))
     end
