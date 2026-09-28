@@ -215,6 +215,15 @@ local function eatingAuraNames()
     return eatingNames
 end
 
+-- Shown in the middle of the screen, like the game's own "can't do that"
+-- errors, when a click or the trigger is ignored mid-meal.
+Actions.EATING_NOTICE = "Waits until you finish eating or drinking."
+function Actions:ShowEatingNotice()
+    if UIErrorsFrame and UIErrorsFrame.AddMessage then
+        UIErrorsFrame:AddMessage("Buffsmith waits until you finish eating or drinking.", 1, 0.82, 0)
+    end
+end
+
 function Actions:IsEating()
     local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
     if not getter or ns.IsCombatLocked() then return false end

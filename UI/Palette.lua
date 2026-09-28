@@ -44,7 +44,7 @@ local function button(parent, small)
             GameTooltip:AddLine("Out of range.", 1, 0.35, 0.35)
         end
         if ns.Actions.eatingPaused and entry.kind ~= "notice" then
-            GameTooltip:AddLine("Eating or drinking: waits until you finish.", 1, 0.82, 0)
+            GameTooltip:AddLine(ns.Actions.EATING_NOTICE, 1, 0.82, 0)
         end
         GameTooltip:AddLine("Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
         if entry.kind ~= "notice" then
@@ -61,7 +61,9 @@ local function button(parent, small)
     end)
     frame:SetScript("PreClick", function(self, mouseButton)
         local entry = self.buffsmithEntry
-        if mouseButton == "LeftButton" and entry and not ns.Actions.eatingPaused then
+        if mouseButton == "LeftButton" and entry and ns.Actions.eatingPaused and entry.kind ~= "notice" then
+            ns.Actions:ShowEatingNotice()
+        elseif mouseButton == "LeftButton" and entry then
             ns.Actions:BeginAttempt(entry)
             if entry.kind == "item" then ns.Inventory:BeginConsumableUse(entry) end
         end
@@ -84,6 +86,7 @@ local function button(parent, small)
             ns.Actions:ReportPartyCoverage(entry)
             return
         end
+        if ns.Actions.eatingPaused then return end
         if entry and entry.kind == "item" then
             ns.Actions:Remember(entry.category, entry.itemID)
             ns.Inventory:FinishConsumableUse()

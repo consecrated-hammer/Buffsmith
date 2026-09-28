@@ -34,6 +34,11 @@ equal(ns.Actions:Configure(button, spell), false, "nothing is actionable while e
 equal(button.attributes.type1, nil, "the previous cast is cleared")
 equal(button.buffsmithEntry, spell, "the icon keeps its entry for the tooltip")
 
+local shown
+UIErrorsFrame = { AddMessage = function(_, text) shown = text end }
+ns.Actions:ShowEatingNotice()
+equal(shown, "Buffsmith waits until you finish eating or drinking.", "a blocked press says why on screen")
+
 auras[2] = { name = "Nourriture" }
 equal(ns.Actions:IsEating(), true, "the client's localised Food name counts")
 

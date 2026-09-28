@@ -99,13 +99,15 @@ local function button(name, direction)
     frame:Show()
     frame:SetScript("PreClick", function(self)
         local entry = self.buffsmithEntry
-        if entry then
+        if entry and ns.Actions.eatingPaused then
+            ns.Actions:ShowEatingNotice()
+        elseif entry then
             ns.Actions:BeginAttempt(entry)
             if entry.kind == "item" then ns.Inventory:BeginConsumableUse(entry) end
         end
     end)
     frame:SetScript("PostClick", function(self)
-        if ns.IsCombatLocked() then return end
+        if ns.IsCombatLocked() or ns.Actions.eatingPaused then return end
         local entry = self.buffsmithEntry
         if entry and entry.kind == "item" then
             ns.Actions:Remember(entry.category, entry.itemID)
