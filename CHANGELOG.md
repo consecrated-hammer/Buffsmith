@@ -7,6 +7,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-14
+
 ### Added
 
 - **Other buffs**, a new consumable category for elixirs, and for drinks or
@@ -17,6 +19,7 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Support Retail 12.1.5 (interface `120105`).
 - While you're eating or drinking, Buffsmith's icons and Buff trigger no
   longer cast anything, so a stray click or key press can't stand you up
   mid-meal. The bar stays visible, and pressing the trigger or clicking an
