@@ -91,7 +91,7 @@ function Bindings:Capture(callback)
 end
 
 local function button(name, direction)
-    local frame = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate")
+    local frame = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate,SecureHandlerStateTemplate")
     frame:SetSize(1, 1)
     frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", -20, -20)
     frame:SetAttribute("useOnKeyDown", false)
@@ -110,7 +110,7 @@ local function button(name, direction)
         if ns.IsCombatLocked() or ns.Actions.eatingPaused then return end
         local entry = self.buffsmithEntry
         if entry and entry.kind == "item" then
-            ns.Actions:Remember(entry.category, entry.itemID)
+            ns.Actions:RememberItem(entry)
             ns.Inventory:FinishConsumableUse()
         end
         Bindings.index = Bindings.index + direction

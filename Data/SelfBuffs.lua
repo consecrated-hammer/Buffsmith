@@ -244,6 +244,9 @@ end
 -- Actions:IsSuppressed hides them at each call site.
 function ns.KnownSelfBuffs()
     local entries, groups = {}, {}
+    local spec = tostring(GetSpecialization and GetSpecialization() or 0)
+    local preferred = ns.db and ns.db.preferred and ns.db.preferred[spec]
+    preferred = type(preferred) == "table" and preferred or {}
     for _, entry in ipairs(ns.KnownSelfBuffCandidates()) do
         if not entry.group then
             entries[#entries + 1] = entry
@@ -255,7 +258,9 @@ function ns.KnownSelfBuffs()
                 entries[#entries + 1] = group
             end
             group.members[#group.members + 1] = entry
-            if not group.offered and not excluded(entry) then group.offered = entry end
+            if not excluded(entry) and (not group.offered or preferred[entry.group] == entry.spellID) then
+                group.offered = entry
+            end
         end
     end
     for index = #entries, 1, -1 do

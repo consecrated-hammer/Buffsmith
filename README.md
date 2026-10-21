@@ -15,6 +15,14 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
 ## What it does
 
 - **Missing self-buffs**, picked up from your spellbook. Buffs shorter than a minute are listed but start switched off, so things like seals don't nag you.
+- **Rogue poisons** on Retail, with separate lethal and non-lethal reminders.
+  Each spec remembers the last poison you successfully applied in each group,
+  including casts from your action bars. Only learned poisons are offered.
+  Any active poison in a group satisfies that reminder until it nears expiry.
+  On WoW Forever, poison items appear under Weapon enhancements and coat a
+  bare main-hand weapon first, then a bare off-hand weapon. Buffsmith remembers
+  flyout choices for each hand and leaves existing coatings in place. These
+  item actions pause in combat.
 - **Consumables from your bags**, like food, flasks, elixirs, scrolls and weapon enhancements. Drinks and other items that give a timed buff, such as the Keg of Thunderbrew, go under **Other buffs**. Hover a consumable to see your other choices, and whichever you use becomes the new default.
 - **Party buffs.** Buffs you can give to your target, party or pet show up too, and grey out when the game can tell the player is out of range.
 - **Party coverage reminders.** When someone's missing a buff another class in the party could give, an icon says so. Clicking it reports it in chat; it never casts anything.

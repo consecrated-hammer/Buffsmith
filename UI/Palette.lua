@@ -4,7 +4,7 @@ ns.Palette = { buttons = {}, lastLayout = "not built" }
 local Palette = ns.Palette
 
 local function button(parent, small)
-    local frame = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate,BackdropTemplate")
+    local frame = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate,SecureHandlerStateTemplate,BackdropTemplate")
     frame:SetSize(small and 30 or 40, small and 30 or 40)
     frame.buffsmithSmall = small == true
     frame:SetAttribute("useOnKeyDown", false)
@@ -28,7 +28,12 @@ local function button(parent, small)
             GameTooltip:AddLine("Missing on: " .. tostring(entry.missingText), 0.8, 0.8, 0.8)
             GameTooltip:AddLine("Left-click: report to party. Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
         elseif entry.kind == "item" then
-            GameTooltip:AddLine("Bag item — left-click to use on yourself.", 0.7, 0.7, 0.7)
+            if entry.poison then
+                GameTooltip:AddLine(entry.targetSlot == 17 and "Left-click: coat your off-hand weapon."
+                    or "Left-click: coat your main-hand weapon.", 0.7, 0.7, 0.7)
+            else
+                GameTooltip:AddLine("Bag item — left-click to use on yourself.", 0.7, 0.7, 0.7)
+            end
         elseif entry.scope == "target" then
             GameTooltip:AddLine("Friendly target — left-click to cast on them.", 0.7, 0.7, 0.7)
         elseif entry.scope == "party" then
@@ -88,7 +93,7 @@ local function button(parent, small)
         end
         if ns.Actions.eatingPaused then return end
         if entry and entry.kind == "item" then
-            ns.Actions:Remember(entry.category, entry.itemID)
+            ns.Actions:RememberItem(entry)
             ns.Inventory:FinishConsumableUse()
             Palette:CloseFlyout()
         end

@@ -95,8 +95,20 @@ end
 
 local POTION = ITEM_SUBCLASS_CONSUMABLE_POTION or "Potion"
 
+local function isPoison(itemSubType, itemName)
+    if itemSubType == (ITEM_SUBCLASS_CONSUMABLE_POISON or "Poison") then return true end
+    if type(itemName) ~= "string" then return false end
+    -- Fallback for clients reporting poisons as Other. Do not match elixirs,
+    -- food or antidotes merely because their description mentions poison.
+    local family = string.lower(itemName):match("^(.+) poison[%s%dixv]*$")
+    return family == "instant" or family == "deadly" or family == "wound"
+        or family == "crippling" or family == "mind-numbing"
+        or family == "occult" or family == "sebacious"
+end
+
 local function classify(itemType, itemSubType, itemName, itemID)
     if itemType ~= ITEM_CLASS_CONSUMABLE and itemType ~= "Consumable" then return nil end
+    if itemSubType ~= POTION and isPoison(itemSubType, itemName) then return "weapon" end
     local food = ns.CONSUMABLE_CATEGORIES.food.subtypes[itemSubType] or itemSubType == "Food & Drink"
     if food then
         if foodProvidesBuff(itemID) then return "food" end
@@ -132,6 +144,20 @@ local function weaponEnchantStatus()
     if not ok or not (mainHand or offHand) then return nil end
     local remaining = math.max(tonumber(mainHand and mainExpires) or 0, tonumber(offHand and offExpires) or 0) / 1000
     return { state = "active", duration = 0, remaining = remaining > 0 and remaining or nil }
+end
+
+-- Poison items coat one weapon at a time without replacing existing coatings.
+function Inventory:PoisonTargetSlot()
+    if type(GetWeaponEnchantInfo) ~= "function" or type(GetInventoryItemID) ~= "function" then return nil end
+    local ok, mainHand, _, _, _, offHand = pcall(GetWeaponEnchantInfo)
+    if not ok then return nil end
+    if GetInventoryItemID("player", 16) and not ns.Plain(mainHand) then return 16 end
+    if OffhandHasWeapon and OffhandHasWeapon() and not ns.Plain(offHand) then return 17 end
+    return nil
+end
+
+function Inventory:WeaponStatus()
+    return weaponEnchantStatus()
 end
 
 -- Item cooldown APIs have existed in both namespace and global forms, with
@@ -238,7 +264,7 @@ function Inventory:Refresh()
                         if not record then
                             record = { kind = "item", itemID = itemID, name = name,
                                 itemLink = link or ("item:" .. itemID), icon = icon or 134400,
-                                category = category, count = 0 }
+                                category = category, count = 0, poison = category == "weapon" and isPoison(itemSubType, name) or nil }
                             found[category][itemID] = record
                         end
                         record.count = record.count + bagItemCount(bag, slot)
@@ -262,6 +288,7 @@ end
 
 function Inventory:BeginConsumableUse(entry)
     if not entry or entry.kind ~= "item" then return end
+    if entry.poison then self.pendingConsumable = nil; return end
     self.pendingConsumable = { itemID = entry.itemID, before = helpfulAuras() }
 end
 
@@ -318,7 +345,12 @@ function Inventory:Choices(category)
 end
 
 function Inventory:CategoryStatus(category)
-    if category == "weapon" then return weaponEnchantStatus() end
+    if category == "weapon" then
+        for _, item in ipairs(self:Choices(category)) do
+            if item.poison and self:PoisonTargetSlot() then return nil end
+        end
+        return weaponEnchantStatus()
+    end
     -- Other buffs are unrelated to each other (a stamina drink doesn't cover an
     -- agility elixir), so each item is judged by its own learned effect.
     if category == "other" then return nil end
@@ -367,6 +399,7 @@ function Inventory:ReminderSummary(category)
 end
 
 function Inventory:ReminderFor(item)
+    if item.poison then return "Reminds while an equipped weapon has no coating." end
     local aura = ns.db.consumableAuras[item.itemID]
     if aura and tonumber(aura.duration) and aura.duration > 0 then
         local seconds = math.floor(aura.duration * ns.Actions:Percent(item) / 100 + 0.5)

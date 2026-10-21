@@ -470,8 +470,22 @@ function Actions:BeginAttempt(entry)
 end
 
 function Actions:FinishAttempt(spellID)
+    if ns.IsSecret and ns.IsSecret(spellID) then return end
+    -- Successful poison casts from action bars also update the saved choice.
+    -- Use catalogue data here so combat casts never enumerate the spellbook.
+    local changed = false
+    local _, class = UnitClass("player")
+    if ns.TARGET ~= "Camelot" and class == "ROGUE" then
+        for _, entry in ipairs(ns.SELF_BUFFS and ns.SELF_BUFFS.ROGUE or {}) do
+            if entry.spellID == spellID then
+                self:Remember(entry.group, entry.spellID)
+                changed = true
+            end
+        end
+    end
     local attempt = self.lastAttempt
     if attempt and attempt.spellID and attempt.spellID == spellID then self.lastAttempt = nil end
+    return changed
 end
 
 function Actions:ExpireAttempt(entry)
@@ -517,10 +531,13 @@ function Actions:ResetDismissals()
 end
 
 function Actions:Preferred(category, choices)
-    local preferred = ns.db.preferred[currentSpecKey()]
-    preferred = type(preferred) == "table" and preferred[category] or nil
+    local saved = ns.db.preferred[currentSpecKey()]
+    saved = type(saved) == "table" and saved or {}
+    local preferred = saved[category]
     for index, choice in ipairs(choices) do
-        if choice.itemID == preferred and not self:IsSuppressed(choice) then return index end
+        local selected = choice.poison and saved["poison:" .. tostring(choice.targetSlot)] or preferred
+        selected = selected or preferred
+        if choice.itemID == selected and not self:IsSuppressed(choice) then return index end
     end
     for index, choice in ipairs(choices) do
         if not self:IsSuppressed(choice) then return index end
@@ -538,9 +555,21 @@ function Actions:VisibleChoices(category)
         local display = shouldShow({ kind = "item", category = category }, categoryStatus)
         if not display then return choices end
     end
-    for _, choice in ipairs(ns.Inventory:Choices(category)) do
+    for _, item in ipairs(ns.Inventory:Choices(category)) do
+        local choice = item
+        if item.poison then
+            -- Keep each configured action's weapon target stable when another
+            -- bar or keybinding query resolves the next bare hand.
+            choice = {}
+            for key, value in pairs(item) do choice[key] = value end
+            choice.targetSlot = ns.Inventory:PoisonTargetSlot()
+        end
         if ns.db.excludedConsumables[choice.itemID] then
             choice.state = "excluded"
+        elseif choice.poison and not choice.targetSlot then
+            choice.state = "active"
+        elseif category == "weapon" and not choice.poison and ns.Inventory:WeaponStatus() then
+            choice.state = "active"
         else
             local cooldown = ns.Inventory:CooldownRemaining(choice)
             if cooldown then
@@ -550,7 +579,7 @@ function Actions:VisibleChoices(category)
                 choice.state = "cooldown"
                 ns.Inventory:RefreshAfterCooldown(choice, cooldown)
             else
-                local mapping = ns.db.consumableAuras[choice.itemID]
+                local mapping = not choice.poison and ns.db.consumableAuras[choice.itemID]
                 if mapping then
                     local status = auraStatus("player", mapping.spellID, nil, mapping.name)
                     self:ConsiderReminder(choice, status)
@@ -601,23 +630,44 @@ function Actions:ReminderFor(entry)
     return "Time left is learned while the buff is active."
 end
 
+function Actions:RememberItem(entry)
+    self:Remember(entry.category, entry.itemID)
+    if entry.poison and entry.targetSlot then
+        self:Remember("poison:" .. entry.targetSlot, entry.itemID)
+    end
+end
+
 function Actions:Remember(category, itemID)
     local key = currentSpecKey()
-    ns.db.preferred[key] = ns.db.preferred[key] or {}
+    if type(ns.db.preferred[key]) ~= "table" then ns.db.preferred[key] = {} end
     ns.db.preferred[key][category] = itemID
 end
 
 function Actions:Configure(button, entry)
     if ns.IsCombatLocked() then return false end
+    -- Securely disarm weapon-targeted item actions on combat entry, even if
+    -- the bar stays visible. The normal out-of-combat refresh arms them again.
+    if entry.poison and not button.buffsmithPoisonGuard then
+        button:SetAttribute("_onstate-poisoncombat", [[
+            if newstate == "combat" and self:GetAttribute("buffsmith-poison") then
+                self:SetAttribute("type1", nil)
+            end
+        ]])
+        RegisterStateDriver(button, "poisoncombat", "[combat] combat; safe")
+        button.buffsmithPoisonGuard = true
+    end
+    button:SetAttribute("buffsmith-poison", entry.poison == true)
     for mouseButton = 1, 5 do
         button:SetAttribute("type" .. mouseButton, nil)
         button:SetAttribute("spell" .. mouseButton, nil)
         button:SetAttribute("item" .. mouseButton, nil)
+        button:SetAttribute("target-slot" .. mouseButton, nil)
         button:SetAttribute("unit" .. mouseButton, entry.unit or "player")
     end
     -- Unqualified secure attributes are fallbacks for every mouse button.
     -- Only LeftButton is an action; right-click is strictly a local dismissal.
     button:SetAttribute("type", nil); button:SetAttribute("spell", nil); button:SetAttribute("item", nil)
+    button:SetAttribute("target-slot", nil)
     button:SetAttribute("unit", entry.unit or "player")
     if self.eatingPaused and entry.kind ~= "none" then
         button.buffsmithEntry = entry
@@ -629,6 +679,7 @@ function Actions:Configure(button, entry)
         local item = entry.itemLink or ("item:" .. entry.itemID)
         button:SetAttribute("type1", "item")
         button:SetAttribute("item1", item)
+        button:SetAttribute("target-slot1", entry.targetSlot)
     else
         -- Informational party-coverage icons deliberately have no secure
         -- action, but still need their entry for tooltip, reporting and

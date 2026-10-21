@@ -7,6 +7,18 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-21
+
+### Added
+
+- Rogue poison reminders on Retail, with separate lethal and non-lethal
+  groups. Each spec remembers your last successfully applied poison in each
+  group, including casts from your action bars.
+- Poison items in Weapon enhancements for WoW Forever. The action coats a
+  bare main-hand weapon first, then a bare off-hand weapon, and remembers
+  the poison item chosen for each hand. Existing coatings are preserved.
+  Poison-item actions pause in combat.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added

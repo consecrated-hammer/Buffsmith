@@ -258,3 +258,50 @@ do
 end
 
 print("self-buff tests passed")
+
+-- Retail poison families remember successful applications, independently per spec.
+do
+    playerClass, knownIDs, book, auras = "ROGUE", {}, nil, {}
+    local spec = 1
+    GetSpecialization = function() return spec end
+    local db = { preferred = {}, excludedBuffs = {}, buffDurations = {},
+        reminderPercent = { buff = 10, buffBySpell = {} }, ignoreBuffsInRestedAreas = false }
+    local ns = load("Mainline", db)
+    for _, entry in ipairs(ns.SELF_BUFFS.ROGUE) do knownIDs[entry.spellID] = true end
+    ns.ResetSpellbook()
+    assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
+    equal(#ns.KnownSelfBuffCandidates(), 7, "all learned Retail poisons are configurable")
+    equal(#ns.KnownSelfBuffs(), 2, "one lethal and one non-lethal action")
+    ns.Actions:FinishAttempt(8679)
+    ns.Actions:FinishAttempt(381637)
+    local offered = ns.KnownSelfBuffs()
+    equal(offered[1].spellID, 8679, "last applied lethal poison offered")
+    equal(offered[2].spellID, 381637, "last applied non-lethal poison offered")
+    equal(offered[1].target, false, "poisons never offered to allies")
+    spec = 2
+    equal(ns.KnownSelfBuffs()[1].spellID, 2823, "another spec has its own choice")
+    spec = 1
+    local reloaded = load("Mainline", db)
+    equal(reloaded.KnownSelfBuffs()[1].spellID, 8679, "choice survives reload")
+    db.excludedBuffs[8679] = true
+    equal(ns.KnownSelfBuffs()[1].spellID, 2823, "ignored preference falls back")
+    db.excludedBuffs[8679] = nil
+    knownIDs[8679] = nil
+    ns.ResetSpellbook()
+    equal(ns.KnownSelfBuffs()[1].spellID, 2823, "unlearned preference falls back")
+    knownIDs[8679] = true
+    ns.ResetSpellbook()
+    auras = { player = { [315584] = { duration = 3600, expirationTime = 3600 } } }
+    IsInGroup = function() return false end
+    UnitExists = function(unit) return unit == "player" end
+    GetTime = function() return 100 end
+    equal(#ns.Actions:Entries(), 1, "active lethal poison suppresses lethal alternatives only")
+    auras.player[315584].expirationTime = 110
+    equal(#ns.Actions:Entries(), 2, "expiring poison prompts remembered replacement")
+    db.preferred["1"] = false
+    equal(#ns.KnownSelfBuffs(), 2, "invalid saved spec preference does not break grouping")
+    ns.Actions:FinishAttempt(8679)
+    ns.Actions:FinishAttempt(1459)
+    equal(db.preferred["1"]["rogue-lethal"], 8679, "unrelated spells preserve preference")
+end
+print("poison self-buff tests passed")

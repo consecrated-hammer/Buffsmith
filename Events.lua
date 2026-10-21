@@ -5,6 +5,8 @@ local rangeElapsed = 0
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("BAG_UPDATE_DELAYED")
+frame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+frame:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
 frame:RegisterEvent("SPELLS_CHANGED")
 frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 pcall(frame.RegisterEvent, frame, "SPELL_RANGE_CHECK_UPDATE")
@@ -57,7 +59,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
     elseif event == "UI_ERROR_MESSAGE" then
         if ns.Actions:HandleAuraBounce(arg2) and not ns.IsCombatLocked() then refresh() end
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
-        ns.Actions:FinishAttempt(arg3)
+        if ns.Actions:FinishAttempt(arg3) then refresh() end
     elseif event == "UNIT_AURA" then
         if arg1 == "player" then ns.Thanks:Observe(false, arg2) end
         if arg1 == "player" or arg1 == "target" or arg1 == "pet"
@@ -65,7 +67,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
         ns.Actions:ResetDismissals()
         refresh()
-    elseif event == "BAG_UPDATE_DELAYED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
+    elseif event == "BAG_UPDATE_DELAYED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
         or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "MINIMAP_UPDATE_TRACKING"
         or event == "PLAYER_REGEN_ENABLED" then
