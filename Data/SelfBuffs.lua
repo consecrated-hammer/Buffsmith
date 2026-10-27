@@ -12,6 +12,8 @@ local addonName, ns = ...
 --   target   the effect is safe to cast on friendly players and pets.
 --   short    lasts under a minute, so it is listed but off by default.  A
 --            duration observed on the player replaces this flag.
+--   settingsKey optional separate preference identity for a changed effect;
+--            used for exclusions, reminder thresholds and learned duration.
 ns.SELF_BUFFS = {
     DRUID = {
         { spellID = 1126, auraID = 1126,
@@ -35,6 +37,11 @@ ns.SELF_BUFFS = {
         { spellID = 19740, auraID = 19740, label = "Blessing of Might", target = true, group = "paladin-blessing" },
         { spellID = 20217, auraID = 20217, label = "Blessing of Kings", target = true, group = "paladin-blessing" },
         { spellID = 19742, auraID = 19742, label = "Blessing of Wisdom", target = true, group = "paladin-blessing" },
+        -- 70425 renamed these IDs and removed blessing exclusivity. Only the
+        -- individual spell is offered, for self, and only by explicit opt-in.
+        -- A new preference identity leaves old blessing exclusions untouched.
+        { spellID = 1038, auraIDs = { 1038, 25895 }, label = "Salvation",
+            minBuild = 70425, defaultOff = true, settingsKey = "forever-salvation" },
     },
     PRIEST = {
         { spellID = 1243, auraID = 1243, label = "Power Word: Fortitude", target = true },
@@ -156,6 +163,12 @@ end
 -- rank IDs are not yet verified.  Retail keeps its exact-ID gate so a renamed
 -- or off-spec ability never arms a secure button.
 local function resolve(entry, book)
+    if entry.minBuild then
+        local build
+        if GetBuildInfo then local _, current = GetBuildInfo(); build = ns.Plain(current) end
+        -- A missing client version is not proof the blessing became independent.
+        if not tonumber(build) or tonumber(build) < entry.minBuild then return nil, "requires newer Forever build" end
+    end
     local found, source
     -- An off-spec item is never armed.  On Retail an enumerated spellbook is
     -- authoritative; Forever's can list only part of a legacy class book, so
@@ -196,7 +209,7 @@ end
 ns.SHORT_BUFF_SECONDS = 60
 
 function ns.IsShortBuff(entry)
-    local learned = ns.db and ns.db.buffDurations and ns.db.buffDurations[entry.spellID]
+    local learned = ns.db and ns.db.buffDurations and ns.db.buffDurations[entry.settingsKey or entry.spellID]
     if type(learned) == "number" and learned > 0 then return learned < ns.SHORT_BUFF_SECONDS end
     return entry.short == true
 end
@@ -205,7 +218,7 @@ end
 -- With no choice recorded, a short buff or an entry marked defaultOff (such as
 -- non-gathering tracking) is off, and anything else is on.
 function ns.IsBuffExcluded(entry)
-    local choice = ns.db and ns.db.excludedBuffs and ns.db.excludedBuffs[entry.spellID]
+    local choice = ns.db and ns.db.excludedBuffs and ns.db.excludedBuffs[entry.settingsKey or entry.spellID]
     if choice ~= nil then return choice == true end
     return entry.defaultOff == true or ns.IsShortBuff(entry)
 end
@@ -229,6 +242,7 @@ function ns.KnownSelfBuffCandidates()
                 permanent = entry.permanent == true,
                 target = entry.target == true,
                 group = entry.group, short = entry.short == true,
+                defaultOff = entry.defaultOff == true, settingsKey = entry.settingsKey,
                 name = name, icon = icon,
             }
             if castID ~= entry.spellID then source = source .. " " .. castID end

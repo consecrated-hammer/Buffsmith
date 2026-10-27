@@ -7,6 +7,17 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-28
+
+### Added
+
+- Optional Salvation reminders for yourself on WoW Forever build 70425 or
+  later. They start off, stay independent of Might/Kings/Wisdom, and recognise
+  Salvation or Mass Salvation on you. Turning them on will remind again after
+  Revoke; ignore Salvation to stop maintaining it. Old blessing exclusions
+  are retained separately. Mass Salvation casts and raid coverage are deferred.
+  Not yet checked in the Forever client.
+
 ## [1.2.0] - 2026-10-21
 
 ### Added

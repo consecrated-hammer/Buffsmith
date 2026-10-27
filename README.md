@@ -63,6 +63,7 @@ If you do keep it up in combat, it stays as it was when combat started. Buffsmit
 
 - **Tracking on WoW Forever is one at a time.** The game only allows one tracking type there, so you pick which one Buffsmith offers. Selecting a different one puts it on the bar so a click swaps over.
 - **Thank-you needs a known caster.** If the game doesn't say who buffed you, Buffsmith won't guess. On WoW Forever that happens more often, and there's an optional untargeted emote for it.
+- **Salvation on WoW Forever is self-only.** Paladins can tick **Salvation** on Buffs (off by default, client build 70425 or later) to keep it on themselves, separately from other blessings. Salvation or Mass Salvation on you counts, and Revoke brings the reminder back unless you ignore Salvation. There are no group reminders or Mass Salvation casts.
 - **A stronger buff wins.** If the game rejects a buff because you already have a stronger one, Buffsmith hides it until you change zones instead of asking again.
 
 ## Licence

@@ -92,6 +92,7 @@ local function reminderRow(panel, y, item)
         ns.RefreshAll()
         if item.changed then item.changed() end
     end)
+    if item.hint then UI.AttachHint(row, item.label, item.hint) end
     refresh()
     row.refresh = refresh
     return row
@@ -259,14 +260,16 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
         local shown = 0
         for _, buff in ipairs(ns.KnownSelfBuffCandidates()) do
             local entry = buff
-            if ns.db.excludedBuffs[entry.spellID] ~= true then
+            if ns.db.excludedBuffs[entry.settingsKey or entry.spellID] ~= true then
                 shown = shown + 1
                 y = pool:Place(entry.spellID .. ":" .. entry.castID, y, function() return {
-                    label = entry.name, icon = entry.icon, permanent = entry.permanent,
+                    label = entry.name .. (entry.settingsKey and " (self only)" or ""),
+                    hint = entry.settingsKey and "Off by default. When enabled, Revoke brings the reminder back. Ignore Salvation to leave it off." or nil,
+                    icon = entry.icon, permanent = entry.permanent,
                     enabled = function() return not ns.IsBuffExcluded(entry) end,
-                    toggle = function() ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry) end,
+                    toggle = function() ns.db.excludedBuffs[entry.settingsKey or entry.spellID] = not ns.IsBuffExcluded(entry) end,
                     get = function() return ns.Actions:Percent(entry) end,
-                    set = function(value) ns.db.reminderPercent.buffBySpell[entry.spellID] = value end,
+                    set = function(value) ns.db.reminderPercent.buffBySpell[entry.settingsKey or entry.spellID] = value end,
                     result = function() return ns.Actions:ReminderFor(entry) end,
                     changed = function() panel.hcRefreshAll() end,
                 } end)
