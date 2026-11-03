@@ -46,7 +46,7 @@ local function learnDuration(unit, entry, status)
     if unit ~= "player" or status.state ~= "active" then return end
     local duration = tonumber(status.duration)
     if not duration or duration <= 0 or not (ns.db and ns.db.buffDurations) then return end
-    ns.db.buffDurations[entry.settingsKey or entry.spellID] = math.floor(duration + 0.5)
+    ns.db.buffDurations[entry.spellID] = math.floor(duration + 0.5)
 end
 
 -- A grouped entry is satisfied by any known member of its group.
@@ -250,16 +250,12 @@ function Actions:Entries()
         return entries
     end
     for _, entry in ipairs(ns.KnownSelfBuffs()) do
-        -- Independent opt-in actions must not scan auras or schedule reminder
-        -- timers while off. Existing short-buff duration learning is retained.
-        if not entry.settingsKey or not self:IsSuppressed(entry) then
         local status = entryStatus("player", entry)
         self:ConsiderReminder(entry, status)
         local display, state = shouldShow(entry, status)
         entry.state, entry.auraDuration, entry.auraRemaining = state, status.duration, status.remaining
         ns.lastAuraProbe[#ns.lastAuraProbe + 1] = entry.name .. "=" .. entry.state
         if display and not self:IsSuppressed(entry) then entries[#entries + 1] = entry end
-        end
     end
     -- Tracking that is off; Tracking:Entries applies ticks and dismissals.
     ns.lastTrackingProbe = {}
@@ -352,7 +348,7 @@ function Actions:Percent(entry)
         value = reminder.item and reminder.item[entry.itemID]
         value = value == nil and reminder[entry.category] or value
     else
-        value = reminder.buffBySpell and reminder.buffBySpell[entry.settingsKey or entry.spellID]
+        value = reminder.buffBySpell and reminder.buffBySpell[entry.spellID]
         value = value == nil and reminder.buff or value
     end
     return math.max(0, math.min(50, tonumber(value) or 10))
@@ -405,7 +401,7 @@ function Actions:Ignore(entry)
     if entry.kind == "item" then
         ns.db.excludedConsumables[entry.itemID] = true
     elseif entry.kind == "spell" then
-        ns.db.excludedBuffs[entry.settingsKey or entry.spellID] = true
+        ns.db.excludedBuffs[entry.spellID] = true
     else
         self:Dismiss(entry)
     end
@@ -421,7 +417,7 @@ function Actions:IgnoredEntries()
     local currentBuffs
     if type(ns.KnownSelfBuffCandidates) == "function" then
         currentBuffs = {}
-        for _, entry in ipairs(ns.KnownSelfBuffCandidates()) do currentBuffs[entry.settingsKey or entry.spellID] = entry end
+        for _, entry in ipairs(ns.KnownSelfBuffCandidates()) do currentBuffs[entry.spellID] = entry end
         -- Tracking uses the same exclusion store, but is not a self-buff.
         -- Keep an ignored tracker restorable, especially on Retail where
         -- several trackers can be independently disabled.

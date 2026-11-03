@@ -11,7 +11,6 @@ local SPELL_NAMES = {
 
 -- World state each scenario rewrites.
 local playerClass, knownIDs, book, auras = "PALADIN", {}, nil, {}
-GetBuildInfo = function() return "1.60.1", "70425" end
 
 local function install()
     C_Spell = { GetSpellInfo = function(spellID)
@@ -259,23 +258,15 @@ do
     equal(#ns.Actions:IgnoredEntries(), 0, "nothing remains ignored")
 end
 
--- Salvation is independent and opt-in, with a separate preference identity.
--- Applying/removing either Salvation aura must not disturb blessing status.
+-- Removed Salvation must stay absent even with stale spellbook/API results
+-- and saved opt-in or ignored preferences from 1.3.0.
 do
-    playerClass, knownIDs, book = "PALADIN", { [1038] = true, [19740] = true }, nil
-    local db = { excludedBuffs = { [1038] = false }, excludedConsumables = {},
-        reminderPercent = { buff = 10, buffBySpell = { [1038] = 50 } },
-        buffDurations = { [1038] = 20 }, showTargetBuffs = true,
-        showPartyBuffs = true, showPetBuffs = true, showPartyCoverage = false }
-    local ns = load("Camelot", db)
-    local salvation = byLabel(ns.KnownSelfBuffCandidates()).Salvation
-    assert(salvation, "Salvation is available on the new Forever build")
-    equal(salvation.group, nil, "Salvation is outside paladin-blessing")
-    equal(salvation.target, false, "Salvation maintenance is self only")
-    equal(ns.IsBuffExcluded(salvation), true, "old blessing preference cannot enable Salvation")
-    db.excludedBuffs[1038] = true
-    db.excludedBuffs[salvation.settingsKey] = false
-    equal(ns.IsBuffExcluded(salvation), false, "new explicit preference overrides only the new identity")
+    playerClass, knownIDs = "PALADIN", { [1038] = true, [25895] = true, [19740] = true }
+    book = {
+        { itemType = 1, spellID = 1038, name = "Salvation" },
+        { itemType = 1, spellID = 25895, name = "Mass Salvation" },
+        { itemType = 1, spellID = 19740, name = "Blessing of Might" },
+    }
     GetTime = function() return 100 end
     IsResting, IsInGroup = function() return false end, function() return true end
     UnitExists = function() return true end
@@ -283,49 +274,46 @@ do
     UnitIsDeadOrGhost = function() return false end
     UnitIsUnit = function(a, b) return a == b end
     UnitGUID = function(unit) return "guid-" .. unit end
-    ns.Inventory = {}
-    assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
-    equal(ns.Actions:Percent(salvation), 10, "old blessing reminder threshold is not reused")
-    equal(ns.IsShortBuff(salvation), false, "old blessing duration is not reused")
-    local function offered()
-        local results = {}
-        for _, entry in ipairs(ns.Actions:Entries()) do
-            if entry.spellID == 1038 then results[#results + 1] = entry.unit or "player" end
+    for _, target in ipairs({ "Camelot", "Mainline" }) do
+        for _, ignored in ipairs({ false, true }) do
+            local db = { excludedBuffs = { [1038] = ignored, ["forever-salvation"] = ignored },
+                excludedConsumables = {}, reminderPercent = { buff = 10,
+                    buffBySpell = { [1038] = 50, ["forever-salvation"] = 25 } },
+                buffDurations = { [1038] = 20, ["forever-salvation"] = 3600 },
+                showTargetBuffs = true, showPartyBuffs = true, showPetBuffs = true,
+                showPartyCoverage = true }
+            local ns = load(target, db)
+            ns.Inventory = {}
+            assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
+            local function noSalvation(entries, label)
+                for _, entry in ipairs(entries) do
+                    assert(entry.spellID ~= 1038 and entry.spellID ~= 25895, label)
+                end
+            end
+            noSalvation(ns.KnownSelfBuffCandidates(), "removed spells absent from settings")
+            noSalvation(ns.KnownSelfBuffs(), "removed spells absent from self buffs")
+            equal(#ns.Actions:IgnoredEntries(), 0, "obsolete exclusions aren't restorable")
+            auras = { player = { [1038] = { duration = 3600, expirationTime = 3700 } } }
+            local entries = ns.Actions:Entries()
+            noSalvation(entries, "removed spells create no actions or party notices")
+            if target == "Camelot" then
+                local might = byLabel(ns.KnownSelfBuffCandidates())["Blessing of Might"]
+                assert(might, "Might remains configurable")
+                equal(ns.Actions:Percent(might), 10, "obsolete thresholds don't affect Might")
+                equal(ns.IsShortBuff(might), false, "obsolete duration doesn't affect Might")
+                local offered = false
+                for _, entry in ipairs(entries) do
+                    if entry.spellID == 19740 and not entry.unit then offered = true end
+                end
+                equal(offered, true, "stale Salvation aura doesn't satisfy Might")
+            end
+            equal(db.excludedBuffs["forever-salvation"], ignored, "old named preference retained")
+            equal(db.excludedBuffs[1038], ignored, "old numeric preference retained")
+            equal(db.buffDurations["forever-salvation"], 3600, "old duration retained")
+            equal(db.reminderPercent.buffBySpell["forever-salvation"], 25, "old threshold retained")
         end
-        return table.concat(results, ",")
     end
-    local getter, personalReads = C_UnitAuras.GetUnitAuraBySpellID, 0
-    C_UnitAuras.GetUnitAuraBySpellID = function(unit, id)
-        if id == 1038 or id == 25895 then personalReads = personalReads + 1 end
-        return getter(unit, id)
-    end
-    db.excludedBuffs[salvation.settingsKey] = nil
-    equal(offered(), "", "default-off Salvation creates no reminder")
-    equal(personalReads, 0, "default-off Salvation performs no aura reads")
-    db.excludedBuffs[salvation.settingsKey] = false
-    auras = { player = { [19740] = { duration = 0 } } }
-    equal(offered(), "player", "Might does not satisfy Salvation; no ally or pet actions")
-    auras.player[1038] = { duration = 3600, expirationTime = 3700 }
-    equal(offered(), "", "Might and Salvation coexist")
-    equal(db.buffDurations[salvation.settingsKey], 3600, "new duration has a separate identity")
-    equal(db.buffDurations[1038], 20, "old duration is retained untouched")
-    auras.player[1038] = nil
-    equal(offered(), "player", "Revoke restores an opted-in self reminder")
-    equal(auras.player[19740].duration, 0, "ordinary blessing stays active")
-    auras.player[25895] = { duration = 3600, expirationTime = 3700 }
-    equal(offered(), "", "Mass Salvation satisfies the individual effect")
-    ns.Actions:Ignore(salvation)
-    equal(db.excludedBuffs[salvation.settingsKey], true, "ignore persists under the new identity")
-    equal(db.excludedBuffs[1038], true, "old identity is untouched")
-    local ignored = ns.Actions:IgnoredEntries()
-    equal(#ignored, 1, "new exclusion remains restorable without exposing obsolete blessing exclusion")
-    equal(ignored[1].name, "Salvation", "ignored named preference has current spell metadata")
-    ns.Actions:Restore("spell", ignored[1].id)
-    equal(ns.IsBuffExcluded(salvation), false, "restore explicitly opts in again")
-    GetBuildInfo = function() return "1.60.1", "70374" end
-    equal(byLabel(load("Camelot", db).KnownSelfBuffCandidates()).Salvation, nil, "older blessing-era build excluded")
-    GetBuildInfo = function() return "1.60.1", "70425" end
-    equal(byLabel(load("Mainline", db).KnownSelfBuffCandidates()).Salvation, nil, "Retail never sees Forever Salvation")
+    book, auras = nil, {}
 end
 
 print("self-buff tests passed")

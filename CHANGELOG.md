@@ -7,6 +7,14 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-04
+
+### Removed
+
+- Obsolete Forever Salvation reminders following Blizzard's removal of
+  Salvation, Mass Salvation and Revoke. Existing saved preferences are retained
+  but no longer create reminders or settings entries.
+
 ## [1.3.0] - 2026-10-28
 
 ### Added
