@@ -1,8 +1,7 @@
 local addonName, ns = ...
 
--- Class-level party coverage.  This is intentionally an availability model:
--- another player's spellbook is private, so Buffsmith identifies a party class
--- that normally provides the effect rather than claiming the spell is known.
+-- Another player's spellbook is private. Forever coverage requires an observed
+-- aura attributed to the provider before offering their buff as a reminder.
 ns.PARTY_BUFFS = {
     DRUID = {
         { spellID = 1126, auraID = 1126, auraIDs = { 1126, 5232, 6756, 5234, 8907, 9884, 9885, 26990, 48469 }, label = "Mark of the Wild", icon = 136078 },
@@ -19,6 +18,6 @@ ns.PARTY_BUFFS = {
         { spellID = 1243, auraID = 1243, label = "Power Word: Fortitude", icon = 135987 },
     },
     WARLOCK = {
-        { spellID = 6307, auraID = 6307, label = "Blood Pact", icon = 136185 },
+        { spellID = 6307, auraID = 6307, label = "Blood Pact", icon = 136185, pet = true },
     },
 }

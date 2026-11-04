@@ -26,6 +26,10 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
 - **Consumables from your bags**, like food, flasks, elixirs, scrolls and weapon enhancements. Drinks and other items that give a timed buff, such as the Keg of Thunderbrew, go under **Other buffs**. Hover a consumable to see your other choices, and whichever you use becomes the new default.
 - **Party buffs.** Buffs you can give to your target, party or pet show up too, and grey out when the game can tell the player is out of range.
 - **Party coverage reminders.** When someone's missing a buff another class in the party could give, an icon says so. Clicking it reports it in chat; it never casts anything.
+  On Forever, a party member is only listed after Buffsmith sees a buff
+  attributed to them during the current group session. Untrained spells aren't
+  assumed from class or level. Blood Pact also requires the pet that supplied it.
+  If the client omits the caster, that buff cannot establish availability.
 - **Tracking.** Find Herbs, Find Minerals and other tracking spells can sit on the bar until you turn them on. Gathering tracking starts ticked, class and racial tracking start off.
 - **One key for the lot.** Bind **Buff trigger** in the game's key bindings and press it to work down the bar one missing buff at a time.
 - **Optional thank-you.** Buffsmith can whisper, say, post in party or emote a thanks when someone buffs you. It's off by default.

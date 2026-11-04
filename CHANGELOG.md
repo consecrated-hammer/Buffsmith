@@ -7,6 +7,15 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-11-05
+
+### Fixed
+
+- Forever party reminders no longer assume every member of a class knows its
+  buffs. Providers must first be observed supplying the buff during the current
+  group session. Blood Pact also requires the pet that supplied it. If the
+  client omits caster attribution, Buffsmith holds back the reminder.
+
 ## [1.3.1] - 2026-11-04
 
 ### Removed

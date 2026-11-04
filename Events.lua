@@ -18,6 +18,7 @@ frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("UNIT_AURA")
+frame:RegisterEvent("UNIT_PET")
 -- Offline and phased party members stop being offered as buff targets.
 pcall(frame.RegisterEvent, frame, "UNIT_CONNECTION")
 pcall(frame.RegisterEvent, frame, "UNIT_PHASE")
@@ -63,13 +64,14 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
     elseif event == "UNIT_AURA" then
         if arg1 == "player" then ns.Thanks:Observe(false, arg2) end
         if arg1 == "player" or arg1 == "target" or arg1 == "pet"
+            or string.match(tostring(arg1), "^partypet%d+$")
             or string.match(tostring(arg1), "^party%d+pet$") or string.match(tostring(arg1), "^party%d$") then refresh() end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
         ns.Actions:ResetDismissals()
         refresh()
     elseif event == "BAG_UPDATE_DELAYED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
-        or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "MINIMAP_UPDATE_TRACKING"
+        or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "UNIT_PET" or event == "MINIMAP_UPDATE_TRACKING"
         or event == "PLAYER_REGEN_ENABLED" then
         if event == "SPELLS_CHANGED" then ns.ResetSpellbook() end
         refresh()

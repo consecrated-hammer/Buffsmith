@@ -9,13 +9,15 @@ local function currentSpecKey()
     return tostring(spec or 0)
 end
 
-local function auraStatus(unit, auraID, auraIDs, auraName)
+local function auraStatus(unit, auraID, auraIDs, auraName, withSource)
     if ns.IsCombatLocked() then return { state = "unknown" } end
     local function active(aura)
         local duration = tonumber(ns.Plain(aura.duration)) or 0
         local expiration = tonumber(ns.Plain(aura.expirationTime)) or 0
         local remaining = duration > 0 and expiration > 0 and math.max(0, expiration - GetTime()) or nil
-        return { state = "active", duration = duration, remaining = remaining }
+        local source = withSource and ns.Plain(aura.sourceUnit)
+        local sourceGUID = type(source) == "string" and UnitGUID and ns.Plain(UnitGUID(source)) or nil
+        return { state = "active", duration = duration, remaining = remaining, sourceGUID = sourceGUID }
     end
     local getter = C_UnitAuras and C_UnitAuras.GetUnitAuraBySpellID
     if getter then
@@ -155,10 +157,26 @@ function Actions:PartyCoverage()
     local coverage = {}
     ns.lastCoverageProbe = {}
     if not ns.db.showPartyCoverage or not (IsInGroup and IsInGroup()) then
+        self.coverageEvidence = {}
         ns.lastCoverageProbe[1] = "disabled or solo"
         return coverage
     end
-    local units, candidates = partyUnits(), {}
+    local units, candidates, evidence = partyUnits(), {}, {}
+    -- Preserve observations for actual roster members even while they are dead,
+    -- phased or out of range. Only visible, living members can be offered below.
+    if ns.TARGET == "Camelot" then
+        for index = 1, 4 do
+            local unit = "party" .. index
+            local guid = UnitExists(unit) and UnitGUID and ns.Plain(UnitGUID(unit))
+            if type(guid) == "string" then
+                local _, class = UnitClass(unit)
+                for _, buff in ipairs(ns.PARTY_BUFFS[class] or {}) do
+                    local key = guid .. ":" .. buff.spellID
+                    evidence[key] = (self.coverageEvidence or {})[key]
+                end
+            end
+        end
+    end
     for _, provider in ipairs(units) do
         if provider ~= "player" then
             local _, class = UnitClass(provider)
@@ -171,24 +189,50 @@ function Actions:PartyCoverage()
                         providerClass = class, providers = {}, missing = {} }
                     candidates[key] = candidate
                 end
-                candidate.providers[#candidate.providers + 1] = UnitName(provider) or provider
+                local guid = UnitGUID and ns.Plain(UnitGUID(provider))
+                local sourceGUID = guid
+                if buff.pet then
+                    local pet = provider:gsub("^party", "partypet")
+                    sourceGUID = friendlyPet(pet)
+                        and UnitGUID and ns.Plain(UnitGUID(pet)) or nil
+                end
+                candidate.providers[#candidate.providers + 1] = {
+                    name = UnitName(provider) or provider, guid = guid, sourceGUID = sourceGUID,
+                }
             end
         end
     end
     for _, candidate in pairs(candidates) do
+        local sources = {}
         for _, unit in ipairs(units) do
-            local status = auraStatus(unit, candidate.auraID, candidate.auraIDs, candidate.name)
+            local status = auraStatus(unit, candidate.auraID, candidate.auraIDs, candidate.name, ns.TARGET == "Camelot")
+            if type(status.sourceGUID) == "string" then sources[status.sourceGUID] = true end
             local display = shouldShow(candidate, status)
             if display then candidate.missing[#candidate.missing + 1] = UnitName(unit) or unit end
         end
-        if #candidate.missing > 0 and not self:IsSuppressed(candidate) then
+        local providers = {}
+        for _, provider in ipairs(candidate.providers) do
+            local available = ns.TARGET ~= "Camelot"
+            if ns.TARGET == "Camelot" and type(provider.guid) == "string"
+                and type(provider.sourceGUID) == "string" then
+                local key = provider.guid .. ":" .. candidate.spellID
+                available = sources[provider.sourceGUID] == true
+                    or (self.coverageEvidence or {})[key] == provider.sourceGUID
+                if available then evidence[key] = provider.sourceGUID end
+            end
+            if available then providers[#providers + 1] = provider.name end
+        end
+        if #providers > 0 and #candidate.missing > 0 and not self:IsSuppressed(candidate) then
             candidate.count = #candidate.missing
-            candidate.providerText = table.concat(candidate.providers, ", ")
+            candidate.providerText = table.concat(providers, ", ")
             candidate.missingText = table.concat(candidate.missing, ", ")
             coverage[#coverage + 1] = candidate
             ns.lastCoverageProbe[#ns.lastCoverageProbe + 1] = candidate.name .. ": " .. candidate.count .. " missing"
         end
     end
+    -- Session-only proof, keyed by character and (for pet buffs) the current pet.
+    -- Drop departed providers so party-slot reuse cannot inherit their spells.
+    self.coverageEvidence = evidence
     table.sort(coverage, function(a, b) return a.name < b.name end)
     return coverage
 end
