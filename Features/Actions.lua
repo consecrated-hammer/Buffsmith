@@ -375,10 +375,10 @@ function Actions:Entries()
     return entries
 end
 
-function Actions:ConsiderReminder(entry, status)
+function Actions:ConsiderReminder(entry, status, percent)
     if entry.permanent then return end
     if status.state ~= "active" or not status.duration or not status.remaining then return end
-    local threshold = status.duration * self:Percent(entry) / 100
+    local threshold = status.duration * (percent or self:Percent(entry)) / 100
     local delay = status.remaining - threshold
     if delay > 0 and (not self.nextReminderDelay or delay < self.nextReminderDelay) then
         self.nextReminderDelay = delay
@@ -625,8 +625,18 @@ function Actions:VisibleChoices(category)
                 choice.state = "cooldown"
                 ns.Inventory:RefreshAfterCooldown(choice, cooldown)
             else
+                local camping = ns.Inventory.CampingStatus and ns.Inventory:CampingStatus(choice)
                 local mapping = not choice.poison and ns.db.consumableAuras[choice.itemID]
-                if mapping then
+                if camping then
+                    choice.state, choice.auraDuration, choice.auraRemaining = camping.state, camping.duration, camping.remaining
+                    -- Camp Benefits hides the chair until it is actually gone.
+                    -- Boosted Rest is a tent lockout, never a chair signal.
+                    self:ConsiderReminder(choice, camping, 0)
+                    if camping.state == "unknown" then
+                        self.nextReminderDelay = math.min(self.nextReminderDelay or 5, 5)
+                    end
+                    if camping.state == "missing" and not self:IsSuppressed(choice) then choices[#choices + 1] = choice end
+                elseif mapping then
                     local status = auraStatus("player", mapping.spellID, nil, mapping.name)
                     self:ConsiderReminder(choice, status)
                     local display, state = shouldShow(choice, status)

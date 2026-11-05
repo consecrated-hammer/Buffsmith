@@ -3,6 +3,10 @@ local addonName, ns = ...
 ns.Inventory = { items = {}, lastStatus = "not scanned" }
 local Inventory = ns.Inventory
 
+local function campRule(itemID)
+    return ns.TARGET == "Camelot" and ns.CAMPING_ITEMS[itemID] or nil
+end
+
 local function helpfulAuras()
     local found = {}
     local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
@@ -108,6 +112,7 @@ end
 
 local function classify(itemType, itemSubType, itemName, itemID)
     if itemType ~= ITEM_CLASS_CONSUMABLE and itemType ~= "Consumable" then return nil end
+    if campRule(itemID) then return "other" end
     if itemSubType ~= POTION and isPoison(itemSubType, itemName) then return "weapon" end
     local food = ns.CONSUMABLE_CATEGORIES.food.subtypes[itemSubType] or itemSubType == "Food & Drink"
     if food then
@@ -288,7 +293,10 @@ end
 
 function Inventory:BeginConsumableUse(entry)
     if not entry or entry.kind ~= "item" then return end
-    if entry.poison then self.pendingConsumable = nil; return end
+    if entry.poison or campRule(entry.itemID) then
+        self.pendingConsumable = nil
+        return
+    end
     self.pendingConsumable = { itemID = entry.itemID, before = helpfulAuras() }
 end
 
@@ -342,6 +350,28 @@ end
 
 function Inventory:Choices(category)
     return self.items[category] or {}
+end
+
+function Inventory:CampingStatus(item)
+    local rule = campRule(item.itemID)
+    if not rule then return nil end
+    local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+    if not getter or ns.IsCombatLocked() then return { state = "unknown" } end
+    for index = 1, 128 do
+        local ok, aura = pcall(getter, "player", index, rule.filter)
+        if not ok or ns.IsSecret(aura) then return { state = "unknown" } end
+        if not aura then return { state = "missing" } end
+        local spellID = ns.Plain(aura.spellId)
+        if not spellID then return { state = "unknown" } end
+        if spellID == rule.spellID then
+            local duration = tonumber(ns.Plain(aura.duration)) or 0
+            local expiration = tonumber(ns.Plain(aura.expirationTime)) or 0
+            local remaining = duration > 0 and expiration > 0 and math.max(0, expiration - GetTime()) or nil
+            if remaining == 0 then return { state = "missing" } end
+            return { state = "active", duration = duration, remaining = remaining }
+        end
+    end
+    return { state = "unknown" }
 end
 
 function Inventory:CategoryStatus(category)
@@ -399,6 +429,8 @@ function Inventory:ReminderSummary(category)
 end
 
 function Inventory:ReminderFor(item)
+    local camp = campRule(item.itemID)
+    if camp then return "Reminds when " .. camp.label .. " is missing." end
     if item.poison then return "Reminds while an equipped weapon has no coating." end
     local aura = ns.db.consumableAuras[item.itemID]
     if aura and tonumber(aura.duration) and aura.duration > 0 then

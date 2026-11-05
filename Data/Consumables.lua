@@ -1,5 +1,12 @@
 local addonName, ns = ...
 
+-- Placement does not directly apply these effects. Use the actual camp aura
+-- rather than learning an unrelated aura immediately after placing an object.
+ns.CAMPING_ITEMS = {
+    [279979] = { spellID = 1229741, filter = "HELPFUL", label = "Camp Benefits" }, -- Camp Chair
+    [279978] = { spellID = 1229451, filter = "HARMFUL", label = "Boosted Rest" }, -- Camp Tent
+}
+
 -- Consumable classification uses client-provided localized item type strings.
 ns.CONSUMABLE_CATEGORIES = {
     food = {

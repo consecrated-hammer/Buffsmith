@@ -7,6 +7,14 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-11-05
+
+### Fixed
+
+- Forever Camp Chair reminders now hide while Camp Benefits is active and
+  return when it is missing. Camp Tent reminders separately respect the
+  Boosted Rest debuff. Camp placement no longer learns unrelated buff timers.
+
 ## [1.3.2] - 2026-11-05
 
 ### Fixed

@@ -24,6 +24,9 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
   flyout choices for each hand and leaves existing coatings in place. These
   item actions pause in combat.
 - **Consumables from your bags**, like food, flasks, elixirs, scrolls and weapon enhancements. Drinks and other items that give a timed buff, such as the Keg of Thunderbrew, go under **Other buffs**. Hover a consumable to see your other choices, and whichever you use becomes the new default.
+  On Forever, Camp Chair appears when Camp Benefits is missing. Camp Tent
+  appears when its Boosted Rest lockout is missing. Both use Other buffs and
+  respect item cooldowns and your ignored items.
 - **Party buffs.** Buffs you can give to your target, party or pet show up too, and grey out when the game can tell the player is out of range.
 - **Party coverage reminders.** When someone's missing a buff another class in the party could give, an icon says so. Clicking it reports it in chat; it never casts anything.
   On Forever, a party member is only listed after Buffsmith sees a buff
