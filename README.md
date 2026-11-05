@@ -68,6 +68,7 @@ If you do keep it up in combat, it stays as it was when combat started. Buffsmit
 
 ## Limits
 
+- Reminders and consumable choices stay hidden while you're dead or a ghost.
 - **Tracking on WoW Forever is one at a time.** The game only allows one tracking type there, so you pick which one Buffsmith offers. Selecting a different one puts it on the bar so a click swaps over.
 - **Thank-you needs a known caster.** If the game doesn't say who buffed you, Buffsmith won't guess. On WoW Forever that happens more often, and there's an optional untargeted emote for it.
 - **A stronger buff wins.** If the game rejects a buff because you already have a stronger one, Buffsmith hides it until you change zones instead of asking again.

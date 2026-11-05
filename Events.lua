@@ -19,6 +19,9 @@ frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("UNIT_AURA")
 frame:RegisterEvent("UNIT_PET")
+frame:RegisterEvent("PLAYER_DEAD")
+frame:RegisterEvent("PLAYER_ALIVE")
+frame:RegisterEvent("PLAYER_UNGHOST")
 -- Offline and phased party members stop being offered as buff targets.
 pcall(frame.RegisterEvent, frame, "UNIT_CONNECTION")
 pcall(frame.RegisterEvent, frame, "UNIT_PHASE")
@@ -69,10 +72,14 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
         ns.Actions:ResetDismissals()
         refresh()
+    elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+        refresh()
+        -- Unit state can settle after the event; retry on the next frame.
+        C_Timer.After(0, refresh)
     elseif event == "BAG_UPDATE_DELAYED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
         or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "UNIT_PET" or event == "MINIMAP_UPDATE_TRACKING"
-        or event == "PLAYER_REGEN_ENABLED" then
+        or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
         if event == "SPELLS_CHANGED" then ns.ResetSpellbook() end
         refresh()
     end

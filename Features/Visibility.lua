@@ -17,6 +17,7 @@ ns.VISIBILITY_CONDITIONS = {
 
 function Visibility:Rule()
     if ns.db.visibilityMode == "NEVER" then return "hide" end
+    local deadRule = "[@player,dead] hide; "
     if type(ns.db.legacyVisibility) == "table" then
         local parts = {}
         for _, condition in ipairs(ns.VISIBILITY_CONDITIONS) do
@@ -24,14 +25,14 @@ function Visibility:Rule()
                 parts[#parts + 1] = condition.cond:gsub("%]$", ",nocombat]") .. " show"
             end
         end
-        if #parts > 0 then return table.concat(parts, "; ") .. "; hide" end
+        if #parts > 0 then return deadRule .. table.concat(parts, "; ") .. "; hide" end
     end
     local parts = {}
     for _, condition in ipairs(ns.VISIBILITY_CONDITIONS) do
         if ns.db.visibility[condition.key] then parts[#parts + 1] = condition.cond .. " show" end
     end
-    if #parts == 0 then return "show" end
-    return table.concat(parts, "; ") .. "; hide"
+    if #parts == 0 then return deadRule .. "show" end
+    return deadRule .. table.concat(parts, "; ") .. "; hide"
 end
 
 function Visibility:Apply(frame, hasActions)

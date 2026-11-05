@@ -7,6 +7,13 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-11-05
+
+### Fixed
+
+- Hide the bar, missing-buff reminders and consumable choices while dead or
+  a ghost, and refresh them after resurrection.
+
 ## [1.3.3] - 2026-11-05
 
 ### Fixed

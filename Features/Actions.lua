@@ -4,6 +4,10 @@ ns.Actions = {}
 local Actions = ns.Actions
 Actions.suppressed = {}
 
+local function playerIsDead()
+    return UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")
+end
+
 local function currentSpecKey()
     local spec = GetSpecialization and GetSpecialization()
     return tostring(spec or 0)
@@ -156,6 +160,10 @@ end
 function Actions:PartyCoverage()
     local coverage = {}
     ns.lastCoverageProbe = {}
+    if playerIsDead() then
+        ns.lastCoverageProbe[1] = "paused: player dead or ghost"
+        return coverage
+    end
     if not ns.db.showPartyCoverage or not (IsInGroup and IsInGroup()) then
         self.coverageEvidence = {}
         ns.lastCoverageProbe[1] = "disabled or solo"
@@ -285,10 +293,15 @@ end
 function Actions:Entries()
     local entries = {}
     self.nextReminderDelay = nil
+    ns.lastAuraProbe = {}
+    if playerIsDead() then
+        self.eatingPaused = false
+        ns.lastAuraProbe[1] = "buff checks paused: dead or ghost"
+        return entries
+    end
     -- Casting mid-meal would stand the player up, so while eating or drinking
     -- the bar stays visible but its icons and trigger cast nothing.
     self.eatingPaused = self:IsEating()
-    ns.lastAuraProbe = {}
     if self:IsRestedPaused() then
         ns.lastAuraProbe[1] = "self-buff checks paused: rested area"
         return entries
@@ -593,7 +606,7 @@ end
 
 function Actions:VisibleChoices(category)
     local choices = {}
-    if not ns.db.categories[category] or self:IsRestedPaused() then return choices end
+    if playerIsDead() or not ns.db.categories[category] or self:IsRestedPaused() then return choices end
     -- A category-level active effect suppresses alternatives of the same kind.
     -- This prevents a second food or weapon oil appearing while one is active.
     local categoryStatus = ns.Inventory:CategoryStatus(category)

@@ -185,6 +185,58 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(wow.LastPrint(), "Buffsmith: unknown command. Type /buffsmith help for the list.", toc .. ": old commands are removed")
 end
 
+-- Death and ghost state suppress the whole live reminder surface, including
+-- consumable flyouts and the buff trigger, then resurrection restores it.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local events, life = _G.BuffsmithEventFrame, "alive"
+    UnitIsDeadOrGhost = function(unit) return unit == "player" and life ~= "alive" end
+    ns.Inventory.items.food = { { kind = "item", itemID = 4599, name = "Cured Ham Steak", category = "food" } }
+    assert(#ns.Actions:Entries() > 0, toc .. ": missing buffs exist while alive")
+    equal(#ns.Actions:VisibleChoices("food"), 1, toc .. ": food available while alive")
+    for _, state in ipairs({ "dead", "ghost" }) do
+        life = state
+        C_UnitAuras.GetAuraDataByIndex = function() error("aura scan while dead") end
+        equal(#ns.Actions:Entries(), 0, toc .. ": no self or tracking reminders while " .. state)
+        equal(#ns.Actions:VisibleChoices("food"), 0, toc .. ": no consumable reminders while " .. state)
+        equal(#ns.Actions:BindingEntries(), 0, toc .. ": no trigger entries while " .. state)
+        ns.Actions.coverageEvidence = { sentinel = "retained" }
+        equal(#ns.Actions:PartyCoverage(), 0, toc .. ": no party notices while " .. state)
+        equal(ns.Actions.coverageEvidence.sentinel, "retained", toc .. ": death does not forget providers")
+        ns.Bindings:Prepare()
+        equal(ns.Bindings.trigger:GetAttribute("type1"), nil, toc .. ": trigger disarmed while " .. state)
+        events.scripts.OnEvent(events, state == "dead" and "PLAYER_DEAD" or "PLAYER_ALIVE")
+        equal(ns.Palette.lastLayout, "hidden: no available actions", toc .. ": death/release event hides bar")
+    end
+    life = "alive"
+    C_UnitAuras.GetAuraDataByIndex = function() return nil end
+    for _, event in ipairs({ "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
+        events.scripts.OnEvent(events, event)
+        assert(#ns.Actions:Entries() > 0, toc .. ": missing buffs restore after " .. event)
+        equal(ns.Bindings.trigger:GetAttribute("type1"), "spell", toc .. ": trigger restores after " .. event)
+    end
+    for _, event in ipairs({ "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
+        local deferred
+        C_Timer.After = function(delay, fn) if delay == 0 then deferred = fn end end
+        life = "ghost"
+        events.scripts.OnEvent(events, event)
+        equal(ns.Bindings.trigger:GetAttribute("type1"), nil, toc .. ": lagging unit state stays suppressed")
+        assert(deferred, toc .. ": resurrection schedules next-frame refresh")
+        life = "alive"
+        deferred()
+        equal(ns.Bindings.trigger:GetAttribute("type1"), "spell", toc .. ": next-frame refresh recovers after " .. event)
+    end
+    C_Timer.After = function() end
+    ns.db.visibilityMode, ns.db.legacyVisibility, ns.db.visibility = "ALWAYS", nil, {}
+    equal(ns.Visibility:Rule(), "[@player,dead] hide; show", toc .. ": player death overrides always-visible rule independently of target")
+    ns.db.visibility = { inCombat = true, outOfCombat = true }
+    equal(ns.Visibility:Rule():sub(1, 21), "[@player,dead] hide; ", toc .. ": player death precedes configurable combat visibility")
+    ns.db.legacyVisibility = { outOfCombat = true }
+    equal(ns.Visibility:Rule():sub(1, 21), "[@player,dead] hide; ", toc .. ": player death precedes legacy visibility")
+    ns.db.visibilityMode = "NEVER"
+    equal(ns.Visibility:Rule(), "hide", toc .. ": Never stays hidden")
+end
+
 -- Every page also builds under HammerCore's Classic theme.
 for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     local ns = loadAddon(toc, { hammerCore = { theme = "classic" } })
