@@ -229,6 +229,19 @@ HC.Settings:NewPage({ name = "Appearance", description = "Size, direction and th
     return y - 38
 end)
 
+-- ── Tooltips ───────────────────────────────────────────────────────────────
+
+HC.Settings:NewPage({ name = "Tooltips", description = "Who a buff is for, and what it does." }, function(panel, y)
+    _, y = UI.Header(panel, "Bar tooltip", y)
+    _, y = UI.Check(panel, "Show bar tooltips", "Show buff names, recipients and click instructions when hovering a bar icon.", y,
+        function() return ns.db.showTooltip end,
+        function(value) ns.Set("showTooltip", value) end)
+    _, y = UI.Check(panel, "Show spell descriptions", "Add Blizzard's static description for the offered spell. This can make the tooltip taller.", y,
+        function() return ns.db.tooltipSpellDescriptions end,
+        function(value) ns.Set("tooltipSpellDescriptions", value) end)
+    return y
+end)
+
 -- ── Buffs ──────────────────────────────────────────────────────────────────
 
 HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and when each buff reminds you." }, function(panel, y)

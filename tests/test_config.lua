@@ -10,6 +10,16 @@ equal(ns.db.maxAlternatives, 3, "alternatives are capped")
 equal(type(ns.db.categories), "table", "categories are repaired")
 equal(ns.db.palettePoint[1], "CENTER", "palette point is repaired")
 equal(type(ns.db.excludedBuffs), "table", "buff exclusions are created")
+equal(ns.db.showTooltip, true, "bar tooltips default on")
+equal(ns.db.tooltipSpellDescriptions, false, "spell descriptions default off like Salve")
+BuffsmithDB = { showTooltip = false, tooltipSpellDescriptions = true }
+ns.InitConfig()
+equal(ns.db.showTooltip, false, "master tooltip preference persists")
+equal(ns.db.tooltipSpellDescriptions, true, "spell description preference persists")
+BuffsmithDB = { showTooltip = "bad", tooltipSpellDescriptions = {} }
+ns.InitConfig()
+equal(ns.db.showTooltip, true, "invalid tooltip preference repaired")
+equal(ns.db.tooltipSpellDescriptions, false, "invalid description preference repaired")
 -- Settings-window position, startup message and minimap now live in
 -- HammerCore's state and are tested there.
 BuffsmithDB = { showStartupMessage = false, showMinimap = false, minimapAngle = 12 }

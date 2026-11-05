@@ -3,6 +3,30 @@ local addonName, ns = ...
 ns.Palette = { buttons = {}, lastLayout = "not built" }
 local Palette = ns.Palette
 
+local function recipientName(entry)
+    local unit = entry.unit or "player"
+    if UnitExists and not UnitExists(unit) then return nil end
+    if entry.unitGUID and UnitGUID and ns.Plain(UnitGUID(unit)) ~= ns.Plain(entry.unitGUID) then return nil end
+    if not UnitName then return nil end
+    local name, realm = UnitName(unit)
+    name, realm = ns.Plain(name), ns.Plain(realm)
+    if type(name) ~= "string" or name == "" then return nil end
+    if type(realm) == "string" and realm ~= "" then name = name .. "-" .. realm end
+    return name
+end
+
+local function spellDescription(entry)
+    if not ns.db.tooltipSpellDescriptions or (entry.kind ~= "spell" and entry.kind ~= "notice") then return nil end
+    local spellID = entry.castID or entry.spellID
+    local getter = C_Spell and C_Spell.GetSpellDescription
+    if type(getter) ~= "function" then getter = GetSpellDescription end
+    if type(spellID) ~= "number" or type(getter) ~= "function" then return nil end
+    local ok, text = pcall(getter, spellID)
+    if not ok then return nil end
+    text = ns.Plain(text)
+    if type(text) == "string" and text ~= "" then return text end
+end
+
 local function button(parent, small)
     local frame = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate,SecureHandlerStateTemplate,BackdropTemplate")
     frame:SetSize(small and 30 or 40, small and 30 or 40)
@@ -19,13 +43,17 @@ local function button(parent, small)
     frame:SetScript("OnEnter", function(self)
         if self.buffsmithFlyout then Palette:HoverEnter(self.buffsmithFlyout) end
         local entry = self.buffsmithEntry
-        if not entry then return end
+        if not entry or ns.db.showTooltip == false then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(entry.name)
+        if entry.kind == "spell" and not entry.tracking then
+            local name = recipientName(entry)
+            GameTooltip:AddLine(name and ("Cast on: " .. name) or "Recipient unavailable.", 0.8, 0.8, 0.8, true)
+        end
         if entry.kind == "notice" then
             GameTooltip:AddLine("Party coverage reminder — informational only.", 0.7, 0.7, 0.7)
-            GameTooltip:AddLine("Potential provider: " .. tostring(entry.providerText), 0.8, 0.8, 0.8)
-            GameTooltip:AddLine("Missing on: " .. tostring(entry.missingText), 0.8, 0.8, 0.8)
+            GameTooltip:AddLine("Potential provider: " .. tostring(entry.providerText), 0.8, 0.8, 0.8, true)
+            GameTooltip:AddLine("Missing on: " .. tostring(entry.missingText), 0.8, 0.8, 0.8, true)
             GameTooltip:AddLine("Left-click: report to party. Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
         elseif entry.kind == "item" then
             if entry.poison then
@@ -34,17 +62,15 @@ local function button(parent, small)
             else
                 GameTooltip:AddLine("Bag item — left-click to use on yourself.", 0.7, 0.7, 0.7)
             end
-        elseif entry.scope == "target" then
-            GameTooltip:AddLine("Friendly target — left-click to cast on them.", 0.7, 0.7, 0.7)
-        elseif entry.scope == "party" then
-            GameTooltip:AddLine("Party member — left-click to cast on them.", 0.7, 0.7, 0.7)
         elseif entry.tracking then
             GameTooltip:AddLine("Tracking — left-click to turn it on.", 0.7, 0.7, 0.7)
-        elseif entry.scope == "pet" then
-            GameTooltip:AddLine("Friendly pet — left-click to cast on them.", 0.7, 0.7, 0.7)
+        elseif entry.scope == "target" or entry.scope == "party" or entry.scope == "pet" then
+            GameTooltip:AddLine("Left-click: cast on them.", 0.7, 0.7, 0.7)
         else
             GameTooltip:AddLine("Self-buff — left-click to cast on yourself.", 0.7, 0.7, 0.7)
         end
+        local description = spellDescription(entry)
+        if description then GameTooltip:AddLine(description, 0.72, 0.72, 0.72, true) end
         if entry.outOfRange then
             GameTooltip:AddLine("Out of range.", 1, 0.35, 0.35)
         end
@@ -61,7 +87,7 @@ local function button(parent, small)
         GameTooltip:Show()
     end)
     frame:SetScript("OnLeave", function(self)
-        GameTooltip:Hide()
+        if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
         if self.buffsmithFlyout then Palette:HoverLeave() end
     end)
     frame:SetScript("PreClick", function(self, mouseButton)

@@ -7,6 +7,14 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-05
+
+### Added
+
+- Buff tooltips name the intended recipient. The new Tooltips page can turn
+  bar tooltips off or add Blizzard's spell descriptions, using the offered
+  spell rank where known. Spell descriptions start off, matching Salve.
+
 ## [1.3.4] - 2026-11-05
 
 ### Fixed

@@ -89,7 +89,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     local names = {}
     for _, spec in ipairs(HC.Settings.order) do names[#names + 1] = spec.name end
     equal(table.concat(names, ","),
-        "Visibility,Appearance,Buffs,Consumables,Ignored,Key Bindings,Thank You,Commands,Troubleshooting,About",
+        "Visibility,Appearance,Tooltips,Buffs,Consumables,Ignored,Key Bindings,Thank You,Commands,Troubleshooting,About",
         toc .. ": rail order")
     local failures = {}
     for name, err in pairs(HC.Settings.errors) do failures[#failures + 1] = name .. ": " .. err end
@@ -183,6 +183,115 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     -- Old spellings are gone.
     SlashCmdList.BUFFSMITH("copy")
     equal(wow.LastPrint(), "Buffsmith: unknown command. Type /buffsmith help for the list.", toc .. ": old commands are removed")
+end
+
+-- Tooltip content follows the configured recipient and actual offered rank.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    ns.HammerCore.Settings:Show("Tooltips")
+    local check = wow.FindText("Show spell descriptions").parent
+    wow.Click(check)
+    equal(ns.db.tooltipSpellDescriptions, true, toc .. ": description checkbox enables option")
+    wow.Click(check)
+    equal(ns.db.tooltipSpellDescriptions, false, toc .. ": description checkbox disables option")
+    local exists = { player = true, party1 = true, target = true, pet = true }
+    local identities = { player = "self", party1 = "friend", target = "target", pet = "pet" }
+    UnitExists = function(unit) return exists[unit] == true end
+    UnitGUID = function(unit) return identities[unit] end
+    UnitName = function(unit)
+        if unit == "player" then return "Rowan" end
+        if unit == "party1" then return "Mira", "OtherRealm" end
+        if unit == "target" then return "Finch" end
+        if unit == "pet" then return "Moss" end
+    end
+    local lines, descriptionID, calls = {}, nil, 0
+    GameTooltip.SetOwner = function(self, owner) self.tooltipOwner = owner end
+    GameTooltip.IsOwned = function(self, owner) return self.tooltipOwner == owner end
+    GameTooltip.AddLine = function(_, text, _, _, _, wrap) lines[#lines + 1] = { text = text, wrap = wrap } end
+    C_Spell.GetSpellDescription = function(id)
+        descriptionID, calls = id, calls + 1
+        return "A static explanation of the spell."
+    end
+    local frame = ns.Palette:Acquire(99, false)
+    local function hover(entry)
+        lines = {}
+        GameTooltip:Hide()
+        frame.buffsmithEntry = entry
+        frame.scripts.OnEnter(frame)
+    end
+    local function has(text)
+        for _, line in ipairs(lines) do if line.text == text then return true, line.wrap end end
+        return false
+    end
+    local thorns = { kind = "spell", name = "Thorns", spellID = 467, castID = 782,
+        unit = "party1", unitGUID = "friend", scope = "party" }
+    hover(thorns)
+    equal(has("Cast on: Mira-OtherRealm"), true, toc .. ": party tooltip names recipient and realm")
+    equal(calls, 0, toc .. ": descriptions are not queried while off")
+    ns.db.tooltipSpellDescriptions = true
+    hover(thorns)
+    equal(descriptionID, 782, toc .. ": description uses actual offered rank")
+    local present, wrapped = has("A static explanation of the spell.")
+    equal(present and wrapped, true, toc .. ": description is wrapped")
+    hover({ kind = "spell", name = "Buff", spellID = 467 })
+    equal(has("Cast on: Rowan"), true, toc .. ": self tooltip names player")
+    hover({ kind = "spell", name = "Buff", spellID = 467, unit = "target", scope = "target" })
+    equal(has("Cast on: Finch"), true, toc .. ": selected target is named")
+    hover({ kind = "spell", name = "Buff", spellID = 467, unit = "pet", scope = "pet" })
+    equal(has("Cast on: Moss"), true, toc .. ": pet is named")
+    hover({ kind = "notice", name = "Arcane Intellect", spellID = 1459,
+        providerText = "Mira", missingText = "Rowan, Finch" })
+    equal(descriptionID, 1459, toc .. ": coverage can describe the catalogue spell")
+    equal(has("Missing on: Rowan, Finch"), true, toc .. ": coverage retains missing recipients")
+    local missingAt, descriptionAt
+    for index, line in ipairs(lines) do
+        if line.text == "Missing on: Rowan, Finch" then missingAt = index end
+        if line.text == "A static explanation of the spell." then descriptionAt = index end
+    end
+    assert(missingAt < descriptionAt, toc .. ": recipients precede optional long description")
+    local before = calls
+    hover({ kind = "item", name = "Keg", itemID = 1262 })
+    equal(calls, before, toc .. ": bag items do not query a spell description")
+    identities.party1 = "replacement"
+    hover(thorns)
+    equal(has("Recipient unavailable."), true, toc .. ": reused party slot cannot name a different recipient")
+    identities.party1, exists.party1 = "friend", false
+    hover(thorns)
+    equal(has("Recipient unavailable."), true, toc .. ": departed recipient handled safely")
+    exists.party1 = true
+    C_Spell.GetSpellDescription = function() error("unavailable") end
+    hover(thorns)
+    equal(has("Cast on: Mira-OtherRealm"), true, toc .. ": failed description keeps useful tooltip")
+    local secret = {}
+    issecretvalue = function(value) return value == secret end
+    C_Spell.GetSpellDescription = function() return secret end
+    hover(thorns)
+    equal(has("Cast on: Mira-OtherRealm"), true, toc .. ": secret description is ignored")
+    issecretvalue = nil
+    C_Spell.GetSpellDescription = nil
+    GetSpellDescription = function() return "Legacy static description." end
+    hover(thorns)
+    equal(has("Legacy static description."), true, toc .. ": legacy description API works")
+    GetSpellDescription = nil
+    hover(thorns)
+    equal(has("Cast on: Mira-OtherRealm"), true, toc .. ": absent description API keeps tooltip")
+    hover({ kind = "spell", name = "Find Herbs", spellID = 2383, tracking = true, scope = "pet" })
+    equal(has("Left-click: cast on them."), false, toc .. ": tracking keeps its own action instruction")
+    local hovered = false
+    ns.Palette.HoverEnter = function() hovered = true end
+    frame.buffsmithFlyout = "food"
+    ns.db.showTooltip = false
+    hover(thorns)
+    equal(#lines, 0, toc .. ": master toggle suppresses tooltip content")
+    equal(GameTooltip:IsShown(), false, toc .. ": master toggle suppresses tooltip display")
+    equal(hovered, true, toc .. ": hiding tooltips does not disable flyouts")
+    GameTooltip:SetOwner({})
+    GameTooltip:Show()
+    frame.scripts.OnLeave(frame)
+    equal(GameTooltip:IsShown(), true, toc .. ": leaving an icon does not hide another frame's tooltip")
+    GameTooltip:SetOwner(frame)
+    frame.scripts.OnLeave(frame)
+    equal(GameTooltip:IsShown(), false, toc .. ": leaving closes its own tooltip")
 end
 
 -- Death and ghost state suppress the whole live reminder surface, including

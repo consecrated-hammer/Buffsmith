@@ -7,6 +7,8 @@ ns.defaults = {
     showTargetBuffs = true,
     showPartyBuffs = true,
     showPartyCoverage = true,
+    showTooltip = true,
+    tooltipSpellDescriptions = false,
     thanksEnabled = false,
     thanksChannel = "WHISPER",
     thanksEmote = "THANK",
@@ -94,6 +96,8 @@ function ns.InitConfig()
     if type(BuffsmithDB.showTargetBuffs) ~= "boolean" then BuffsmithDB.showTargetBuffs = true end
     if type(BuffsmithDB.showPartyBuffs) ~= "boolean" then BuffsmithDB.showPartyBuffs = true end
     if type(BuffsmithDB.showPartyCoverage) ~= "boolean" then BuffsmithDB.showPartyCoverage = true end
+    if type(BuffsmithDB.showTooltip) ~= "boolean" then BuffsmithDB.showTooltip = true end
+    if type(BuffsmithDB.tooltipSpellDescriptions) ~= "boolean" then BuffsmithDB.tooltipSpellDescriptions = false end
     if type(BuffsmithDB.thanksEnabled) ~= "boolean" then BuffsmithDB.thanksEnabled = false end
     if BuffsmithDB.thanksChannel ~= "WHISPER" and BuffsmithDB.thanksChannel ~= "SAY" and BuffsmithDB.thanksChannel ~= "PARTY" and BuffsmithDB.thanksChannel ~= "EMOTE" then BuffsmithDB.thanksChannel = "WHISPER" end
     if type(BuffsmithDB.thanksEmote) ~= "string" or not BuffsmithDB.thanksEmote:match("^[A-Z0-9_]+$") then BuffsmithDB.thanksEmote = "THANK" end
