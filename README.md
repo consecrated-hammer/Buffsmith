@@ -39,6 +39,12 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
 - **Tracking.** Find Herbs, Find Minerals and other tracking spells can sit on the bar until you turn them on. Gathering tracking starts ticked, class and racial tracking start off.
 - **One key for the lot.** Bind **Buff trigger** in the game's key bindings and press it to work down the bar one missing buff at a time.
 - **Optional thank-you.** Buffsmith can whisper, say, post in party or emote a thanks when someone buffs you. It's off by default.
+  **Skip party and raid members** in Thank You settings only skips identified
+  group casters. It starts off. Unknown-caster emotes keep following their own
+  setting, even when group thanks are skipped. Loading screens and zone
+  changes pause thanks while the aura list settles for one second. Existing
+  buffs and full aura snapshots become the baseline; new buffs afterward can
+  trigger thanks normally.
 
 ## Getting started
 

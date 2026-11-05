@@ -70,7 +70,11 @@ local function button(parent, small)
             GameTooltip:AddLine("Self-buff — left-click to cast on yourself.", 0.7, 0.7, 0.7)
         end
         local description = spellDescription(entry)
-        if description then GameTooltip:AddLine(description, 0.72, 0.72, 0.72, true) end
+        if description then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(description, 0.72, 0.72, 0.72, true)
+            GameTooltip:AddLine(" ")
+        end
         if entry.outOfRange then
             GameTooltip:AddLine("Out of range.", 1, 0.35, 0.35)
         end

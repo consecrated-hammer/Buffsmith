@@ -42,6 +42,14 @@ ns.InitConfig()
 equal(ns.db.thanksDelay, 1, "an invalid thank-you delay defaults to one second")
 equal(ns.db.thanksEmote, "THANK", "the default emote is Thank")
 equal(ns.db.thanksUnknownEmote, false, "untargeted emotes stay opt-in")
+equal(ns.db.thanksSkipGroupMembers, false, "group thanks skip starts off")
+BuffsmithDB = { thanksSkipGroupMembers = true, thanksUnknownEmote = true }
+ns.InitConfig()
+equal(ns.db.thanksSkipGroupMembers, true, "group skip preference persists")
+equal(ns.db.thanksUnknownEmote, true, "group skip does not turn off unknown emotes")
+BuffsmithDB = { thanksSkipGroupMembers = "bad" }
+ns.InitConfig()
+equal(ns.db.thanksSkipGroupMembers, false, "invalid group skip repaired")
 BuffsmithDB = { thanksChannel = "EMOTE", thanksEmote = "RANDOM" }
 ns.InitConfig()
 equal(ns.db.thanksChannel, "EMOTE", "emote delivery persists")

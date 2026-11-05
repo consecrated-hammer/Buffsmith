@@ -16,6 +16,7 @@ frame:RegisterEvent("GROUP_ROSTER_UPDATE")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("PLAYER_LEAVING_WORLD")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("UNIT_AURA")
 frame:RegisterEvent("UNIT_PET")
@@ -69,7 +70,10 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         if arg1 == "player" or arg1 == "target" or arg1 == "pet"
             or string.match(tostring(arg1), "^partypet%d+$")
             or string.match(tostring(arg1), "^party%d+pet$") or string.match(tostring(arg1), "^party%d$") then refresh() end
+    elseif event == "PLAYER_LEAVING_WORLD" then
+        ns.Thanks:ZoneTransition(true)
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
+        if event == "PLAYER_ENTERING_WORLD" or not ns.Thanks.loadingWorld then ns.Thanks:ZoneTransition(false) end
         ns.Actions:ResetDismissals()
         refresh()
     elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
@@ -81,6 +85,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "UNIT_PET" or event == "MINIMAP_UPDATE_TRACKING"
         or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
         if event == "SPELLS_CHANGED" then ns.ResetSpellbook() end
+        if event == "PLAYER_REGEN_ENABLED" then ns.Thanks:FinishZoneTransition() end
         refresh()
     end
 end)

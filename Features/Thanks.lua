@@ -4,6 +4,36 @@ ns.Thanks = { seen = {}, seenAuras = {}, seenProviders = {}, eligibleAuras = {},
 local Thanks = ns.Thanks
 local FEATURED_EMOTES = { { "THANK", "Thank" }, { "BOW", "Bow" }, { "CHEER", "Cheer" }, { "APPLAUD", "Applaud" }, { "SALUTE", "Salute" } }
 
+-- Loading screens rebuild aura snapshots; treat them as a fresh baseline.
+function Thanks:ResetHistory(preservePending)
+    self.seen, self.seenAuras, self.seenProviders = {}, {}, {}
+    self.eligibleAuras, self.attributedAuras, self.retrying = {}, {}, {}
+    if not preservePending then self.pending = {} end
+    self.initialized = false
+end
+
+function Thanks:FinishZoneTransition(generation)
+    if generation and generation ~= self.zoneGeneration then return false end
+    if not self.zonePriming or not self.zoneReady or self.loadingWorld or ns.IsCombatLocked() then return false end
+    return self:Observe(true)
+end
+
+function Thanks:ZoneTransition(loading)
+    self:ResetHistory()
+    self.zoneGeneration = (self.zoneGeneration or 0) + 1
+    self.loadingWorld, self.zonePriming, self.zoneReady = loading == true, true, false
+    self.lastStatus = "paused: zone transition"
+    if self.loadingWorld then return end
+    self:Observe(true)
+    local generation = self.zoneGeneration
+    local function finish()
+        if generation ~= self.zoneGeneration then return end
+        self.zoneReady = true
+        self:FinishZoneTransition(generation)
+    end
+    if C_Timer and type(C_Timer.After) == "function" then C_Timer.After(1, finish) else finish() end
+end
+
 local function emoteName(command, token)
     local name = type(command) == "string" and command:gsub("^/+", "") or ""
     if not name:match("^[%a][%w _-]*$") then name = token end
@@ -138,6 +168,31 @@ local function legacyProbe(aura)
     return "UnitBuff no matching aura"
 end
 
+local GROUP_ROSTERS = { { "party", 4 }, { "raid", 40 } }
+
+local function skipGroupProvider(provider, providerKey, sourceUnit)
+    if not ns.db.thanksSkipGroupMembers then return false end
+    -- A unit token can change during the thank-you delay. Only trust its
+    -- membership when it still identifies the caster that supplied the buff.
+    local currentProvider, currentKey = sourceInfo(sourceUnit)
+    if currentProvider == provider and currentKey == providerKey then
+        local party = UnitInParty and ns.Plain(UnitInParty(sourceUnit))
+        local raid = UnitInRaid and ns.Plain(UnitInRaid(sourceUnit))
+        if party == true or raid == true or (type(raid) == "number" and raid >= 0) then return true end
+    end
+    -- A known caster can join the group, move slots or lose their original
+    -- token before sending. Match roster GUIDs rather than guessing by name.
+    if type(providerKey) == "string" and UnitGUID then
+        for _, group in ipairs(GROUP_ROSTERS) do
+            for index = 1, group[2] do
+                local unit = group[1] .. index
+                if UnitExists(unit) and ns.Plain(UnitGUID(unit)) == providerKey then return true end
+            end
+        end
+    end
+    return false
+end
+
 local function messageFor(buff, provider)
     local message = tostring(ns.db.thanksMessage or "Thanks for the {buff}!")
     message = message:gsub("{buff}", tostring(buff)):gsub("{player}", tostring(provider))
@@ -145,6 +200,10 @@ local function messageFor(buff, provider)
 end
 
 function Thanks:Send(buff, provider, providerKey, sourceUnit)
+    if skipGroupProvider(provider, providerKey, sourceUnit) then
+        self.lastStatus = "skipped: caster is in your party or raid"
+        return
+    end
     local channel = ns.db.thanksChannel
     if channel == "EMOTE" then
         local currentProvider, currentKey = sourceInfo(sourceUnit)
@@ -217,6 +276,10 @@ local function delayLabel(delay)
 end
 
 function Thanks:Queue(buff, provider, providerKey, sourceUnit)
+    if skipGroupProvider(provider, providerKey, sourceUnit) then
+        self.lastStatus = "skipped: caster is in your party or raid"
+        return false
+    end
     local job = self.pending[providerKey]
     if job then
         if type(sourceUnit) == "string" then job.sourceUnit = sourceUnit end
@@ -225,10 +288,11 @@ function Thanks:Queue(buff, provider, providerKey, sourceUnit)
             job.buffs[#job.buffs + 1] = buff
             self.lastStatus = "queued: " .. delayLabel(job.delay) .. " (" .. tostring(#job.buffs) .. " buffs)"
         end
-        return
+        return true
     end
     local delay = math.max(1, math.min(5, tonumber(ns.db.thanksDelay) or 1))
     local function send()
+        if self.pending[providerKey] ~= job then return end
         self.pending[providerKey] = nil
         if not ns.db.thanksEnabled then
             self.lastStatus = "cancelled: Thank You disabled"
@@ -248,6 +312,7 @@ function Thanks:Queue(buff, provider, providerKey, sourceUnit)
     else
         send()
     end
+    return true
 end
 
 local function auraByInstance(instanceID)
@@ -312,8 +377,12 @@ end
 
 function Thanks:Observe(primeOnly, updateInfo)
     if ns.IsCombatLocked() then self.lastStatus = "paused: combat"; return end
+    if self.loadingWorld then self.lastStatus = "paused: loading world"; return end
     local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
     if not getter then self.lastStatus = "unavailable: aura API"; return end
+    if self.zonePriming or (type(updateInfo) == "table" and not ns.IsSecret(updateInfo)
+        and ns.Plain(updateInfo.isFullUpdate) == true) then primeOnly = true end
+    if primeOnly then self:ResetHistory(not self.zonePriming) end
     local tracked = trackedBuffs()
     local current, currentAuras = {}, {}
     local skipped
@@ -360,9 +429,8 @@ function Thanks:Observe(primeOnly, updateInfo)
                 and self.eligibleAuras[auraKey] and not self.seen[key]
                 and self.attributedAuras[auraKey] ~= providerKey then
                 self.attributedAuras[auraKey] = providerKey
-                self:Queue(buff.label, provider, providerKey, sourceUnit)
+                queued = self:Queue(buff.label, provider, providerKey, sourceUnit) or queued
                 self.lastAttribution = buff.label .. ": " .. sourceOrigin
-                queued = true
             end
         elseif buff and self.initialized and not primeOnly then
             if sourceReason == "self" then
@@ -399,4 +467,9 @@ function Thanks:Observe(primeOnly, updateInfo)
     end
     self.initialized = true
     if self.lastStatus == "not observed" then self.lastStatus = "ready" end
+    if self.zonePriming and self.zoneReady then
+        self.zonePriming, self.zoneReady = false, false
+        self.lastStatus = "primed: zone transition"
+    end
+    return true
 end

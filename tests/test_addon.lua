@@ -104,6 +104,11 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     HC.Settings:Show("Thank You")
     equal(wow.FindText("WoW Forever may report a new buff without telling addons who cast it. Whispers still need a known caster.") ~= nil,
         true, toc .. ": Thank You explains unknown casters")
+    local skipGroup = wow.FindText("Skip party and raid members").parent
+    wow.Click(skipGroup)
+    equal(ns.db.thanksSkipGroupMembers, true, toc .. ": Thank You group skip checkbox enables")
+    wow.Click(skipGroup)
+    equal(ns.db.thanksSkipGroupMembers, false, toc .. ": Thank You group skip checkbox disables")
 
     SlashCmdList.BUFFSMITH("toggle")
     equal(ns.db.visibilityMode, "NEVER", toc .. ": toggle hides the bar")
@@ -344,6 +349,23 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(ns.Visibility:Rule():sub(1, 21), "[@player,dead] hide; ", toc .. ": player death precedes legacy visibility")
     ns.db.visibilityMode = "NEVER"
     equal(ns.Visibility:Rule(), "hide", toc .. ": Never stays hidden")
+end
+
+-- Loading events re-prime Thank You on both client entrypoints.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local events, settle = _G.BuffsmithEventFrame
+    C_Timer.After = function(delay, fn) if delay == 1 then settle = fn end end
+    events.scripts.OnEvent(events, "PLAYER_LEAVING_WORLD")
+    equal(ns.Thanks.loadingWorld, true, toc .. ": leaving world pauses Thank You")
+    events.scripts.OnEvent(events, "ZONE_CHANGED_NEW_AREA")
+    equal(ns.Thanks.loadingWorld, true, toc .. ": new area cannot end loading early")
+    events.scripts.OnEvent(events, "PLAYER_ENTERING_WORLD")
+    equal(ns.Thanks.zonePriming, true, toc .. ": entering starts settling")
+    assert(settle, toc .. ": entering schedules a final aura baseline")
+    events.scripts.OnEvent(events, "UNIT_AURA", "player")
+    settle()
+    equal(ns.Thanks.zonePriming, false, toc .. ": settled aura snapshot restores Thank You")
 end
 
 -- Every page also builds under HammerCore's Classic theme.

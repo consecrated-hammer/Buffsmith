@@ -496,6 +496,9 @@ HC.Settings:NewPage({ name = "Thank You", description = "Thank recognised buffs 
     _, y = UI.Check(panel, "Thank players for buffs",
         "Caster details can be unavailable on WoW Forever, so a thank-you is not guaranteed. Buffs you already have never trigger one.", y,
         function() return ns.db.thanksEnabled end, function(value) ns.db.thanksEnabled = value end)
+    _, y = UI.Check(panel, "Skip party and raid members",
+        "Skip thanks when the identified caster is in your party or raid. Unknown-caster emotes still follow their own setting.", y,
+        function() return ns.db.thanksSkipGroupMembers end, function(value) ns.db.thanksSkipGroupMembers = value end)
     _, y = UI.Dropdown(panel, "Send thanks as", nil, y, CHANNELS.values, CHANNELS.labels,
         function() return ns.db.thanksChannel end, function(value) ns.db.thanksChannel = value end)
     _, y = UI.Slider(panel, "Delay", "Wait before sending so it feels less robotic. Turning Thank You off cancels a pending one.",

@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Buffsmith (WoW Forever)
 ## Author: consecrated-hammer
-## Version: 1.4.0
-## X-ReleaseDate: 2026-11-05
+## Version: 1.5.0
+## X-ReleaseDate: 2026-11-06
 ## Notes: Out-of-combat self-buff and consumable bar for WoW Forever.
 ## AllowLoadGameType: camelot
 ## SavedVariables: BuffsmithDB

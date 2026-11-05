@@ -7,6 +7,25 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-06
+
+### Added
+
+- Optional skip for Thank You replies to identified party or raid casters,
+  checked when queuing and sending. Unknown-caster emotes keep their existing
+  behaviour. The new option starts off.
+
+### Changed
+
+- Add spacing above and below optional spell descriptions in bar tooltips.
+
+### Fixed
+
+- Changing zones or entering a loading screen no longer treats returning buffs
+  as newly received buffs for Thank You. Rebuild the aura baseline while the
+  zone settles, cancel old queued replies and attribution retries, and treat
+  full aura updates as a baseline.
+
 ## [1.4.0] - 2026-11-05
 
 ### Added

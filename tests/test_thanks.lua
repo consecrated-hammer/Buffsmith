@@ -239,4 +239,186 @@ equal(#emotes, 4, "an opted-in unknown caster gets one untargeted Forever emote"
 equal(emotes[4].target, nil, "the fallback never invents an emote target")
 equal(ns.Thanks.lastStatus, "emoted without caster: THANK", "the fallback is visible in diagnostics")
 
+-- Identified group casters can be skipped without changing unknown fallback.
+do
+    local units, timers, output, groupParty, groupRaid
+    local function setup(target)
+        units = { player = "self", target = "caster", party1 = "other-member" }
+        timers, output, groupParty, groupRaid = {}, {}, {}, {}
+        UnitExists = function(unit) return units[unit] ~= nil end
+        UnitGUID = function(unit) return units[unit] end
+        UnitIsPlayer, UnitCanAssist = function() return true end, function() return true end
+        UnitName = function(unit) return units[unit] end
+        UnitInParty = function(unit) return groupParty[units[unit]] == true end
+        UnitInRaid = function(unit) return groupRaid[units[unit]] end
+        IsInGroup = function() return true end
+        C_Timer.After = function(delay, fn) timers[#timers + 1] = { delay = delay, callback = fn } end
+        SendChatMessage = function(...) output[#output + 1] = { ... } end
+        DoEmote = function(token, unit) output[#output + 1] = { token, unit } end
+        C_ChatInfo = { PerformEmote = function(token, name) output[#output + 1] = { token, name }; return true end }
+        C_UnitAuras = { GetAuraDataByIndex = function() return nil end }
+        local current = { TARGET = target,
+            db = { thanksEnabled = true, thanksSkipGroupMembers = true, thanksUnknownEmote = true,
+                thanksChannel = "WHISPER", thanksDelay = 1, thanksEmote = "THANK", thanksMessage = "Thanks for {buff}!" },
+            PARTY_BUFFS = { PRIEST = { { auraID = 1243, label = "Power Word: Fortitude" } } },
+            Plain = function(v) return v end, IsSecret = function() return false end,
+            IsCombatLocked = function() return false end }
+        assert(loadfile("Features/Thanks.lua"))("Buffsmith", current)
+        current.Thanks.initialized = true
+        return current
+    end
+    for _, target in ipairs({ "Camelot", "Mainline" }) do
+        for _, channel in ipairs({ "WHISPER", "SAY", "PARTY", "EMOTE" }) do
+            for _, group in ipairs({ "party", "raid" }) do
+                local current = setup(target)
+                current.db.thanksChannel = channel
+                local unit = group == "party" and "party2" or "raid17"
+                units[unit] = "caster"
+                if group == "party" then groupParty.caster = true else groupRaid.caster = 17 end
+                equal(current.Thanks:Queue("Fortitude", "caster", "caster", unit), false,
+                    target .. " " .. channel .. " skips identified " .. group .. " caster")
+                equal(#timers, 0, "skipped caster never queues thanks")
+                equal(#output, 0, "skipped caster sends nothing")
+                current.db.thanksSkipGroupMembers = false
+                current.Thanks:Queue("Fortitude", "caster", "caster", unit)
+                timers[1].callback()
+                equal(#output, 1, "turning skip off retains previous channel behaviour")
+            end
+            local current = setup(target)
+            current.db.thanksChannel = channel
+            current.Thanks:Queue("Fortitude", "caster", "caster", "target")
+            timers[1].callback()
+            equal(#output, 1, target .. " " .. channel .. " still thanks an outside caster")
+        end
+        local current = setup(target)
+        current.Thanks:Queue("Fortitude", "caster", "caster", "target")
+        -- The caster joins the raid, while the original target token changes.
+        units.target, units.raid17 = "replacement", "caster"
+        groupRaid.caster = 17
+        timers[1].callback()
+        equal(#output, 0, "send-time roster GUID check catches joined caster despite stale token")
+        current = setup(target)
+        current.db.thanksSkipGroupMembers = false
+        current.Thanks:Queue("Fortitude", "caster", "caster", "target")
+        current.db.thanksSkipGroupMembers, units.party2, groupParty.caster = true, "caster", true
+        timers[1].callback()
+        equal(#output, 0, "enabling skip cancels a pending group thank-you")
+        current = setup(target)
+        current.Thanks:Queue("Fortitude", "caster", "caster", "target")
+        units.target, groupParty.replacement = "replacement", true
+        timers[1].callback()
+        equal(#output, 1, "changed target joining group does not misclassify original outside caster")
+        current = setup(target)
+        groupRaid.caster = 0
+        UnitGUID = function(unit) if unit == "player" then return "self" end end
+        equal(current.Thanks:Queue("Fortitude", "caster", "caster", "target"), false,
+            "numeric raid membership, including zero, skips even without a readable caster GUID")
+        equal(#timers, 0, "membership API result does not need GUID roster fallback")
+    end
+    local current = setup("Camelot")
+    units.party2, groupParty.caster = "caster", true
+    local buff = function(_, index)
+        if index == 1 then return { spellId = 1243, sourceUnit = "party2" } end
+    end
+    C_UnitAuras.GetAuraDataByIndex = buff
+    current.Thanks:Observe(false)
+    equal(#timers, 0, "known group buff is skipped on observation")
+    current.db.thanksSkipGroupMembers = false
+    current.Thanks:Observe(false)
+    equal(#timers, 0, "turning skip off does not retroactively thank an existing buff")
+    C_UnitAuras.GetAuraDataByIndex = function() end
+    current.Thanks:Observe(false)
+    C_UnitAuras.GetAuraDataByIndex = buff
+    current.Thanks:Observe(false)
+    equal(#timers, 1, "a newly reapplied buff can be thanked after skip is disabled")
+    current = setup("Camelot")
+    current.db.thanksChannel = "EMOTE"
+    groupParty["other-member"] = true
+    C_UnitAuras.GetAuraDataByIndex = function(_, index)
+        if index == 1 then return { spellId = 1243, name = "Power Word: Fortitude" } end
+    end
+    current.Thanks:Observe(false)
+    equal(#output, 1, "unknown-caster fallback still fires while grouped with skip enabled")
+    equal(output[1][2], nil, "unknown-caster fallback remains untargeted")
+    current = setup("Camelot")
+    current.db.thanksChannel = "EMOTE"
+    units.party2, groupParty.caster = "caster", true
+    C_UnitAuras.GetAuraDataByIndex = function(_, index)
+        if index == 1 then return { spellId = 1243, auraInstanceID = 999, name = "Power Word: Fortitude" } end
+    end
+    C_UnitAuras.GetAuraDataByAuraInstanceID = function()
+        return { spellId = 1243, auraInstanceID = 999, name = "Power Word: Fortitude", sourceUnit = "party2" }
+    end
+    current.Thanks:Observe(false)
+    timers[1].callback()
+    equal(#output, 0, "retry identifying a group caster skips thanks instead of using unknown fallback")
+    equal(#timers, 1, "identified group caster schedules no thank-you or extra retry")
+    equal(current.Thanks.lastStatus, "skipped: caster is in your party or raid", "group skip is reported")
+    for _, target in ipairs({ "Camelot", "Mainline" }) do
+        current = setup(target)
+        current.db.thanksChannel = "EMOTE"
+        local aura = { spellId = 1243, auraInstanceID = 701, sourceUnit = "target" }
+        C_UnitAuras.GetAuraDataByIndex = function(_, index) if index == 1 then return aura end end
+        current.Thanks:Observe(true)
+        current.Thanks:Queue("Fortitude", "caster", "caster", "target")
+        local oldSend = timers[#timers].callback
+        current.Thanks:ZoneTransition(true)
+        aura = nil
+        current.Thanks:Observe(false)
+        oldSend()
+        equal(#output, 0, "loading cancels pending thanks")
+        current.Thanks:ZoneTransition(false)
+        local oldSettle = timers[#timers].callback
+        current.Thanks:ZoneTransition(false)
+        local settle = timers[#timers].callback
+        oldSettle()
+        equal(current.Thanks.zoneReady, false, "obsolete zone timer cannot end a newer transition")
+        aura = { spellId = 1243, auraInstanceID = 702 }
+        current.Thanks:Observe(false)
+        equal(next(current.Thanks.retrying), nil, "rehydrated aura cannot start attribution retries")
+        local combat = true
+        current.IsCombatLocked = function() return combat end
+        settle()
+        equal(current.Thanks.zonePriming, true, "combat defers final zone baseline")
+        combat = false
+        current.Thanks:FinishZoneTransition()
+        equal(current.Thanks.zonePriming, false, "combat ending finishes zone baseline")
+        aura.sourceUnit = "target"
+        current.Thanks:Observe(false)
+        equal(#output, 0, "late caster for an existing zone buff is not thanked")
+        aura = nil
+        current.Thanks:Observe(false)
+        aura = { spellId = 1243, sourceUnit = "target" }
+        current.Thanks:Observe(false)
+        local freshSend = timers[#timers].callback
+        oldSend()
+        equal(current.Thanks.pending.caster ~= nil, true, "cancelled callback cannot clear a new job for the same caster")
+        current.Thanks:Observe(false, { isFullUpdate = true })
+        equal(current.Thanks.pending.caster ~= nil, true, "ordinary full update preserves an already queued valid reply")
+        freshSend()
+        equal(#output, 1, "genuine new outside buff is thanked after settling")
+        aura = { spellId = 1243, auraInstanceID = 703 }
+        current.Thanks:Observe(false, { isFullUpdate = true })
+        equal(next(current.Thanks.retrying), nil, "full aura snapshot primes without retrying old buffs")
+        aura.sourceUnit = "target"
+        current.Thanks:Observe(false)
+        equal(next(current.Thanks.pending), nil, "late source after full snapshot stays baseline")
+    end
+    current = setup("Camelot")
+    current.db.thanksChannel = "EMOTE"
+    local aura = { spellId = 1243, auraInstanceID = 801 }
+    C_UnitAuras.GetAuraDataByIndex = function(_, index) if index == 1 then return aura end end
+    current.Thanks:Observe(false)
+    local oldRetry = timers[#timers].callback
+    current.Thanks:ZoneTransition(true)
+    oldRetry()
+    equal(#output, 0, "loading invalidates attribution retry fallback")
+    aura = nil
+    current.Thanks:ZoneTransition(false)
+    timers[#timers].callback()
+    aura = { spellId = 1243 }
+    current.Thanks:Observe(false)
+    equal(#output, 1, "unknown-caster fallback still fires after zone settling")
+end
+
 print("thanks tests passed")
