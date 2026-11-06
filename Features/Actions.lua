@@ -91,9 +91,21 @@ local function friendlyPlayer(unit)
         and UnitCanAssist("player", unit) and not UnitIsDeadOrGhost(unit)
 end
 
+local PET_UNITS = { "pet", "partypet1", "partypet2", "partypet3", "partypet4" }
+
 local function friendlyPet(unit)
-    return UnitExists(unit) and not UnitIsPlayer(unit)
-        and UnitCanAssist("player", unit) and not UnitIsDeadOrGhost(unit)
+    if not UnitExists(unit) or UnitIsPlayer(unit)
+        or not UnitCanAssist("player", unit) or UnitIsDeadOrGhost(unit) then return false end
+    -- Friendly NPCs are not pets. Known owner tokens also cover the selected
+    -- pet when the optional classification API is unavailable or restricted.
+    for _, pet in ipairs(PET_UNITS) do
+        if unit == pet or (UnitExists(pet) and ns.Plain(UnitIsUnit(unit, pet)) == true) then return true end
+    end
+    if type(UnitIsOtherPlayersPet) == "function" then
+        local ok, isPet = pcall(UnitIsOtherPlayersPet, unit)
+        if ok and ns.Plain(isPet) == true then return true end
+    end
+    return false
 end
 
 -- Party aura state is useful only for allies that the client can currently
@@ -322,7 +334,8 @@ function Actions:Entries()
         ns.lastTrackingProbe[#ns.lastTrackingProbe + 1] = entry.name
     end
     local known = ns.KnownSelfBuffs()
-    local selectedTarget = friendlyPlayer("target") or (ns.db.showPetBuffs and friendlyPet("target"))
+    local selectedTarget = ns.db.showTargetBuffs
+        and (friendlyPlayer("target") or (ns.db.showPetBuffs and friendlyPet("target")))
     if ns.db.showTargetBuffs and selectedTarget and not UnitIsUnit("player", "target") then
         ns.lastTargetProbe = {}
         for _, entry in ipairs(known) do
@@ -366,7 +379,7 @@ function Actions:Entries()
     if ns.db.showPetBuffs then
         for _, entry in ipairs(known) do
             if entry.target and not self:IsSuppressed(entry) then
-                for _, unit in ipairs({ "pet", "party1pet", "party2pet", "party3pet", "party4pet" }) do
+                for _, unit in ipairs(PET_UNITS) do
                     if friendlyPet(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
                         local status = entryStatus(unit, entry)
                         self:ConsiderReminder(entry, status)

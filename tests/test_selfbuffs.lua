@@ -364,3 +364,78 @@ do
     equal(db.preferred["1"]["rogue-lethal"], 8679, "unrelated spells preserve preference")
 end
 print("poison self-buff tests passed")
+
+-- Friendly pets must be actual pets; friendly NPCs cannot become buff targets.
+for _, client in ipairs({ "Camelot", "Mainline" }) do
+    playerClass, knownIDs, book, auras = "MAGE", { [1459] = true }, nil, {}
+    SPELL_NAMES[1459] = "Arcane Intellect"
+    local db = { excludedBuffs = {}, reminderPercent = { buff = 10 },
+        showTargetBuffs = true, showPartyBuffs = true, showPetBuffs = true, showPartyCoverage = false }
+    local ns = load(client, db)
+    local secret = {}
+    ns.Plain = function(value) if value ~= secret then return value end end
+    ns.CONSUMABLE_ORDER = {}
+    GetTime = function() return 100 end
+    IsResting, IsInGroup = function() return false end, function() return true end
+    local units = { player = "self", target = "npc", pet = "own-pet", partypet1 = "party-pet" }
+    local players = { self = true, friend = true }
+    local assist, dead, otherPet = true, false, false
+    UnitExists = function(unit) return units[unit] ~= nil end
+    UnitGUID = function(unit) return units[unit] end
+    UnitIsPlayer = function(unit) return players[units[unit]] == true end
+    UnitCanAssist = function(_, unit) return unit ~= "target" or assist end
+    UnitIsDeadOrGhost = function(unit) return unit == "target" and dead end
+    UnitIsUnit = function(a, b) return units[a] ~= nil and units[a] == units[b] end
+    UnitName = function(unit) return units[unit] end
+    UnitIsOtherPlayersPet = function() return otherPet end
+    assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
+    local function offered(unit, binding)
+        for _, entry in ipairs(binding and ns.Actions:BindingEntries() or ns.Actions:Entries()) do
+            if entry.unit == unit then return true end
+        end
+        return false
+    end
+    equal(offered("target"), false, client .. ": friendly NPC is not offered as a pet")
+    equal(offered("target", true), false, client .. ": NPC never enters the buff keybinding")
+    equal(offered("pet"), true, client .. ": own pet still receives a reminder")
+    units.pet = nil
+    equal(offered("partypet1"), true, client .. ": canonical party pet token receives a reminder")
+    equal(offered("party1pet"), false, client .. ": obsolete party pet token is not used")
+
+    units.target, units.partypet1 = "party-pet", "party-pet"
+    UnitIsOtherPlayersPet = nil
+    equal(offered("target"), true, client .. ": selected party pet is recognised without optional API")
+    equal(offered("partypet1"), false, client .. ": selected party pet does not get a duplicate reminder")
+    db.showTargetBuffs = false
+    equal(offered("target"), false, client .. ": target setting disables selected-pet copy")
+    equal(offered("partypet1"), true, client .. ": selected party pet still gets its own reminder when targets are disabled")
+    units.target, units.pet = "own-pet", "own-pet"
+    equal(offered("pet"), true, client .. ": selected own pet still gets its reminder when targets are disabled")
+    units.target, units.party1 = "friend", "friend"
+    equal(offered("party1"), true, client .. ": selected party player remains available when targets are disabled")
+    units.party1 = nil
+    db.showTargetBuffs = true
+    units.target, units.pet = "own-pet", "own-pet"
+    equal(offered("target"), true, client .. ": selected own pet is recognised")
+    units.target = "stranger-pet"
+    equal(offered("target"), false, client .. ": unidentified non-player fails closed without pet API")
+    UnitIsOtherPlayersPet = function() return true end
+    equal(offered("target"), true, client .. ": positively identified other player pet is eligible")
+    assist = false
+    equal(offered("target"), false, client .. ": hostile pet is not eligible")
+    assist, dead = true, true
+    equal(offered("target"), false, client .. ": dead pet is not eligible")
+    dead = false
+    UnitIsOtherPlayersPet = function() return secret end
+    equal(offered("target"), false, client .. ": restricted pet classification is not proof")
+    UnitIsOtherPlayersPet = function() error("restricted") end
+    equal(offered("target"), false, client .. ": failed pet classification is not proof")
+    units.target = "friend"
+    equal(offered("target"), true, client .. ": friendly player reminders remain available")
+    units.target = "own-pet"
+    db.showPetBuffs = false
+    equal(offered("target"), false, client .. ": pet option still controls targeted pets")
+    equal(offered("pet"), false, client .. ": pet option controls own pet")
+    equal(offered("partypet1"), false, client .. ": pet option controls party pets")
+end
+print("pet target tests passed")

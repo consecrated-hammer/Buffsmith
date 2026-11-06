@@ -7,6 +7,17 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-11-06
+
+### Fixed
+
+- Friendly NPCs no longer count as pets when choosing buff targets. Actual
+  pets remain eligible when Friendly pets is enabled.
+- Party pet reminders use the standard `partypet1` through `partypet4` tokens.
+  Selecting your own or a party member's pet avoids duplicate reminders.
+- Selecting a pet or party member no longer hides its separate reminder when
+  target reminders are disabled.
+
 ## [1.5.2] - 2026-11-06
 
 ### Fixed
