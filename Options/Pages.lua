@@ -458,7 +458,19 @@ HC.Settings:NewPage({ name = "Key Bindings", description = "One key for your nex
     local keycap = UI.Button(card, 150, 24)
     keycap:SetPoint("RIGHT", clear, "LEFT", -8, 0)
     UI.AttachHint(keycap, "Buff trigger", "Click, then press a key or scroll the mouse wheel. Esc cancels.")
+    local zoomRow
+    zoomRow, y = UI.Check(panel, "Also zoom in/out",
+        "Keep this wheel key's previous camera action as well as triggering Buffsmith. Clearing the binding restores camera zoom.", y,
+        function() local zoom = ns.Bindings:WheelZoom(); return zoom and zoom.enabled end,
+        function(value)
+            local ok, message = ns.Bindings:SetWheelZoom(value)
+            if not ok then HC.Print(message) end
+        end)
     local function refresh()
+        local zoom = ns.Bindings:WheelZoom()
+        zoomRow:SetShown(zoom ~= nil)
+        zoomRow.hcCheckbox:SetChecked(zoom and zoom.enabled == true or false)
+        zoomRow.hcCheckbox.Text:SetText(zoom and (zoom.action == "CAMERAZOOMIN" and "Also zoom in" or "Also zoom out") or "Also zoom in/out")
         local label = ns.Bindings:Label("trigger")
         local bound = label ~= "Unbound"
         keycap:SetText(bound and label or "Not bound")

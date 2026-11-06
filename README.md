@@ -51,6 +51,20 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
   emotes depend on the client resolving the player and can become general
   emotes if that player is no longer available.
 
+When you bind the Buff trigger through `/buffsmith` → **Key Bindings**, a
+mouse-wheel key that already controls camera zoom reveals **Also zoom in** or
+**Also zoom out**. Tick it to keep that camera action as well as using the buff
+trigger. The option starts off and appears only for a detected camera binding;
+Buffsmith checks the chosen key's camera command instead of assuming wheel direction.
+Clearing or replacing the wheel binding restores the captured camera command.
+Camera choices are saved separately for account bindings and each character's
+character-specific bindings.
+Existing Buffsmith wheel bindings whose original action was already replaced
+need to be bound to camera zoom first, then selected again in Buffsmith.
+
+Reminders and buff-trigger actions pause on flight paths and refresh when you
+land. Shared wheel zoom still works while there are no usable buff actions.
+
 ## Getting started
 
 Install, then type `/buffsmith` (or `/bs`) for settings. **Preview on screen**, at the bottom of the settings list, draws a test bar where yours will sit, so you can place and size it without deliberately removing half your buffs first.

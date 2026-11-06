@@ -7,6 +7,20 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-06
+
+### Added
+
+- When a newly chosen mouse-wheel binding already controls camera zoom, Key
+  Bindings offers an optional Also zoom in/out checkbox. It remembers the
+  original direction, including reversed and modified wheel keys. Clearing or
+  replacing that binding restores its camera action.
+
+### Fixed
+
+- Buff, tracking and consumable reminders pause during flight paths and
+  refresh after landing. The shared wheel camera action remains available.
+
 ## [1.5.3] - 2026-11-06
 
 ### Fixed

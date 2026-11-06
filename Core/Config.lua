@@ -58,6 +58,18 @@ end
 function ns.InitConfig()
     BuffsmithDB = type(BuffsmithDB) == "table" and BuffsmithDB or {}
     BuffsmithDB = copyDefaults(BuffsmithDB, ns.defaults)
+    if type(BuffsmithDB.bindingZooms) ~= "table" then BuffsmithDB.bindingZooms = {} end
+    for profile, zoom in pairs(BuffsmithDB.bindingZooms) do
+        if type(profile) ~= "string" or (profile ~= "account" and not profile:match("^character:Player%-"))
+            or type(zoom) ~= "table" or type(zoom.key) ~= "string"
+            or not (zoom.key == "MOUSEWHEELUP" or zoom.key == "MOUSEWHEELDOWN"
+                or zoom.key:match("%-MOUSEWHEELUP$") or zoom.key:match("%-MOUSEWHEELDOWN$"))
+            or (zoom.action ~= "CAMERAZOOMIN" and zoom.action ~= "CAMERAZOOMOUT") then
+            BuffsmithDB.bindingZooms[profile] = nil
+        else
+            zoom.enabled = zoom.enabled == true
+        end
+    end
     if type(BuffsmithDB.categories) ~= "table" then BuffsmithDB.categories = {} end
     if type(BuffsmithDB.visibility) ~= "table" then BuffsmithDB.visibility = {} end
     BuffsmithDB.expanded = nil

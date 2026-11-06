@@ -87,4 +87,16 @@ local coreNS = { HammerCore = { Print = function() end } }
 assert(loadfile("Core.lua"))("Buffsmith", coreNS)
 equal(coreNS.Plain(secret), nil, "secret values are never returned as plain")
 equal(coreNS.Plain("safe"), "safe", "plain values pass through")
+for _, value in ipairs({ false, "bad", {}, { key = "F", action = "CAMERAZOOMOUT", set = 1 },
+    { key = "MOUSEWHEELDOWN", action = "JUMP", set = 1 },
+    { key = "MOUSEWHEELDOWN", action = "JUMP" } }) do
+    BuffsmithDB = { bindingZooms = { account = value } }
+    ns.InitConfig()
+    equal(ns.db.bindingZooms.account, nil, "malformed saved camera binding is discarded")
+end
+BuffsmithDB = { bindingZooms = { account = { key = "CTRL-MOUSEWHEELUP", action = "CAMERAZOOMOUT", enabled = "yes" } } }
+ns.InitConfig()
+equal(ns.db.bindingZooms.account.enabled, false, "invalid saved camera preference defaults off")
+equal(ns.db.bindingZooms.account.action, "CAMERAZOOMOUT", "reversed modified wheel action is retained")
+
 print("config tests passed")

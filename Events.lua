@@ -2,8 +2,13 @@ local addonName, ns = ...
 
 local frame = CreateFrame("Frame", "BuffsmithEventFrame")
 local rangeElapsed = 0
+local lastTaxiState
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
+frame:RegisterEvent("PLAYER_CONTROL_LOST")
+frame:RegisterEvent("PLAYER_CONTROL_GAINED")
+frame:RegisterUnitEvent("UNIT_FLAGS", "player")
+frame:RegisterEvent("UPDATE_BINDINGS")
 frame:RegisterEvent("BAG_UPDATE_DELAYED")
 frame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 frame:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
@@ -32,6 +37,7 @@ pcall(frame.RegisterEvent, frame, "MINIMAP_UPDATE_TRACKING")
 
 local function refresh()
     if ns.IsCombatLocked() then return end
+    lastTaxiState = UnitOnTaxi and ns.Plain(UnitOnTaxi("player")) == true or false
     ns.Inventory:Refresh()
     ns.HC.Minimap:Update()
     ns.Handle:Update()
@@ -54,6 +60,11 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         ns.Bindings:Create()
         ns.HC:Start()
         frame:UnregisterEvent("ADDON_LOADED")
+    elseif event == "UPDATE_BINDINGS" then
+        ns.Bindings:SyncZoom()
+        local settings = ns.HC and ns.HC.Settings
+        local page = settings and settings.pages and settings.pages["Key Bindings"]
+        if page and page.hcRefreshAll then page.hcRefreshAll() end
     elseif event == "PLAYER_LOGIN" then
         ns.Thanks:Observe(true)
         refresh()
@@ -76,7 +87,11 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         if event == "PLAYER_ENTERING_WORLD" or not ns.Thanks.loadingWorld then ns.Thanks:ZoneTransition(false) end
         ns.Actions:ResetDismissals()
         refresh()
-    elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+    elseif event == "UNIT_FLAGS" then
+        local onTaxi = UnitOnTaxi and ns.Plain(UnitOnTaxi("player")) == true or false
+        if arg1 == "player" and onTaxi ~= lastTaxiState then refresh() end
+    elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST"
+        or event == "PLAYER_CONTROL_LOST" or event == "PLAYER_CONTROL_GAINED" then
         refresh()
         -- Unit state can settle after the event; retry on the next frame.
         C_Timer.After(0, refresh)
@@ -85,7 +100,10 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "UNIT_PET" or event == "MINIMAP_UPDATE_TRACKING"
         or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
         if event == "SPELLS_CHANGED" then ns.ResetSpellbook() end
-        if event == "PLAYER_REGEN_ENABLED" then ns.Thanks:FinishZoneTransition() end
+        if event == "PLAYER_REGEN_ENABLED" then
+            ns.Thanks:FinishZoneTransition()
+            ns.Bindings:SyncZoom()
+        end
         refresh()
     end
 end)

@@ -385,4 +385,73 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     end
 end
 
+-- The zoom option appears only for a captured wheel key with a camera action.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local keys = { MOUSEWHEELDOWN = "CAMERAZOOMOUT" }
+    local command = ns.Bindings:Command("trigger")
+    GetBindingAction = function(key) return keys[key] or "" end
+    GetBindingKey = function(action)
+        for key, value in pairs(keys) do if value == action then return key end end
+    end
+    SetBinding = function(key, action) keys[key] = action; return true end
+    local settings = ns.HammerCore.Settings
+    settings:Show("Key Bindings")
+    local check = wow.FindText("Also zoom in/out").parent
+    equal(check.parent:IsShown(), false, toc .. ": option hidden before detecting a camera binding")
+    ns.Bindings:Set("trigger", "MOUSEWHEELDOWN")
+    settings:Select("Key Bindings")
+    equal(check.parent:IsShown(), true, toc .. ": camera wheel binding exposes option")
+    equal(check.Text:GetText(), "Also zoom out", toc .. ": option names the actual zoom direction")
+    equal(check:GetChecked(), false, toc .. ": camera sharing is opt-in")
+    wow.Click(check)
+    equal(ns.Bindings:WheelZoom().enabled, true, toc .. ": option enables shared camera action")
+    ns.Bindings:Set("trigger", "F")
+    settings:Select("Key Bindings")
+    equal(check.parent:IsShown(), false, toc .. ": ordinary key hides camera option")
+    equal(keys.MOUSEWHEELDOWN, "CAMERAZOOMOUT", toc .. ": replacing wheel restores camera action")
+    ns.Bindings:Set("trigger", "MOUSEWHEELDOWN")
+    settings:Select("Key Bindings")
+    keys.MOUSEWHEELDOWN = "JUMP"
+    local eventFrame = _G.BuffsmithEventFrame
+    eventFrame.scripts.OnEvent(eventFrame, "UPDATE_BINDINGS")
+    equal(check.parent:IsShown(), false, toc .. ": external rebind immediately hides stale zoom option")
+end
+
+-- Flight paths suppress every actionable reminder, then landing restores it.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local taxi = false
+    UnitOnTaxi = function(unit) equal(unit, "player", "taxi check uses player"); return taxi end
+    local events = _G.BuffsmithEventFrame
+    ns.Inventory.items.food = { { kind = "item", itemID = 4599, name = "Cured Ham Steak", category = "food" } }
+    assert(#ns.Actions:Entries() > 0, toc .. ": reminders available before takeoff")
+    taxi = true
+    C_UnitAuras.GetAuraDataByIndex = function() error("reminder aura scan while flying") end
+    equal(#ns.Actions:Entries(), 0, toc .. ": flight path suppresses buff and tracking reminders")
+    equal(#ns.Actions:VisibleChoices("food"), 0, toc .. ": flight path suppresses consumables")
+    equal(#ns.Actions:BindingEntries(), 0, toc .. ": flight path disarms trigger actions")
+    ns.Actions.coverageEvidence = { sentinel = true }
+    equal(#ns.Actions:PartyCoverage(), 0, toc .. ": flight path suppresses party coverage")
+    equal(ns.Actions.coverageEvidence.sentinel, true, toc .. ": flight path retains provider evidence")
+    events.scripts.OnEvent(events, "PLAYER_CONTROL_LOST")
+    equal(ns.Bindings.trigger:GetAttribute("type1"), nil, toc .. ": takeoff disarms normal trigger")
+    equal(ns.Bindings.zoomOut:GetAttribute("type1"), nil, toc .. ": takeoff disarms shared wheel buff action")
+    taxi = false
+    C_UnitAuras.GetAuraDataByIndex = function() return nil end
+    events.scripts.OnEvent(events, "PLAYER_CONTROL_GAINED")
+    equal(ns.Bindings.trigger:GetAttribute("type1"), "spell", toc .. ": landing restores trigger")
+    local deferred
+    C_Timer.After = function(delay, fn) if delay == 0 then deferred = fn end end
+    events.scripts.OnEvent(events, "PLAYER_CONTROL_LOST")
+    taxi = true
+    assert(deferred, toc .. ": takeoff retries after control state settles")
+    deferred()
+    equal(ns.Bindings.trigger:GetAttribute("type1"), nil, toc .. ": deferred takeoff disarms trigger")
+    taxi = false
+    events.scripts.OnEvent(events, "UNIT_FLAGS", "player")
+    equal(ns.Bindings.trigger:GetAttribute("type1"), "spell", toc .. ": flags update restores reminders")
+    UnitOnTaxi = nil
+end
+
 io.write("addon tests passed\n")
