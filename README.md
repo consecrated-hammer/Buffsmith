@@ -44,7 +44,12 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
   setting, even when group thanks are skipped. Loading screens and zone
   changes pause thanks while the aura list settles for one second. Existing
   buffs and full aura snapshots become the baseline; new buffs afterward can
-  trigger thanks normally.
+  trigger thanks normally. If the client omits the caster's unit token,
+  Buffsmith also tries the aura's caster GUID and resolves a matching unit or
+  player name. This runs automatically when Thank You is enabled; restricted
+  or missing identity data can still prevent a directed reply. Name-based
+  emotes depend on the client resolving the player and can become general
+  emotes if that player is no longer available.
 
 ## Getting started
 

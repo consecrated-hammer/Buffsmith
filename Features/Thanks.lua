@@ -106,24 +106,104 @@ local function trackedBuffs()
     return tracked
 end
 
+local function plainCall(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, value = pcall(fn, ...)
+    if ok then return ns.Plain(value) end
+end
+
 local function isSelfSource(sourceUnit)
     if sourceUnit == "player" then return true end
-    if type(sourceUnit) ~= "string" or not UnitExists(sourceUnit) then return false end
-    local guid, playerGUID = ns.Plain(UnitGUID(sourceUnit)), ns.Plain(UnitGUID("player"))
+    if type(sourceUnit) ~= "string" or not plainCall(UnitExists, sourceUnit) then return false end
+    local guid, playerGUID = plainCall(UnitGUID, sourceUnit), plainCall(UnitGUID, "player")
     return type(guid) == "string" and guid ~= "" and guid == playerGUID
 end
 
 local function sourceInfo(sourceUnit)
     if type(sourceUnit) ~= "string" then return nil, nil, "no caster token" end
     if isSelfSource(sourceUnit) then return nil, nil, "self" end
-    if not UnitExists(sourceUnit) then return nil, nil, "caster token unavailable" end
-    if not UnitIsPlayer(sourceUnit) then return nil, nil, "caster is not a player" end
-    if not UnitCanAssist("player", sourceUnit) then return nil, nil, "caster is not friendly" end
-    local name, realm = UnitName(sourceUnit)
+    if not plainCall(UnitExists, sourceUnit) then return nil, nil, "caster token unavailable" end
+    if not plainCall(UnitIsPlayer, sourceUnit) then return nil, nil, "caster is not a player" end
+    if not plainCall(UnitCanAssist, "player", sourceUnit) then return nil, nil, "caster is not friendly" end
+    local ok, name, realm = pcall(UnitName, sourceUnit)
+    if not ok or ns.IsSecret(name) or ns.IsSecret(realm) then return nil, nil, "caster name unavailable" end
+    name, realm = ns.Plain(name), ns.Plain(realm)
     if type(name) ~= "string" or name == "" then return nil, nil, "caster name unavailable" end
-    local recipient = realm and realm ~= "" and name .. "-" .. realm or name
-    local guid = ns.Plain(UnitGUID(sourceUnit))
+    local recipient = realm and realm ~= "" and name .. "-" .. realm:gsub("%s", "") or name
+    local guid = plainCall(UnitGUID, sourceUnit)
     return recipient, type(guid) == "string" and guid ~= "" and guid or recipient
+end
+
+-- GUID reads can succeed even when Forever supplies no source unit token.
+local function unitForGUID(guid, preferred, quick)
+    local function matches(unit)
+        return type(unit) == "string" and plainCall(UnitGUID, unit) == guid
+    end
+    if matches(preferred) then return preferred end
+    local resolved = plainCall(UnitTokenFromGUID, guid)
+    if matches(resolved) then return resolved end
+    for _, unit in ipairs({ "player", "target", "focus", "mouseover" }) do
+        if matches(unit) then return unit end
+    end
+    if quick then return nil end
+    for index = 1, 40 do
+        if index <= 4 and matches("party" .. index) then return "party" .. index end
+        if matches("raid" .. index) then return "raid" .. index end
+        if matches("nameplate" .. index) then return "nameplate" .. index end
+    end
+end
+
+local function nameForGUID(guid)
+    local name, realm
+    if type(UnitNameFromGUID) == "function" then
+        local ok, value, server = pcall(UnitNameFromGUID, guid)
+        if ok then name, realm = ns.Plain(value), ns.Plain(server) end
+        -- A secret realm must not become an unqualified cross-realm recipient.
+        if ok and ns.IsSecret(server) then return nil end
+    end
+    if (type(name) ~= "string" or name == "") and type(GetPlayerInfoByGUID) == "function" then
+        local ok, _, _, _, _, _, value, server = pcall(GetPlayerInfoByGUID, guid)
+        if ok then name, realm = ns.Plain(value), ns.Plain(server) end
+        if ok and ns.IsSecret(server) then return nil end
+    end
+    if type(name) ~= "string" or name == "" then return nil end
+    if type(realm) == "string" and realm ~= "" then return name .. "-" .. realm:gsub("%s", "") end
+    return name
+end
+
+local function auraSource(aura, sourceUnit)
+    local provider, key, reason = sourceInfo(sourceUnit)
+    if provider or reason == "self" or reason == "caster is not a player" then
+        return provider, key, reason, sourceUnit
+    end
+    local instanceID = ns.Plain(aura.auraInstanceID)
+    local getter = C_UnitAuras and C_UnitAuras.GetAuraCasterGUID
+    if type(instanceID) ~= "number" or type(getter) ~= "function" then
+        return nil, nil, reason, sourceUnit
+    end
+    local guid = plainCall(getter, "player", instanceID)
+    if type(guid) ~= "string" or guid == "" then
+        return nil, nil, "caster GUID unavailable or restricted", sourceUnit
+    end
+    local ownGUID = plainCall(UnitGUID, "player")
+    if type(ownGUID) ~= "string" or ownGUID == "" then return nil, nil, "player identity unavailable" end
+    if guid == ownGUID then return nil, nil, "self" end
+    if not guid:match("^Player%-") then return nil, nil, "caster is not a player" end
+    local name = nameForGUID(guid)
+    -- A GUID-resolved name avoids a full roster/nameplate walk on each aura
+    -- update. Queue/Send still check current membership and identity.
+    local unit = unitForGUID(guid, sourceUnit, name ~= nil)
+    if unit then
+        provider, key, reason = sourceInfo(unit)
+        if provider and key == guid then return provider, guid, nil, unit, "aura caster GUID" end
+        -- A known unfriendly/non-player unit must not degrade to a name lookup.
+        if reason == "self" or reason == "caster is not friendly" or reason == "caster is not a player" then
+            return nil, nil, reason, unit
+        end
+    end
+    provider = name
+    if provider then return provider, guid, nil, nil, "aura caster GUID" end
+    return nil, guid, "caster GUID has no readable player name", nil
 end
 
 local function eventSource(aura, updateInfo)
@@ -199,7 +279,7 @@ local function messageFor(buff, provider)
     return message:gsub("[\r\n]+", " "):sub(1, 240)
 end
 
-function Thanks:Send(buff, provider, providerKey, sourceUnit)
+function Thanks:Send(buff, provider, providerKey, sourceUnit, allowName)
     if skipGroupProvider(provider, providerKey, sourceUnit) then
         self.lastStatus = "skipped: caster is in your party or raid"
         return
@@ -207,19 +287,33 @@ function Thanks:Send(buff, provider, providerKey, sourceUnit)
     local channel = ns.db.thanksChannel
     if channel == "EMOTE" then
         local currentProvider, currentKey = sourceInfo(sourceUnit)
+        local emoteTarget = sourceUnit
         if currentProvider ~= provider or currentKey ~= providerKey then
-            self.lastStatus = "skipped: emote target unavailable"
-            return
+            -- Recover a moved token by GUID; otherwise use the captured player
+            -- name. Never redirect the emote at the replacement in an old slot.
+            local unit = type(providerKey) == "string" and providerKey:match("^Player%-")
+                and unitForGUID(providerKey, sourceUnit)
+            if unit then
+                currentProvider, currentKey = sourceInfo(unit)
+                if currentProvider == provider and currentKey == providerKey then emoteTarget = unit else unit = nil end
+            end
+            if not unit then
+                if not allowName or type(providerKey) ~= "string" or not providerKey:match("^Player%-") then
+                    self.lastStatus = "skipped: emote target unavailable"
+                    return
+                end
+                emoteTarget = provider:match("^[^-]+")
+            end
         end
         local token = selectedEmote()
         if ns.TARGET == "Camelot" then
             if type(DoEmote) ~= "function" then self.lastStatus = "skipped: emote API unavailable"; return end
-            if not pcall(DoEmote, token, sourceUnit) then self.lastStatus = "skipped: emote rejected"; return end
+            if not pcall(DoEmote, token, emoteTarget) then self.lastStatus = "skipped: emote rejected"; return end
         elseif C_ChatInfo and type(C_ChatInfo.PerformEmote) == "function" then
             local ok, success = pcall(C_ChatInfo.PerformEmote, token, provider)
             if not ok or success == false then self.lastStatus = "skipped: emote rejected"; return end
         elseif type(DoEmote) == "function" then
-            if not pcall(DoEmote, token, sourceUnit) then self.lastStatus = "skipped: emote rejected"; return end
+            if not pcall(DoEmote, token, emoteTarget) then self.lastStatus = "skipped: emote rejected"; return end
         else
             self.lastStatus = "skipped: emote API unavailable"
             return
@@ -243,8 +337,8 @@ function Thanks:Send(buff, provider, providerKey, sourceUnit)
 end
 
 -- Forever can expose a newly applied buff without any usable caster token.
--- An opt-in untargeted emote is the only safe fallback: whispers need a
--- recipient, and we must never guess one from the roster.
+-- If GUID recovery also fails, the opt-in untargeted emote remains available.
+-- Whispers need a recipient; never guess one from the roster.
 function Thanks:FallbackEmote(buff, auraKey)
     if not ns.db.thanksUnknownEmote or ns.db.thanksChannel ~= "EMOTE" then return false end
     local token = selectedEmote()
@@ -275,13 +369,14 @@ local function delayLabel(delay)
     return tostring(delay) .. (delay == 1 and " second" or " seconds")
 end
 
-function Thanks:Queue(buff, provider, providerKey, sourceUnit)
+function Thanks:Queue(buff, provider, providerKey, sourceUnit, allowName)
     if skipGroupProvider(provider, providerKey, sourceUnit) then
         self.lastStatus = "skipped: caster is in your party or raid"
         return false
     end
     local job = self.pending[providerKey]
     if job then
+        job.allowName = job.allowName or allowName
         if type(sourceUnit) == "string" then job.sourceUnit = sourceUnit end
         if not job.buffSet[buff] then
             job.buffSet[buff] = true
@@ -302,9 +397,9 @@ function Thanks:Queue(buff, provider, providerKey, sourceUnit)
             self.lastStatus = "cancelled: combat"
             return
         end
-        self:Send(combinedBuffs(job), job.provider, providerKey, job.sourceUnit)
+        self:Send(combinedBuffs(job), job.provider, providerKey, job.sourceUnit, job.allowName)
     end
-    job = { provider = provider, sourceUnit = sourceUnit, delay = delay, buffs = { buff }, buffSet = { [buff] = true } }
+    job = { provider = provider, sourceUnit = sourceUnit, allowName = allowName, delay = delay, buffs = { buff }, buffSet = { [buff] = true } }
     self.pending[providerKey] = job
     self.lastStatus = "queued: " .. delayLabel(delay)
     if C_Timer and type(C_Timer.After) == "function" then
@@ -356,12 +451,17 @@ function Thanks:RetryAttribution(aura, buff, auraKey)
                 return
             end
             local sourceUnit = ns.Plain(current.sourceUnit)
-            local provider, providerKey = sourceInfo(sourceUnit)
+            local provider, providerKey, reason, resolvedUnit, origin = auraSource(current, sourceUnit)
             if provider then
                 self.retrying[auraKey] = nil
                 self.attributedAuras[auraKey] = providerKey
-                self:Queue(buff.label, provider, providerKey, sourceUnit)
-                self.lastAttribution = buff.label .. ": indexed aura after retry " .. tostring(attempt)
+                self:Queue(buff.label, provider, providerKey, resolvedUnit, origin == "aura caster GUID")
+                self.lastAttribution = buff.label .. ": " .. (origin or "indexed aura") .. " after retry " .. tostring(attempt)
+            elseif reason == "self" or reason == "caster is not a player" or reason == "player identity unavailable"
+                or (providerKey and skipGroupProvider(nil, providerKey, resolvedUnit)) then
+                self.retrying[auraKey] = nil
+                self.attributedAuras[auraKey] = providerKey
+                self.lastAttribution = buff.label .. ": " .. (reason or "caster is in your party or raid")
             elseif attempt < 2 then
                 check(2)
             else
@@ -407,7 +507,11 @@ function Thanks:Observe(primeOnly, updateInfo)
             sourceUnit = eventSource(aura, updateInfo)
             if sourceUnit then sourceOrigin = "UNIT_AURA added aura" end
         end
-        if buff then provider, providerKey, sourceReason = sourceInfo(sourceUnit) end
+        if buff then
+            local origin
+            provider, providerKey, sourceReason, sourceUnit, origin = auraSource(aura, sourceUnit)
+            sourceOrigin = origin or sourceOrigin
+        end
         local auraKey
         if buff then
             auraKey = tostring(ns.Plain(aura.auraInstanceID) or spellID or buff.auraID)
@@ -429,12 +533,15 @@ function Thanks:Observe(primeOnly, updateInfo)
                 and self.eligibleAuras[auraKey] and not self.seen[key]
                 and self.attributedAuras[auraKey] ~= providerKey then
                 self.attributedAuras[auraKey] = providerKey
-                queued = self:Queue(buff.label, provider, providerKey, sourceUnit) or queued
+                queued = self:Queue(buff.label, provider, providerKey, sourceUnit, sourceOrigin == "aura caster GUID") or queued
                 self.lastAttribution = buff.label .. ": " .. sourceOrigin
             end
         elseif buff and self.initialized and not primeOnly then
             if sourceReason == "self" then
                 selfBuffs = selfBuffs + 1
+            elseif sourceReason == "caster is not a player" or sourceReason == "player identity unavailable"
+                or (providerKey and skipGroupProvider(nil, providerKey, sourceUnit)) then
+                self.attributedAuras[auraKey] = providerKey
             else
                 noProvider = noProvider + 1
                 if not self.seenAuras[auraKey] then

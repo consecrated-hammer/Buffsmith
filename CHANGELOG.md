@@ -7,6 +7,19 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-06
+
+### Fixed
+
+- Thank You can recover a buff giver from the aura's caster GUID when the
+  client supplies no usable unit token, including during delayed attribution
+  retries. Use a matching unit or a readable player name without changing target.
+- Keep group filtering tied to the recovered GUID, even when the caster's name
+  is unavailable. Self and NPC casters never trigger the unknown-caster emote.
+- Recovered directed emotes can use the captured player name if their unit
+  disappears before sending. Missing or restricted identity data still follows
+  the existing optional unknown-caster fallback and never invents a recipient.
+
 ## [1.5.0] - 2026-11-06
 
 ### Added
