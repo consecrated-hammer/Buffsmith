@@ -342,13 +342,15 @@ end
 function Thanks:FallbackEmote(buff, auraKey)
     if not ns.db.thanksUnknownEmote or ns.db.thanksChannel ~= "EMOTE" then return false end
     local token = selectedEmote()
+    -- Omitting the recipient lets the client emote at the selected target.
+    -- "none" explicitly requests a general emote without changing selection.
     local ok, success
     if ns.TARGET == "Camelot" and type(DoEmote) == "function" then
-        ok, success = pcall(DoEmote, token)
+        ok, success = pcall(DoEmote, token, "none")
     elseif C_ChatInfo and type(C_ChatInfo.PerformEmote) == "function" then
-        ok, success = pcall(C_ChatInfo.PerformEmote, token)
+        ok, success = pcall(C_ChatInfo.PerformEmote, token, "none")
     elseif type(DoEmote) == "function" then
-        ok, success = pcall(DoEmote, token)
+        ok, success = pcall(DoEmote, token, "none")
     end
     if not ok or success == false then
         self.lastStatus = "skipped: untargeted emote rejected"

@@ -172,7 +172,7 @@ state.guid = nil
 ns.Thanks:Observe(false)
 state:drain()
 equal(#state.output, 1, "failed GUID recovery retains opted-in generic thanks")
-equal(state.output[1].recipient, nil, "failed recovery never guesses a recipient")
+equal(state.output[1].recipient, "none", "failed recovery explicitly prevents selection-based targeting")
 
 ns, state = fixture("Camelot", "EMOTE")
 state.guid = nil
@@ -187,5 +187,22 @@ GetPlayerInfoByGUID = function() return nil, nil, nil, nil, nil, "Helpful", "Oth
 ns.Thanks:Observe(false)
 state:drain()
 equal(state.output[1].recipient, "Helpful-OtherRealm", "legacy name lookup can resolve a GUID")
+
+-- Model the client default: an omitted recipient uses the selected mob.
+for _, path in ipairs({ "Forever", "Mainline", "legacy" }) do
+    local current = fixture(path == "Forever" and "Camelot" or "Mainline", "EMOTE")
+    local selected, actual, argument = "Creature-selected-mob", nil, nil
+    local function perform(_, recipient)
+        argument = recipient
+        actual = recipient == "none" and "general" or (recipient or selected)
+        return true
+    end
+    DoEmote = perform
+    C_ChatInfo = path == "legacy" and nil or { PerformEmote = perform }
+    current.Thanks:FallbackEmote({ label = "Fortitude" }, "fallback-test")
+    equal(argument, "none", path .. " fallback passes an explicit no-target recipient")
+    equal(actual, "general", path .. " fallback never thanks the selected mob")
+    equal(selected, "Creature-selected-mob", path .. " fallback leaves selection unchanged")
+end
 
 print("GUID thank-you tests passed")

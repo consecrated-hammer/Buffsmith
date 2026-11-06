@@ -7,6 +7,13 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-11-06
+
+### Fixed
+
+- Unknown-caster Thank You emotes explicitly have no target, so they cannot
+  thank a selected mob or player. Your selected target stays unchanged.
+
 ## [1.5.1] - 2026-11-06
 
 ### Fixed

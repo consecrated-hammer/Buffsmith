@@ -236,7 +236,7 @@ ns.Thanks:Observe(false)
 scheduled[firstRetry].callback()
 scheduled[firstRetry + 1].callback()
 equal(#emotes, 4, "an opted-in unknown caster gets one untargeted Forever emote")
-equal(emotes[4].target, nil, "the fallback never invents an emote target")
+equal(emotes[4].target, "none", "the fallback never invents an emote target")
 equal(ns.Thanks.lastStatus, "emoted without caster: THANK", "the fallback is visible in diagnostics")
 
 -- Identified group casters can be skipped without changing unknown fallback.
@@ -339,7 +339,7 @@ do
     end
     current.Thanks:Observe(false)
     equal(#output, 1, "unknown-caster fallback still fires while grouped with skip enabled")
-    equal(output[1][2], nil, "unknown-caster fallback remains untargeted")
+    equal(output[1][2], "none", "unknown-caster fallback remains untargeted")
     current = setup("Camelot")
     current.db.thanksChannel = "EMOTE"
     units.party2, groupParty.caster = "caster", true
