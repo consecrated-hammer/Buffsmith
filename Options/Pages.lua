@@ -547,7 +547,7 @@ HC.Settings:NewPage({ name = "Thank You", description = "Thank recognised buffs 
     unknownEmoteNote:SetWidth(UI.CONTENT_WIDTH)
     unknownEmoteNote:SetJustifyH("LEFT")
     if unknownEmoteNote.SetWordWrap then unknownEmoteNote:SetWordWrap(true) end
-    unknownEmoteNote:SetText("WoW Forever may report a new buff without telling addons who cast it. Whispers still need a known caster.")
+    unknownEmoteNote:SetText("WoW Forever may report a new buff without telling addons who cast it. Friendly player nameplates can help identify the caster. Whispers still need a known caster.")
     emoteY = emoteY - 36
     messageRow, messageY = UI.TextInput(panel, "Message", "{buff} and {player} are filled in when it is sent.", y,
         function() return ns.db.thanksMessage end,

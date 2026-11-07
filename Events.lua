@@ -31,10 +31,14 @@ frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("PLAYER_LEAVING_WORLD")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("UNIT_AURA")
+frame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 for _, event in ipairs({ "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_MAXPOWER" }) do
     frame:RegisterUnitEvent(event, "player")
 end
 frame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+frame:RegisterEvent("SPELL_UPDATE_USABLE")
+pcall(frame.RegisterEvent, frame, "SPELL_DATA_LOAD_RESULT")
+pcall(frame.RegisterEvent, frame, "SPELL_TEXT_UPDATE")
 frame:RegisterEvent("UNIT_PET")
 frame:RegisterEvent("PLAYER_DEAD")
 frame:RegisterEvent("PLAYER_ALIVE")
@@ -112,18 +116,29 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         if ns.Readiness then ns.Readiness:Feedback() end
     elseif event:match("^UNIT_SPELLCAST_") then
         if arg1 == "player" and ns.Readiness then ns.Readiness:Feedback() end
+    elseif event == "SPELL_DATA_LOAD_RESULT" or event == "SPELL_TEXT_UPDATE" then
+        if ns.Inventory.nonFoodCatalogue and ns.Inventory.nonFoodCatalogue.unresolved then
+            ns.Inventory.nonFoodCatalogue = nil
+            ns.Inventory:QueueUsabilityRefresh()
+        end
+    elseif event == "SPELL_UPDATE_USABLE" then
+        ns.Inventory:QueueUsabilityRefresh()
     elseif event == "BAG_UPDATE_COOLDOWN" then
+        ns.Inventory:QueueUsabilityRefresh()
         ns.Palette:RefreshCooldowns()
         if ns.Readiness then ns.Readiness:Feedback() end
     elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" or event == "UNIT_POWER_UPDATE"
         or event == "UNIT_MAXPOWER" or event == "SPELL_UPDATE_COOLDOWN" then
         if event == "SPELL_UPDATE_COOLDOWN" then
+            ns.Inventory:QueueUsabilityRefresh()
             ns.Palette:RefreshCooldowns()
             if ns.Readiness then ns.Readiness:Feedback() end
         end
         local powerEvent = event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER"
         if (event == "SPELL_UPDATE_COOLDOWN" or arg1 == "player")
             and (not powerEvent or arg2 == nil or arg2 == "MANA") then ns.Actions:RefreshRecovery() end
+    elseif event == "NAME_PLATE_UNIT_ADDED" then
+        ns.Thanks:NameplateAdded(arg1)
     elseif event == "UNIT_AURA" then
         if arg1 == "player" then ns.Thanks:Observe(false, arg2) end
         if arg1 == "player" or arg1 == "target" or arg1 == "pet"
@@ -157,15 +172,21 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
         if event == "SPELLS_CHANGED" then
             ns.ResetSpellbook()
+            ns.Inventory.nonFoodCatalogue = nil
             ns.Thanks.tracked, ns.Thanks.trackedNames = nil, nil
         end
         if event == "PLAYER_REGEN_ENABLED" then
             ns.Thanks:CombatEnded()
             ns.Bindings:SyncZoom()
         end
+        local deferred = event == "PLAYER_REGEN_ENABLED" and ns.Inventory.usabilityDeferred
         refresh()
+        if deferred then ns.Inventory:QueueUsabilityRefresh() end
     end
-    ns.Thanks:SaveDiagnostics()
+    if event ~= "SPELL_UPDATE_USABLE" and event ~= "SPELL_UPDATE_COOLDOWN" and event ~= "BAG_UPDATE_COOLDOWN"
+        and event ~= "NAME_PLATE_UNIT_ADDED" then
+        ns.Thanks:SaveDiagnostics()
+    end
 end)
 
 frame:SetScript("OnUpdate", function(_, elapsed)

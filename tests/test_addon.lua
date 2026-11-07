@@ -103,7 +103,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     HC.Settings:Show("Buffs")
     equal(wow.FindText("Find Minerals") ~= nil, true, toc .. ": the Buffs page lists tracking")
     HC.Settings:Show("Thank You")
-    equal(wow.FindText("WoW Forever may report a new buff without telling addons who cast it. Whispers still need a known caster.") ~= nil,
+    equal(wow.FindText("WoW Forever may report a new buff without telling addons who cast it. Friendly player nameplates can help identify the caster. Whispers still need a known caster.") ~= nil,
         true, toc .. ": Thank You explains unknown casters")
     local skipGroup = wow.FindText("Skip party and raid members").parent
     wow.Click(skipGroup)
@@ -895,6 +895,78 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(#ns.Actions:VisibleChoices("food"), 0, toc .. ": rested-area pause still stops reminders")
     IsResting = function() return false end
     equal(#ns.Actions:VisibleChoices("food"), 2, toc .. ": leaving rested area restores reminders")
+end
+
+-- A Thorns aura rescan during a temporary use lockout cannot strand food choices.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local time, usable, thorns = 100, true, false
+    local timers = {}
+    GetTime = function() return time end
+    C_Timer.After = function(delay, fn) timers[#timers + 1] = { delay, fn } end
+    C_Container.GetContainerNumSlots = function(bag) return bag == 0 and 1 or 0 end
+    C_Container.GetContainerItemID = function() return 9001 end
+    C_Container.GetContainerItemInfo = function() return { stackCount = 3 } end
+    C_Item = { GetItemInfo = function() return { itemName = "Coyote Steak", itemLink = "item:9001",
+        itemType = "Consumable", itemSubType = "Food & Drink", iconFileID = 1 } end,
+        IsUsableItem = function() return usable end, GetItemCooldown = function() return 0, 0, 1 end }
+    C_TooltipInfo = { GetItemByID = function() return { lines = { { leftText = "Use: Eat to become well fed." } } } end }
+    C_UnitAuras.GetUnitAuraBySpellID = function(_, id)
+        if thorns and id == 782 then return { spellId = 782, name = "Thorns", duration = 600, expirationTime = 700 } end
+    end
+    ns.KnownSelfBuffs = function() return { { kind = "spell", spellID = 782, name = "Thorns" } } end
+    ns.Tracking.Entries = function() return {} end
+    ns.Inventory:Refresh()
+    equal(#ns.Inventory:Choices("food"), 1, toc .. ": Thorns and food initially available")
+    ns.Bindings.trigger.scripts.PreClick(ns.Bindings.trigger)
+    usable, thorns = false, true -- Client reports a temporary lockout after casting.
+    ns.Bindings.trigger.scripts.PostClick(ns.Bindings.trigger)
+    local events = _G.BuffsmithEventFrame
+    events.scripts.OnEvent(events, "UNIT_AURA", "player")
+    equal(#ns.Inventory:Choices("food"), 0, toc .. ": food cannot cast during lockout")
+    equal(#ns.Inventory:OwnedChoices("food"), 1, toc .. ": food stays owned during lockout")
+    local scans = 0
+    local oldSlots = C_Container.GetContainerNumSlots
+    C_Container.GetContainerNumSlots = function(...) scans = scans + 1; return oldSlots(...) end
+    time, usable = 102, true
+    local useReads, metadataReads, tooltipReads = 0, 0, 0
+    C_Item.IsUsableItem = function() useReads = useReads + 1; return usable end
+    C_Item.GetItemInfo = function() metadataReads = metadataReads + 1; error("metadata scan forbidden") end
+    C_TooltipInfo.GetItemByID = function() tooltipReads = tooltipReads + 1; error("tooltip scan forbidden") end
+    for index = 1, 20 do
+        events.scripts.OnEvent(events, "SPELL_UPDATE_USABLE")
+        events.scripts.OnEvent(events, "SPELL_UPDATE_COOLDOWN")
+        events.scripts.OnEvent(events, "BAG_UPDATE_COOLDOWN")
+    end
+    for pass = 1, 4 do
+        local pending = timers; timers = {}
+        for _, timer in ipairs(pending) do if timer[1] <= 0.2 then timer[2]() end end
+    end
+    equal(#ns.Inventory:Choices("food"), 1, toc .. ": food returns after readiness events without unrelated bag changes")
+    equal(scans, 0, toc .. ": readiness events do not rescan bag slots")
+    equal(metadataReads + tooltipReads, 0, toc .. ": readiness events do not reclassify items")
+    equal(useReads, 1, toc .. ": event burst coalesces into one usability query")
+    local displayedFood = false
+    for _, frame in pairs(ns.Palette.buttons) do
+        if frame:IsShown() and frame.buffsmithEntry and frame.buffsmithEntry.itemID == 9001 then displayedFood = true end
+    end
+    equal(displayedFood, true, toc .. ": food actually reappears in the grid")
+    if toc:find("Camelot") then
+        ns.db.consumableAuras[9001] = { spellID = 782, name = "Épines", duration = 600 }
+        ns.Inventory.nonFoodCatalogue = nil
+        ns.Inventory:PlanUsabilityWake()
+        equal(ns.Inventory:LearnedAura(ns.Inventory:OwnedChoices("food")[1]) ~= nil, true,
+            "missing localized data preserves an unknown mapping")
+        C_Spell.GetSpellName = function(id) if id == 467 or id == 782 then return "Épines" end end
+        events.scripts.OnEvent(events, "SPELL_DATA_LOAD_RESULT", 467, true)
+        for pass = 1, 3 do
+            local pending = timers; timers = {}
+            for _, timer in ipairs(pending) do if timer[1] <= 0.2 then timer[2]() end end
+        end
+        equal(ns.Inventory:LearnedAura(ns.Inventory:OwnedChoices("food")[1]), nil,
+            "metadata event revalidates localized class mapping without a bag event")
+    end
+
 end
 
 io.write("addon tests passed\n")

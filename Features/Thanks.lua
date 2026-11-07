@@ -13,6 +13,7 @@ local FEATURED_EMOTES = { { "THANK", "Thank" }, { "BOW", "Bow" }, { "CHEER", "Ch
 
 -- Loading screens rebuild aura snapshots; treat them as a fresh baseline.
 function Thanks:ResetHistory(preservePending)
+    self.nameplateRetry = nil
     self.seen, self.seenAuras, self.seenProviders, self.seenProviderNames = {}, {}, {}, {}
     self.eligibilityDeadline = {}
     self.eligibleAuras, self.attributedAuras, self.retrying = {}, {}, {}
@@ -467,6 +468,7 @@ function Thanks:SetEnabled(enabled)
 end
 
 function Thanks:CombatStarted()
+    self.nameplateRetry = nil
     self.pending, self.retrying, self.eligibleAuras = {}, {}, {}
     self.combatPriming = true
     self.lastStatus = "paused: combat"
@@ -614,6 +616,69 @@ function Thanks:RetryAttribution(aura, buff, auraKey)
     return true
 end
 
+-- A newly available unit can make the client's caster data readable. Recheck
+-- only unresolved new applications, never infer a giver from the nearby unit.
+-- Eligibility retains the original spell ID when readable, so a reused aura
+-- instance cannot turn a pending application into a different buff.
+local function nameplateEligible(self, key, now)
+    local deadline = self.eligibilityDeadline and self.eligibilityDeadline[key]
+    local attributed = self.attributedAuras[key]
+    return self.eligibleAuras[key] and type(deadline) == "number" and type(now) == "number"
+        and now <= deadline and (not attributed or attributed == "fallback pending")
+end
+
+function Thanks:NameplateAdded(unit)
+    if not ns.db.thanksEnabled or not self.initialized or self.loadingWorld or self.zonePriming
+        or self.combatPriming or ns.IsCombatLocked() or self.nameplateRetry then return end
+    unit = ns.Plain(unit)
+    if type(unit) ~= "string" or not unit:match("^nameplate%d+$")
+        or plainCall(UnitExists, unit) ~= true or plainCall(UnitIsPlayer, unit) ~= true
+        or plainCall(UnitCanAssist, "player", unit) ~= true then return end
+    if not C_Timer or type(C_Timer.After) ~= "function" then return end
+    local now, keys = plainCall(GetTime), {}
+    for key in pairs(self.eligibleAuras) do
+        if nameplateEligible(self, key, now) then keys[#keys + 1] = key end
+    end
+    if #keys == 0 then return end
+    local marker = {}
+    self.nameplateRetry = marker
+    after(0.1, function()
+        if self.nameplateRetry ~= marker then return end
+        self.nameplateRetry = nil
+        if not ns.db.thanksEnabled or self.loadingWorld or self.zonePriming or self.combatPriming
+            or ns.IsCombatLocked() then return end
+        local tracked = trackedBuffs()
+        for _, key in ipairs(keys) do
+            if nameplateEligible(self, key, plainCall(GetTime)) then
+                local instanceID = tonumber(key)
+                local aura = instanceID and auraByInstance(instanceID)
+                if aura and ns.Plain(aura.auraInstanceID) == instanceID
+                    and type(self.eligibleAuras[key]) == "number"
+                    and ns.Plain(aura.spellId) == self.eligibleAuras[key] then
+                    local spellID = ns.Plain(aura.spellId)
+                    local name = ns.Plain(aura.name)
+                    local buff = type(spellID) == "number" and tracked[spellID]
+                    if not buff and ns.TARGET == "Camelot" and type(name) == "string" then
+                        buff = self.trackedNames[name]
+                    end
+                    if buff then
+                        local provider, providerKey, reason, resolvedUnit, origin = auraSource(aura, ns.Plain(aura.sourceUnit))
+                        if provider then
+                            self.retrying[key] = nil
+                            self.attributedAuras[key] = providerKey
+                            self:Queue(buff.label, provider, providerKey, resolvedUnit)
+                            self.lastAttribution = buff.label .. ": " .. (origin or "indexed aura") .. " after nameplate appeared"
+                        elseif reason == "self" or reason == "caster is not a player" or reason == "caster is not friendly"
+                            or (providerKey and skipGroupProvider(nil, providerKey, resolvedUnit)) then
+                            self:SuppressAura(key)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
 function Thanks:Observe(primeOnly, updateInfo)
     if ns.IsCombatLocked() then self.lastStatus = "paused: combat"; return end
     if self.loadingWorld then self.lastStatus = "paused: loading world"; return end
@@ -680,7 +745,7 @@ function Thanks:Observe(primeOnly, updateInfo)
             auraKey = tostring(ns.Plain(aura.auraInstanceID) or spellID or buff.auraID)
             currentAuras[auraKey] = true
             if self.initialized and not primeOnly and ns.db.thanksEnabled and not self.seenAuras[auraKey] then
-                self.eligibleAuras[auraKey] = true
+                self.eligibleAuras[auraKey] = spellID or true
                 self.eligibilityDeadline[auraKey] = type(now) == "number" and now + 5 or nil
             end
             local previousProvider = self.seenProviders[auraKey]
@@ -693,7 +758,7 @@ function Thanks:Observe(primeOnly, updateInfo)
             local providerChanged = previousProvider and providerKey and previousProvider ~= providerKey
                 and (bothGUIDs or (provider and previousName and provider ~= previousName))
             if self.initialized and not primeOnly and ns.db.thanksEnabled and providerChanged then
-                self.eligibleAuras[auraKey] = true
+                self.eligibleAuras[auraKey] = spellID or true
                 self.attributedAuras[auraKey] = nil
                 self.eligibilityDeadline[auraKey] = type(now) == "number" and now + 5 or nil
             elseif previousProvider and providerKey and previousProvider ~= providerKey

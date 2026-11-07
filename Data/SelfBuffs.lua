@@ -20,7 +20,12 @@ ns.SELF_BUFFS = {
         { spellID = 467, auraID = 467, label = "Thorns", target = true },
     },
     HUNTER = {
-        { spellID = 13165, auraID = 13165, label = "Aspect of the Hawk", permanent = true },
+        { spellID = 13165, auraID = 13165, label = "Aspect of the Hawk", permanent = true, group = "hunter-aspect" },
+        { spellID = 13163, auraID = 13163, label = "Aspect of the Monkey", permanent = true, group = "hunter-aspect" },
+        { spellID = 13161, auraID = 13161, label = "Aspect of the Beast", permanent = true, group = "hunter-aspect" },
+        { spellID = 5118, auraID = 5118, label = "Aspect of the Cheetah", permanent = true, group = "hunter-aspect" },
+        { spellID = 13159, auraID = 13159, label = "Aspect of the Pack", permanent = true, group = "hunter-aspect" },
+        { spellID = 20043, auraID = 20043, label = "Aspect of the Wild", permanent = true, group = "hunter-aspect" },
     },
     MAGE = {
         { spellID = 1459, auraID = 1459, label = "Arcane Intellect", target = true },

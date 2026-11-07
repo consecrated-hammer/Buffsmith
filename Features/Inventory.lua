@@ -17,6 +17,53 @@ local function campingAura(spellID)
     return false
 end
 
+local function spellName(id)
+    local modern = C_Spell and C_Spell.GetSpellName
+    if type(modern) == "function" then
+        local ok, value = pcall(modern, id)
+        value = ok and ns.Plain(value)
+        if type(value) == "string" and value ~= "" then return string.lower(value) end
+    end
+    if type(GetSpellInfo) == "function" then
+        local ok, value = pcall(GetSpellInfo, id)
+        value = ok and ns.Plain(value)
+        if type(value) == "string" and value ~= "" then return string.lower(value) end
+    end
+end
+
+-- Reject only positive class-buff evidence, not unfamiliar legacy food names.
+-- Raw catalogues include excluded/unlearned spells; localized base-rank names
+-- identify higher ranks without depending on current reminder preferences.
+local function classAura(mapping)
+    local clock = GetTime and ns.Plain(GetTime())
+    if type(clock) ~= "number" then clock = 0 end
+    local cache = Inventory.nonFoodCatalogue
+    if cache and cache.unresolved and clock >= cache.retryAt then cache = nil end
+    if not cache or cache.self ~= ns.SELF_BUFFS or cache.party ~= ns.PARTY_BUFFS then
+        cache = { self = ns.SELF_BUFFS, party = ns.PARTY_BUFFS, ids = {}, names = {}, retryAt = clock + 2 }
+        for _, catalogue in ipairs({ ns.SELF_BUFFS or {}, ns.PARTY_BUFFS or {} }) do
+            for _, entries in pairs(catalogue) do
+                for _, entry in ipairs(entries) do
+                    if entry.spellID then cache.ids[entry.spellID] = true end
+                    if entry.auraID then cache.ids[entry.auraID] = true end
+                    for _, id in ipairs(entry.ids or {}) do cache.ids[id] = true end
+                    for _, id in ipairs(entry.auraIDs or {}) do cache.ids[id] = true end
+                    local label = ns.Plain(entry.label)
+                    if type(label) == "string" then cache.names[string.lower(label)] = true end
+                    local name = entry.spellID and spellName(entry.spellID)
+                    if name then cache.names[name] = true else cache.unresolved = true end
+                end
+            end
+        end
+        Inventory.nonFoodCatalogue = cache
+    end
+    local id, name = ns.Plain(mapping.spellID), ns.Plain(mapping.name)
+    if id and cache.ids[id] then return true end
+    if type(name) == "string" and cache.names[string.lower(name)] then return true end
+    local resolved = id and spellName(id)
+    return resolved and cache.names[resolved] == true or false
+end
+
 local function foodAura(aura)
     return not campingAura(aura.spellID) and (aura.icon == 136000
         or (type(aura.name) == "string" and string.find(string.lower(aura.name), "well fed", 1, true)))
@@ -24,7 +71,7 @@ end
 
 function Inventory:LearnedAura(item)
     local mapping = item and ns.db.consumableAuras[item.itemID]
-    if mapping and campingAura(mapping.spellID) then return nil end
+    if mapping and (campingAura(mapping.spellID) or (item.category == "food" and classAura(mapping))) then return nil end
     return mapping
 end
 
@@ -194,23 +241,30 @@ end
 -- this at the inventory boundary so an unavailable or differently shaped API
 -- never prevents the bar from offering an item.
 local function itemCooldown(itemID)
+    local function number(value)
+        value = tonumber(ns.Plain(value))
+        if value and value == value and value >= 0 and value < math.huge then return value end
+    end
     local function read(getter)
         if type(getter) ~= "function" then return nil end
         local ok, first, duration, enabled = pcall(getter, itemID)
-        if not ok then return nil end
+        if not ok or ns.IsSecret(first) then return nil end
         if type(first) == "table" then
-            duration = first.duration or first.cooldownDuration
-            enabled = first.isEnabled
-            first = first.startTime or first.start
+            duration = ns.Plain(first.duration) or ns.Plain(first.cooldownDuration)
+            if ns.IsSecret(first.isEnabled) then return nil end
+            enabled = ns.Plain(first.isEnabled)
+            first = ns.Plain(first.startTime) or ns.Plain(first.start)
         end
-        first, duration = tonumber(ns.Plain(first)) or 0, tonumber(ns.Plain(duration)) or 0
-        local usable = ns.Plain(enabled)
-        if usable == false or usable == 0 then return nil end
-        if first <= 0 or duration <= 0 then return nil end
-        local remaining = first + duration - (GetTime and GetTime() or 0)
+        if ns.IsSecret(enabled) then return nil end
+        first, duration, enabled = number(first), number(duration), ns.Plain(enabled)
+        if enabled == false or enabled == 0 or not first or not duration or duration <= 0 then return nil end
+        local clockOK, clock
+        if GetTime then clockOK, clock = pcall(GetTime) end
+        clock = clockOK and number(clock)
+        if not clock then return nil end
+        local remaining = first + duration - clock
         return remaining > 0 and remaining or nil
     end
-
     local remaining = read(C_Item and C_Item.GetItemCooldown)
     if remaining ~= nil then return remaining end
     return read(GetItemCooldown)
@@ -224,19 +278,24 @@ local function itemUsable(itemID)
     local function read(getter)
         if type(getter) ~= "function" then return nil end
         local ok, usable, noMana = pcall(getter, itemID)
-        if not ok or usable == nil then return nil end
-        if ns.Plain(usable) == false and ns.Plain(noMana) ~= true then return false end
-        return true
+        if not ok or ns.IsSecret(usable) or ns.IsSecret(noMana) then return nil end
+        usable, noMana = ns.Plain(usable), ns.Plain(noMana)
+        if usable == 0 then usable = false elseif usable == 1 then usable = true end
+        if type(usable) ~= "boolean" then return nil end
+        return usable or noMana == true
     end
-
     local usable = read(C_Item and C_Item.IsUsableItem)
     if usable ~= nil then
         Inventory.lastUsabilityAPI = "C_Item.IsUsableItem"
-        return usable
+        return usable, true
     end
     usable = read(IsUsableItem)
-    if usable ~= nil then Inventory.lastUsabilityAPI = "IsUsableItem" end
-    return usable ~= false
+    if usable ~= nil then
+        Inventory.lastUsabilityAPI = "IsUsableItem"
+        return usable, true
+    end
+    Inventory.lastUsabilityAPI = "unavailable; native input fallback"
+    return true, false
 end
 
 local function itemInfo(itemID)
@@ -272,7 +331,8 @@ function Inventory:Refresh()
         self.lastStatus = "deferred: combat lockdown"
         return false
     end
-    local found, unresolved, unavailable = {}, 0, 0
+    self.usabilityDeferred = nil
+    local found, unresolved = {}, 0
     for _, category in ipairs(ns.CONSUMABLE_ORDER) do found[category] = {} end
     self.lastItemInfoAPI = "not queried"
     self.lastContainerAPI = "not queried"
@@ -291,9 +351,10 @@ function Inventory:Refresh()
                     if category then
                         local record = found[category][itemID]
                         if not record then
+                            local usable, known = itemUsable(itemID)
                             record = { kind = "item", itemID = itemID, name = name,
                                 itemLink = link or ("item:" .. itemID), icon = icon or 134400,
-                                category = category, count = 0, usable = itemUsable(itemID), poison = category == "weapon" and isPoison(itemSubType, name) or nil }
+                                category = category, count = 0, usable = usable, usabilityKnown = known, poison = category == "weapon" and isPoison(itemSubType, name) or nil }
                             found[category][itemID] = record
                         end
                         record.count = record.count + bagItemCount(bag, slot)
@@ -308,14 +369,14 @@ function Inventory:Refresh()
         for _, record in pairs(records) do
             self.ownedItems[category][#self.ownedItems[category] + 1] = record
             if record.usable then self.items[category][#self.items[category] + 1] = record
-            else unavailable = unavailable + 1 end
+            end
         end
         table.sort(self.items[category], function(a, b) return a.name < b.name end)
         table.sort(self.ownedItems[category], function(a, b) return a.name < b.name end)
     end
-    self.lastStatus = ("usable: %d food, %d scroll, %d flask, %d other, %d weapon, %d uncached item(s)"):format(
-        #self.items.food, #self.items.scroll, #self.items.flask, #self.items.other, #self.items.weapon, unresolved)
-        .. ("; %d detected item type(s) currently unavailable"):format(unavailable)
+    self.uncachedItems = unresolved
+    self:UpdateUsabilityStatus()
+    self:PlanUsabilityWake()
     if ns.Actions then ns.Actions:Refresh() end
     if ns.Palette then ns.Palette:Refresh() end
     return true
@@ -339,21 +400,86 @@ function Inventory:IsUsableItem(itemID)
     return itemUsable(itemID)
 end
 
+function Inventory:UpdateUsabilityStatus()
+    local unavailable, unknown = 0, 0
+    for _, records in pairs(self.ownedItems or {}) do
+        for _, record in ipairs(records) do
+            if not record.usable then unavailable = unavailable + 1 end
+            if record.usabilityKnown == false then unknown = unknown + 1 end
+        end
+    end
+    self.ownedItemCount = 0
+    for _, records in pairs(self.ownedItems or {}) do self.ownedItemCount = self.ownedItemCount + #records end
+    local function count(category) return #(self.items[category] or {}) end
+    self.lastStatus = ("eligible: %d food, %d scroll, %d flask, %d other, %d weapon, %d uncached item(s)"):format(
+        count("food"), count("scroll"), count("flask"), count("other"), count("weapon"), self.uncachedItems or 0)
+        .. ("; %d unavailable; %d unknown readiness (native input fallback)"):format(unavailable, unknown)
+end
+
+function Inventory:PlanUsabilityWake()
+    for _, records in pairs(self.ownedItems or {}) do
+        for _, item in ipairs(records) do
+            local remaining = itemCooldown(item.itemID)
+            item.cooling = remaining ~= nil
+            if item.category == "food" and ns.db.consumableAuras[item.itemID] then
+                item.foodMappingValid = self:LearnedAura(item) ~= nil
+            else item.foodMappingValid = nil end
+            if remaining then self:RefreshAfterCooldown(item, remaining) end
+        end
+    end
+end
+
+function Inventory:RefreshUsability()
+    if ns.IsCombatLocked() then self.usabilityDeferred = true; return false end
+    if not self.ownedItems then return false end
+    self.usabilityDeferred = nil
+    local changed = false
+    for _, records in pairs(self.ownedItems) do
+        for _, item in ipairs(records) do
+            local usable, known = itemUsable(item.itemID)
+            local remaining = itemCooldown(item.itemID)
+            local cooling = remaining ~= nil
+            local mappingValid
+            if item.category == "food" and ns.db.consumableAuras[item.itemID] then mappingValid = self:LearnedAura(item) ~= nil end
+            if item.usable ~= usable or item.usabilityKnown ~= known or item.cooling ~= cooling
+                or item.foodMappingValid ~= mappingValid then changed = true end
+            item.usable, item.usabilityKnown, item.cooling, item.foodMappingValid = usable, known, cooling, mappingValid
+            if remaining then self:RefreshAfterCooldown(item, remaining) end
+        end
+    end
+    if changed then
+        self.items = {}
+        for category, records in pairs(self.ownedItems) do
+            self.items[category] = {}
+            for _, item in ipairs(records) do
+                if item.usable then self.items[category][#self.items[category] + 1] = item end
+            end
+        end
+    end
+    if changed then self:UpdateUsabilityStatus() end
+    return changed
+end
+
+function Inventory:QueueUsabilityRefresh()
+    if ns.IsCombatLocked() then self.usabilityDeferred = true; return end
+    if self.ownedItemCount == 0 or self.usabilityPending then return end
+    self.usabilityPending = true
+    C_Timer.After(0.2, function()
+        self.usabilityPending = nil
+        if self:RefreshUsability() and ns.RefreshAll then ns.RefreshAll() end
+    end)
+end
+
 function Inventory:RefreshAfterCooldown(item, remaining)
     remaining = remaining or self:CooldownRemaining(item)
     if not remaining or not (C_Timer and type(C_Timer.After) == "function") then return end
-    local now = GetTime and GetTime() or 0
-    local wakeAt = now + remaining
-    self.cooldownWakeups = self.cooldownWakeups or {}
-    -- Palette refreshes can happen several times during one cooldown.  One
-    -- wake-up per item is enough to put it back on the bar when it becomes
-    -- usable; scheduling on every refresh would accumulate timers.
-    if self.cooldownWakeups[item.itemID] and self.cooldownWakeups[item.itemID] >= wakeAt - 0.1 then return end
-    self.cooldownWakeups[item.itemID] = wakeAt
+    local wakeAt = (GetTime and GetTime() or 0) + remaining
+    if self.usabilityWakeAt and self.usabilityWakeAt <= wakeAt + 0.1 then return end
+    self.usabilityWakeAt = wakeAt
     C_Timer.After(remaining + 0.1, function()
-        if not ns.Inventory or ns.Inventory.cooldownWakeups[item.itemID] ~= wakeAt then return end
-        ns.Inventory.cooldownWakeups[item.itemID] = nil
-        if ns.Inventory and not ns.IsCombatLocked() then ns.Inventory:Refresh() end
+        if self.usabilityWakeAt ~= wakeAt then return end
+        self.usabilityWakeAt = nil
+        if self:RefreshUsability() and ns.RefreshAll then ns.RefreshAll() end
     end)
 end
 
@@ -383,6 +509,19 @@ end
 -- usability filter. A temporary restriction is never evidence of an empty bag.
 function Inventory:OwnedChoices(category)
     return self.ownedItems and self.ownedItems[category] or self:Choices(category)
+end
+
+function Inventory:FoodMappingSummary()
+    local found = {}
+    for _, item in ipairs(self:OwnedChoices("food")) do
+        local mapping = ns.db.consumableAuras[item.itemID]
+        if mapping then
+            found[#found + 1] = tostring(item.itemID) .. " -> spell " .. tostring(mapping.spellID)
+                .. (self:LearnedAura(item) and " (retained)" or " (ignored: non-food)")
+            if #found == 6 then break end
+        end
+    end
+    return #found > 0 and table.concat(found, "; ") or "none for food currently in bags"
 end
 
 function Inventory:Choices(category)

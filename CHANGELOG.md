@@ -5,7 +5,26 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.9.0] - 2026-11-08
+
+### Added
+
+- Friendly player nameplates trigger another caster check for unresolved new
+  buffs within the original five-second window. A pending general thank-you
+  emote can become directed; sent replies never repeat. No player is guessed
+  from proximity, and nameplate settings are unchanged.
+- Hunter aspect reminders now include Monkey, Beast, Cheetah, Pack and Wild.
+  Only learned spells are offered. Any active aspect satisfies the family,
+  so travel aspects do not cause a reminder to switch to Hawk or Monkey.
+
+### Fixed
+
+- Food and other consumables return when a temporary use restriction ends,
+  including after casting a buff. Readiness events and one shared cooldown
+  wakeup update cached items without scanning bags again.
+- Old food mappings that identify class buffs, including Thorns and its ranks,
+  no longer hide food. Unknown legitimate legacy food effects remain intact.
+  Diagnostics show retained or ignored food mappings.
 
 ## [1.8.0] - 2026-11-07
 

@@ -94,10 +94,14 @@ and blocked-press count.
 The Consumables page lists supported items you own, including those the client
 currently marks unavailable. This can happen during travel or other use
 restrictions. These items remain configurable but stay out of cast choices until
-a later inventory refresh finds them usable. Diagnostics distinguish discovered
+a readiness update finds them usable. Cooldown and usability events refresh
+cached choices without scanning bags or tooltips; readable cooldown expiry also
+schedules a shared wakeup, even if no item is currently offered. Diagnostics distinguish discovered
 bag contents from currently usable choices. Forever camp benefits and lockouts
 are kept separate from consumed-item buffs; an old camp mapping cannot satisfy
-a food reminder. New food-effect learning requires a Well Fed signal, so an
+a food reminder. Saved food mappings positively identified as class buffs are
+also ignored, including localized names and ranked Thorns. Unrecognised legacy
+food effects remain intact; the debug report shows retained/ignored mappings. New food-effect learning requires a Well Fed signal, so an
 unrelated class buff arriving during eating cannot replace the food timer.
 
 The drag handle stays at a fixed top-left corner while icons, cooldowns and
@@ -129,7 +133,11 @@ off. After combat or an unreadable aura snapshot, it quietly refreshes its
 baseline. Unknown-caster emotes on Forever use the configured delay and batch
 together, with the first queued reply starting the delay. Discovering the caster
 later does not send another thanks. Attribution
-expires after five seconds. `/buffsmith debug` includes up to twelve recent
+expires after five seconds. Friendly player nameplates can help the client
+identify a caster. When one appears, Buffsmith retries unresolved new buffs
+within that original window, using fresh aura source data or a matching caster
+GUID. It never guesses from nearby players or changes your nameplate settings.
+A pending general emote can become directed; a sent reply is final. `/buffsmith debug` includes up to twelve recent
 decisions saved locally, without caster names, so they remain available after
 logout. An accepted emote API call still needs an in-game delivery check.
 
@@ -188,3 +196,11 @@ docker run --rm -v "$PWD:/addon:ro" -w /addon nickblah/lua:5.1-alpine sh -lc \
 
 `tools/stage_addon.py` copies a runtime-only folder into a client's `AddOns`
 directory for local testing.
+
+Hunter aspects on Forever share one reminder family: Hawk, Monkey, Beast,
+Cheetah, Pack and Wild. Only learned spells are listed, and any active member
+satisfies the family, including aspects excluded from reminders. With no aspect
+active, Hawk has priority if learned and enabled; otherwise Monkey is next.
+Exclude unwanted choices under Buffs to change which aspect is offered. Missing
+aspects are checked again after resurrection; Buffsmith never switches them
+automatically.

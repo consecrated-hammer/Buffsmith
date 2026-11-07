@@ -13,6 +13,8 @@ C_Item = { GetItemCooldown = function() return 0, 0, 1 end }
 local ns = { TARGET = "Camelot", db = { consumableAuras = {}, categories = { food = true },
     excludedConsumables = {}, reminderPercent = { food = 10, buff = 10, item = {} } },
     Plain = function(v) return v end, IsSecret = function() return false end, IsCombatLocked = function() return false end }
+assert(loadfile("Data/SelfBuffs.lua"))("Buffsmith", ns)
+assert(loadfile("Data/PartyBuffs.lua"))("Buffsmith", ns)
 assert(loadfile("Data/Consumables.lua"))("Buffsmith", ns)
 assert(loadfile("Features/Inventory.lua"))("Buffsmith", ns)
 assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
@@ -60,3 +62,36 @@ ns.Inventory:BeginConsumableUse(food)
 helpful = { { spellId = 54321, name = "Well Fed", duration = 900, expirationTime = 1000, icon = 136000 } }
 ns.Inventory:FinishConsumableUse(); delayed()
 eq(ns.db.consumableAuras[9001].spellID, 54321, "positive Well Fed observation still learns normally")
+
+-- The reported Thorns-then-food sequence must not trust an old non-food mapping.
+ns.Inventory.items.food, ns.Inventory.ownedItems = { food }, { food = { food } }
+ns.db.consumableAuras[9001] = { spellID = 782, name = "Thorns", duration = 600 }
+helpful = {}
+eq(#ns.Actions:VisibleChoices("food"), 1, "food is offered before Thorns")
+helpful = { { spellId = 782, name = "Thorns", duration = 600, expirationTime = 700, icon = 1 } }
+eq(#ns.Actions:VisibleChoices("food"), 1, "applying Thorns cannot satisfy food through an old bad mapping")
+
+-- Reject bad known class mappings by ID and localized rank name; preserve others.
+ns.db.consumableAuras[9001] = { spellID = 467, name = "Unknown name", duration = 600 }
+eq(ns.Inventory:LearnedAura(food), nil, "known base spell ID is not a food effect")
+C_Spell = { GetSpellName = function(id) if id == 467 or id == 782 then return "Épines" end end }
+ns.Inventory.nonFoodCatalogue = nil
+ns.db.consumableAuras[9001] = { spellID = 782, name = "Épines", duration = 600 }
+eq(ns.Inventory:LearnedAura(food), nil, "localized higher-rank class name rejected")
+local legacy = { spellID = 654321, name = "A legitimate named meal", duration = 900 }
+ns.db.consumableAuras[9001] = legacy
+eq(ns.Inventory:LearnedAura(food), legacy, "unrecognized legitimate legacy meal retained")
+
+-- Missing localized spell metadata is retried, without erasing unknown meals.
+local metadataReady, clock = false, 100
+GetTime = function() return clock end
+GetSpellInfo = nil
+C_Spell.GetSpellName = function(id) if metadataReady and (id == 467 or id == 782) then return "Épines" end end
+ns.Inventory.nonFoodCatalogue = nil
+ns.db.consumableAuras[9001] = { spellID = 782, name = "Épines", duration = 600 }
+ns.Inventory:RefreshUsability()
+eq(food.foodMappingValid, true, "missing metadata retains unknown old mapping")
+metadataReady, clock = true, 103
+local changed = ns.Inventory:RefreshUsability()
+eq(food.foodMappingValid, false, "late localized metadata rejects class mapping")
+eq(changed, true, "mapping validation transition requests UI rebuild")

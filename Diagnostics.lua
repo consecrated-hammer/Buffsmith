@@ -71,6 +71,7 @@ function Diagnostics:Report()
         "Item API: " .. tostring(ns.Inventory.lastItemInfoAPI or "not queried"),
         "Container API: " .. tostring(ns.Inventory.lastContainerAPI or "not queried"),
         "Item usability API: " .. tostring(ns.Inventory.lastUsabilityAPI or "not queried"),
+        "Food aura mappings: " .. ns.Inventory:FoodMappingSummary(),
         "Consumable aura tracking: " .. tostring(ns.Inventory.lastConsumableAura or "no item use observed"),
         "",
         "Bar",

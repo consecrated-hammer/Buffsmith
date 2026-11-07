@@ -67,6 +67,45 @@ do
     end
 end
 
+-- Low-level hunters can maintain Monkey before Hawk, and travel aspects
+-- satisfy the same family without forcing a switch back to a combat aspect.
+do
+    playerClass, knownIDs, book, auras = "HUNTER", { [13163] = true }, nil, {}
+    local db = { excludedBuffs = {}, reminderPercent = { buff = 10 } }
+    local ns = load("Camelot", db)
+    UnitIsDeadOrGhost = function() return false end
+    UnitOnTaxi, IsResting, IsInGroup = function() return false end, function() return false end, function() return false end
+    GetTime = function() return 100 end
+    assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
+    equal(#ns.KnownSelfBuffCandidates(), 1, "only learned Monkey is listed")
+    equal(ns.Actions:Entries()[1].spellID, 13163, "Monkey is offered before Hawk is learned")
+    auras = { player = { [13163] = { duration = 0 } } }
+    equal(#ns.Actions:Entries(), 0, "active Monkey needs no reminder")
+    UnitIsDeadOrGhost = function() return true end
+    auras = {}
+    equal(#ns.Actions:Entries(), 0, "no aspect reminder while dead")
+    UnitIsDeadOrGhost = function() return false end
+    equal(ns.Actions:Entries()[1].spellID, 13163, "missing Monkey returns after resurrection")
+    for _, entry in ipairs(ns.SELF_BUFFS.HUNTER) do knownIDs[entry.spellID] = true end
+    ns.ResetSpellbook()
+    equal(#ns.KnownSelfBuffCandidates(), 6, "all six learned aspects are listed")
+    equal(#ns.KnownSelfBuffs(), 1, "only one aspect is offered")
+    for _, entry in ipairs(ns.SELF_BUFFS.HUNTER) do
+        auras = { player = { [entry.spellID] = { duration = 0 } } }
+        equal(#ns.Actions:Entries(), 0, entry.label .. " satisfies the family")
+    end
+    db.excludedBuffs[5118], db.excludedBuffs[13159] = true, true
+    auras = { player = { [5118] = { duration = 0 } } }
+    equal(#ns.Actions:Entries(), 0, "excluded Cheetah still satisfies the active family")
+    auras = { player = { [13159] = { duration = 0 } } }
+    equal(#ns.Actions:Entries(), 0, "excluded Pack still satisfies the active family")
+    auras = {}
+    equal(ns.Actions:Entries()[1].spellID, 13165, "Hawk retains priority once learned")
+    db.excludedBuffs[13165] = true
+    equal(ns.Actions:Entries()[1].spellID, 13163, "excluding Hawk offers Monkey")
+    equal(#load("Mainline", db).KnownSelfBuffCandidates(), 0, "Retail does not gain legacy aspects")
+end
+
 -- The reported Forever Paladin: Devotion Aura and Blessing of Might known.
 do
     playerClass, knownIDs, book = "PALADIN", { [465] = true, [19740] = true }, nil
