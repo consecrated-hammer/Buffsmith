@@ -55,6 +55,11 @@ ns.SELF_BUFFS = {
     },
 }
 
+-- Recovery abilities are learned-spell gated, not inferred from race names.
+ns.RECOVERY_SPELLS = {
+    { spellID = 1259705, label = "Read Leyline", resourceRecovery = true },
+}
+
 local function known(spellID)
     -- The Mainline player spellbook is the preferred source for castable spells.
     if C_SpellBook and C_SpellBook.IsSpellKnown then
@@ -94,10 +99,10 @@ end
 -- The Mainline-shaped spellbook enumerates learned spells with their exact
 -- rank IDs.  It is cached until SPELLS_CHANGED because the bar resolves its
 -- catalogue several times per refresh.
-local spellbookCache
+local spellbookCache, recoveryCache
 
 function ns.ResetSpellbook()
-    spellbookCache = nil
+    spellbookCache, recoveryCache = nil, nil
 end
 
 local function spellbook()
@@ -196,6 +201,7 @@ end
 ns.SHORT_BUFF_SECONDS = 60
 
 function ns.IsShortBuff(entry)
+    if entry.resourceRecovery then return false end
     local learned = ns.db and ns.db.buffDurations and ns.db.buffDurations[entry.spellID]
     if type(learned) == "number" and learned > 0 then return learned < ns.SHORT_BUFF_SECONDS end
     return entry.short == true
@@ -219,13 +225,19 @@ function ns.KnownSelfBuffCandidates()
     local book, entries = spellbook(), {}
     ns.lastSelfBuffClass = class or "unknown"
     ns.lastSelfBuffProbe = {}
-    for _, entry in ipairs(ns.SELF_BUFFS[class] or {}) do
+    local candidates = {}
+    for _, entry in ipairs(ns.SELF_BUFFS[class] or {}) do candidates[#candidates + 1] = entry end
+    if ns.TARGET == "Camelot" then
+        for _, entry in ipairs(ns.RECOVERY_SPELLS) do candidates[#candidates + 1] = entry end
+    end
+    for _, entry in ipairs(candidates) do
         local castID, source = resolve(entry, book)
         if castID then
             local name, icon = spellInfo(castID, entry.label)
             entries[#entries + 1] = {
                 kind = "spell", spellID = entry.spellID, castID = castID,
                 auraID = entry.auraID, auraIDs = auraList(entry, castID),
+                resourceRecovery = entry.resourceRecovery == true,
                 permanent = entry.permanent == true,
                 target = entry.target == true,
                 group = entry.group, short = entry.short == true,
@@ -237,6 +249,23 @@ function ns.KnownSelfBuffCandidates()
         ns.lastSelfBuffProbe[#ns.lastSelfBuffProbe + 1] = entry.label .. "=" .. source
     end
     return entries
+end
+
+function ns.KnownRecoveryEntry()
+    if ns.TARGET ~= "Camelot" then return nil end
+    if recoveryCache ~= nil then return recoveryCache or nil end
+    for _, entry in ipairs(ns.RECOVERY_SPELLS) do
+        local castID = resolve(entry, spellbook())
+        if castID then
+            recoveryCache = { kind = "spell", spellID = entry.spellID, castID = castID, resourceRecovery = true }
+            return recoveryCache
+        end
+    end
+    recoveryCache = false
+end
+
+function ns.KnowsResourceRecovery()
+    return ns.KnownRecoveryEntry() ~= nil
 end
 
 -- The actions the bar offers.  A group collapses to its first known,

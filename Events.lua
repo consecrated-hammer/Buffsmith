@@ -24,6 +24,10 @@ frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("PLAYER_LEAVING_WORLD")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("UNIT_AURA")
+for _, event in ipairs({ "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_MAXPOWER" }) do
+    frame:RegisterUnitEvent(event, "player")
+end
+frame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 frame:RegisterEvent("UNIT_PET")
 frame:RegisterEvent("PLAYER_DEAD")
 frame:RegisterEvent("PLAYER_ALIVE")
@@ -69,6 +73,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         ns.Thanks:Observe(true)
         refresh()
     elseif event == "PLAYER_REGEN_DISABLED" then
+        ns.Thanks:CombatStarted()
         hideForCombat()
     elseif event == "SPELL_RANGE_CHECK_UPDATE" then
         if not ns.IsCombatLocked() and ns.Palette then ns.Palette:RefreshRange() end
@@ -76,6 +81,11 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         if ns.Actions:HandleAuraBounce(arg2) and not ns.IsCombatLocked() then refresh() end
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         if ns.Actions:FinishAttempt(arg3) then refresh() end
+    elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" or event == "UNIT_POWER_UPDATE"
+        or event == "UNIT_MAXPOWER" or event == "SPELL_UPDATE_COOLDOWN" then
+        local powerEvent = event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER"
+        if (event == "SPELL_UPDATE_COOLDOWN" or arg1 == "player")
+            and (not powerEvent or arg2 == nil or arg2 == "MANA") then ns.Actions:RefreshRecovery() end
     elseif event == "UNIT_AURA" then
         if arg1 == "player" then ns.Thanks:Observe(false, arg2) end
         if arg1 == "player" or arg1 == "target" or arg1 == "pet"
@@ -99,13 +109,17 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
         or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "UNIT_PET" or event == "MINIMAP_UPDATE_TRACKING"
         or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
-        if event == "SPELLS_CHANGED" then ns.ResetSpellbook() end
+        if event == "SPELLS_CHANGED" then
+            ns.ResetSpellbook()
+            ns.Thanks.tracked, ns.Thanks.trackedNames = nil, nil
+        end
         if event == "PLAYER_REGEN_ENABLED" then
-            ns.Thanks:FinishZoneTransition()
+            ns.Thanks:CombatEnded()
             ns.Bindings:SyncZoom()
         end
         refresh()
     end
+    ns.Thanks:SaveDiagnostics()
 end)
 
 frame:SetScript("OnUpdate", function(_, elapsed)

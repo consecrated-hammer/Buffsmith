@@ -264,10 +264,20 @@ function Palette:Items()
     return items, mainEntries, subEntries, mainCategories
 end
 
+-- Only a full bar/trigger refresh owns this cache. Binding-only preparation
+-- may query Entries without changing what the bar currently displays.
+function Palette:RecordRecovery(entries)
+    self.recoveryDisplayed = false
+    for _, entry in ipairs(entries) do
+        if entry.resourceRecovery then self.recoveryDisplayed = true; break end
+    end
+end
+
 function Palette:Refresh()
     if not self.frame then return end
     if ns.IsCombatLocked() then self.lastLayout = "hidden: combat"; return end
     if ns.db.visibilityMode == "NEVER" then
+        self:RecordRecovery(ns.Actions:Entries())
         ns.Actions:UpdateTargetRangeChecks({})
         self.rangeWatching = false
         ns.Visibility:Apply(self.frame, false)
@@ -281,6 +291,7 @@ function Palette:Refresh()
         value.buffsmithFlyout = nil
     end
     local items, mainEntries, subEntries, mainCategories = self:Items()
+    self:RecordRecovery(mainEntries)
     ns.Actions:UpdateTargetRangeChecks(mainEntries)
     local vertical = ns.db.orientation == "VERTICAL"
     local layout = ns.Layout.Compute(items, {

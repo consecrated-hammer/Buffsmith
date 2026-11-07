@@ -454,4 +454,119 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     UnitOnTaxi = nil
 end
 
+-- Health/mana and cooldown changes refresh a known Forever recovery action.
+do
+    local ns = loadAddon("Buffsmith_Camelot.toc")
+    local health, mana, now, cooling = 100, 100, 100, false
+    local timer
+    C_SpellBook.IsSpellKnown = function(id) return id == 1259705 end
+    C_Spell.GetSpellInfo = function(id) return { name = id == 1259705 and "Read Leyline" or "Other", iconID = id } end
+    C_Spell.GetSpellCooldown = function() return { startTime = cooling and 90 or 0, duration = cooling and 120 or 0, isEnabled = true } end
+    UnitHealth, UnitHealthMax = function() return health end, function() return 100 end
+    UnitPower, UnitPowerMax = function() return mana end, function() return 100 end
+    GetTime = function() return now end
+    C_Timer.After = function(delay, fn) if delay > 1 then timer = fn end end
+    ns.Tracking.Entries = function() return {} end
+    ns.ResetSpellbook()
+    local events = _G.BuffsmithEventFrame
+    health = 49
+    events.scripts.OnEvent(events, "UNIT_HEALTH", "player")
+    equal(ns.Bindings.trigger:GetAttribute("spell1"), "Read Leyline", "low health arms racial through normal event refresh")
+    health = 50
+    events.scripts.OnEvent(events, "UNIT_HEALTH", "player")
+    equal(ns.Bindings.trigger:GetAttribute("type1"), nil, "recovering health disarms racial immediately")
+    mana = 49
+    events.scripts.OnEvent(events, "UNIT_POWER_UPDATE", "player", "MANA")
+    equal(ns.Bindings.trigger:GetAttribute("spell1"), "Read Leyline", "low mana event arms racial")
+    cooling = true
+    events.scripts.OnEvent(events, "SPELL_UPDATE_COOLDOWN")
+    equal(ns.Bindings.trigger:GetAttribute("type1"), nil, "cooldown event disarms racial")
+    assert(timer, "cooldown schedules wakeup even with no other bar actions")
+    now = 211
+    timer()
+    equal(ns.Bindings.trigger:GetAttribute("spell1"), "Read Leyline", "cooldown expiry re-arms without unrelated events")
+end
+
+-- Resource event gates and visibility-change deduplication.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local health, known, combat, dead, taxi, resting = 100, true, false, false, false, false
+    local refreshes, reads = 0, 0
+    C_SpellBook.IsSpellKnown = function(id) return known and id == 1259705 end
+    C_Spell.GetSpellCooldown = function() reads = reads + 1; return { startTime = 0, duration = 0, isEnabled = true } end
+    UnitHealth, UnitHealthMax = function() return health end, function() return 100 end
+    UnitPower, UnitPowerMax = function() return 100 end, function() return 100 end
+    UnitIsDeadOrGhost = function() return dead end
+    UnitOnTaxi = function() return taxi end
+    IsResting = function() return resting end
+    InCombatLockdown = function() return combat end
+    ns.Tracking.Entries = function() return {} end
+    ns.ResetSpellbook()
+    local original = ns.RefreshAll
+    ns.RefreshAll = function() refreshes = refreshes + 1; original() end
+    original()
+    local events = _G.BuffsmithEventFrame
+    local function fire(event, unit, power) events.scripts.OnEvent(events, event, unit, power) end
+    for index = 1, 20 do fire("UNIT_HEALTH", "player") end
+    equal(refreshes, 0, toc .. ": unchanged healthy state does not rebuild UI")
+    health = 49
+    fire("UNIT_HEALTH", "party1")
+    fire("UNIT_POWER_UPDATE", "player", "ENERGY")
+    fire("UNIT_MAXPOWER", "player", "RAGE")
+    equal(refreshes, 0, toc .. ": non-player and non-mana events are ignored")
+    combat = true
+    fire("UNIT_HEALTH", "player")
+    equal(refreshes, 0, toc .. ": combat resource events never refresh secure UI")
+    combat = false
+    for index = 1, 20 do fire("UNIT_HEALTH", "player") end
+    equal(refreshes, toc:find("Camelot") and 1 or 0, toc .. ": only Forever rebuilds once when crossing threshold")
+    ns.db.excludedBuffs[1259705] = true
+    original()
+    refreshes, reads = 0, 0
+    fire("UNIT_HEALTH", "player"); fire("SPELL_UPDATE_COOLDOWN")
+    equal(refreshes, 0, toc .. ": excluded racial never causes event-driven rebuild")
+    equal(reads, 0, toc .. ": excluded racial skips cooldown probing on events")
+    ns.db.excludedBuffs[1259705] = nil
+    known = false; ns.ResetSpellbook(); original()
+    fire("UNIT_HEALTH", "player")
+    equal(refreshes, 0, toc .. ": unknown racial does not refresh")
+    if toc:find("Camelot") then
+        known = true; ns.ResetSpellbook(); original()
+        for _, pause in ipairs({ "dead", "taxi", "resting" }) do
+            dead, taxi, resting = pause == "dead", pause == "taxi", pause == "resting"
+            ns.db.ignoreBuffsInRestedAreas = resting
+            fire("UNIT_HEALTH", "player")
+            equal(ns.Bindings.trigger:GetAttribute("type1"), nil, pause .. " event leaves no armed recovery action")
+            dead, taxi, resting = false, false, false
+            ns.db.ignoreBuffsInRestedAreas = false
+            original()
+        end
+    end
+    UnitOnTaxi = nil
+end
+
+-- Binding-only preparation cannot overwrite the bar's rendered decision.
+do
+    local ns = loadAddon("Buffsmith_Camelot.toc")
+    local health = 100
+    C_SpellBook.IsSpellKnown = function(id) return id == 1259705 end
+    C_Spell.GetSpellCooldown = function() return { startTime = 0, duration = 0, isEnabled = true } end
+    UnitHealth, UnitHealthMax = function() return health end, function() return 100 end
+    UnitPower, UnitPowerMax = function() return 100 end, function() return 100 end
+    ns.Tracking.Entries = function() return {} end
+    ns.ResetSpellbook(); ns.RefreshAll()
+    equal(ns.Palette.recoveryDisplayed, false, "racial starts absent from bar")
+    health = 49
+    ns.Bindings:Prepare()
+    equal(ns.Palette.recoveryDisplayed, false, "binding query does not claim racial was rendered")
+    local events = _G.BuffsmithEventFrame
+    events.scripts.OnEvent(events, "UNIT_HEALTH", "player")
+    equal(ns.Palette.recoveryDisplayed, true, "resource event renders the missing racial")
+    health = 100
+    ns.Bindings:Prepare()
+    equal(ns.Palette.recoveryDisplayed, true, "binding query does not claim icon was removed")
+    events.scripts.OnEvent(events, "UNIT_HEALTH", "player")
+    equal(ns.Palette.recoveryDisplayed, false, "resource event removes stale icon")
+end
+
 io.write("addon tests passed\n")

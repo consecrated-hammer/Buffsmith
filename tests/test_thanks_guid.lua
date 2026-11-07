@@ -100,6 +100,27 @@ for _, target in ipairs({ "Camelot", "Mainline" }) do
     state:drain()
     equal(state.output[1].recipient, target == "Camelot" and "Helpful" or "Helpful-OtherRealm", "departed unit falls back to captured original name")
 
+    -- Direct source tokens and GUID recovery must retain the same identity.
+    for _, replacement in ipairs({ "gone", "reused", "moved", "joined" }) do
+        ns, state = fixture(target, "EMOTE")
+        ns.db.thanksDelay = 2
+        state.units.nameplate1 = CASTER
+        state.aura.sourceUnit = "nameplate1"
+        ns.Thanks:Observe(false)
+        equal(ns.Thanks.lastAttribution, "Fortitude: indexed aura", "direct token path exercised")
+        state.units.nameplate1 = replacement == "reused" and OTHER or nil
+        if replacement == "moved" then state.units.nameplate7 = CASTER end
+        if replacement == "joined" then state.units.party2 = CASTER end
+        state:drain()
+        equal(#state.output, replacement == "joined" and 0 or 1,
+            target .. " direct-token caster " .. replacement .. " uses captured identity and group policy")
+        if replacement ~= "joined" then
+            local expected = target == "Camelot" and (replacement == "moved" and "nameplate7" or "Helpful")
+                or "Helpful-OtherRealm"
+            equal(state.output[1].recipient, expected, "never sends to replacement or selection")
+        end
+    end
+
     ns, state = fixture(target)
     ns.Thanks:Observe(false)
     state.units.party2 = CASTER

@@ -60,7 +60,9 @@ local function reminderRow(panel, y, item)
         if slider.SetThumbTexture then slider:SetThumbTexture(thumb) end
         percent = UI.FontString(row, "GameFontHighlightSmall", "muted")
         percent:SetPoint("LEFT", slider, "RIGHT", 10, 0)
-        UI.AttachHint(slider, "Reminder", "Remind when this share of the effect's duration is left.")
+        UI.AttachHint(slider, "Reminder", item.resourceRecovery
+            and "Remind below this health or mana percentage, while the ability is ready."
+            or "Remind when this share of the effect's duration is left.")
     end
 
     local changing = false
@@ -277,7 +279,7 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
                 shown = shown + 1
                 y = pool:Place(entry.spellID .. ":" .. entry.castID, y, function() return {
                     label = entry.name,
-                    icon = entry.icon, permanent = entry.permanent,
+                    icon = entry.icon, permanent = entry.permanent, resourceRecovery = entry.resourceRecovery,
                     enabled = function() return not ns.IsBuffExcluded(entry) end,
                     toggle = function() ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry) end,
                     get = function() return ns.Actions:Percent(entry) end,
@@ -507,7 +509,7 @@ local CHANNELS = { values = { "WHISPER", "SAY", "PARTY", "EMOTE" }, labels = { "
 HC.Settings:NewPage({ name = "Thank You", description = "Thank recognised buffs when the client can identify their caster." }, function(panel, y)
     _, y = UI.Check(panel, "Thank players for buffs",
         "Caster details can be unavailable on WoW Forever, so a thank-you is not guaranteed. Buffs you already have never trigger one.", y,
-        function() return ns.db.thanksEnabled end, function(value) ns.db.thanksEnabled = value end)
+        function() return ns.db.thanksEnabled end, function(value) ns.Thanks:SetEnabled(value) end)
     _, y = UI.Check(panel, "Skip party and raid members",
         "Skip thanks when the identified caster is in your party or raid. Unknown-caster emotes still follow their own setting.", y,
         function() return ns.db.thanksSkipGroupMembers end, function(value) ns.db.thanksSkipGroupMembers = value end)

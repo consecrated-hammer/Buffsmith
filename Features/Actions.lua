@@ -306,10 +306,84 @@ end
 
 
 
+local function resourceValue(api, ...)
+    if type(api) ~= "function" then return nil end
+    local ok, value = pcall(api, ...)
+    if ok then
+        value = ns.Plain(value)
+        if type(value) == "number" and value == value and value >= 0 and value < math.huge then return value end
+    end
+end
+
+function Actions:RecoveryStatus(entry)
+    if ns.IsCombatLocked() then return false, "combat" end
+    local threshold = self:Percent(entry) / 100
+    local health, maxHealth = resourceValue(UnitHealth, "player"), resourceValue(UnitHealthMax, "player")
+    local manaType = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
+    local mana, maxMana = resourceValue(UnitPower, "player", manaType), resourceValue(UnitPowerMax, "player", manaType)
+    local healthLow = health and maxHealth and maxHealth > 0 and health / maxHealth < threshold
+    local manaLow = mana and maxMana and maxMana > 0 and mana / maxMana < threshold
+    if not healthLow and not manaLow then return false, "resources sufficient or unreadable" end
+
+    local start, duration, enabled, rate
+    local getter = C_Spell and C_Spell.GetSpellCooldown
+    if type(getter) == "function" then
+        local ok, info = pcall(getter, entry.castID or entry.spellID)
+        if not ok or ns.IsSecret(info) or type(info) ~= "table" then return false, "cooldown unknown" end
+        if ns.IsSecret(info.modRate) then return false, "cooldown unknown" end
+        start, duration, enabled, rate = ns.Plain(info.startTime), ns.Plain(info.duration), ns.Plain(info.isEnabled), ns.Plain(info.modRate)
+    elseif type(GetSpellCooldown) == "function" then
+        local ok, a, b, c, d = pcall(GetSpellCooldown, entry.castID or entry.spellID)
+        if not ok or ns.IsSecret(d) then return false, "cooldown unknown" end
+        start, duration, enabled, rate = ns.Plain(a), ns.Plain(b), ns.Plain(c), ns.Plain(d)
+    else
+        return false, "cooldown unknown"
+    end
+    if enabled ~= true and enabled ~= 1 then return false, "cooldown disabled or unreadable" end
+    if type(start) ~= "number" or type(duration) ~= "number" or start ~= start or duration ~= duration
+        or start < 0 or duration < 0 or start == math.huge or duration == math.huge then return false, "cooldown unknown" end
+    if duration > 0 then
+        local now = resourceValue(GetTime)
+        rate = rate == nil and 1 or rate
+        if not now or type(rate) ~= "number" or rate <= 0 or rate ~= rate or rate == math.huge then return false, "cooldown unknown" end
+        -- Blizzard's Forever broadcaster uses start + duration - now;
+        -- modRate controls cooldown presentation, not an earlier ready time.
+        local remaining = start + duration - now
+        if remaining > 0 then
+            return false, "cooldown", remaining
+        end
+    end
+    return true, healthLow and "low health" or "low mana"
+end
+
+-- Resource events are frequent. Rebuild secure buttons only when this
+-- reminder changes visibility; cooldown wakeups share the normal timer.
+function Actions:RefreshRecovery()
+    if ns.IsCombatLocked() then return end
+    local entry = ns.KnownRecoveryEntry and ns.KnownRecoveryEntry()
+    if not entry or self:IsSuppressed(entry) then return end
+    local display, _, remaining
+    if playerIsDead() or playerOnTaxi() or self:IsRestedPaused() then
+        display = false
+    else
+        display, _, remaining = self:RecoveryStatus(entry)
+    end
+    if display ~= (ns.Palette and ns.Palette.recoveryDisplayed or false) then
+        ns.RefreshAll()
+    elseif remaining then
+        self:ArmReminder(remaining)
+    end
+end
+
 function Actions:Entries()
     local entries = {}
     self.nextReminderDelay = nil
     ns.lastAuraProbe = {}
+    if ns.IsCombatLocked() then
+        self.eatingPaused = false
+        ns.lastAuraProbe[1] = "buff checks paused: combat"
+        return entries
+    end
     if playerIsDead() or playerOnTaxi() then
         self.eatingPaused = false
         ns.lastAuraProbe[1] = "buff checks paused: dead, ghost or on a flight path"
@@ -323,9 +397,19 @@ function Actions:Entries()
         return entries
     end
     for _, entry in ipairs(ns.KnownSelfBuffs()) do
-        local status = entryStatus("player", entry)
-        self:ConsiderReminder(entry, status)
-        local display, state = shouldShow(entry, status)
+        local status, display, state
+        if entry.resourceRecovery then
+            local remaining
+            display, state, remaining = self:RecoveryStatus(entry)
+            if remaining and not self:IsSuppressed(entry) then
+                self.nextReminderDelay = math.min(self.nextReminderDelay or remaining, remaining)
+            end
+            status = {}
+        else
+            status = entryStatus("player", entry)
+            self:ConsiderReminder(entry, status)
+            display, state = shouldShow(entry, status)
+        end
         entry.state, entry.auraDuration, entry.auraRemaining = state, status.duration, status.remaining
         ns.lastAuraProbe[#ns.lastAuraProbe + 1] = entry.name .. "=" .. entry.state
         if display and not self:IsSuppressed(entry) then entries[#entries + 1] = entry end
@@ -423,18 +507,25 @@ function Actions:Percent(entry)
         value = value == nil and reminder[entry.category] or value
     else
         value = reminder.buffBySpell and reminder.buffBySpell[entry.spellID]
-        value = value == nil and reminder.buff or value
+        value = value == nil and (entry.resourceRecovery and 50 or reminder.buff) or value
     end
     return math.max(0, math.min(50, tonumber(value) or 10))
 end
 
-function Actions:ArmReminder()
-    local delay = self.nextReminderDelay
+function Actions:ArmReminder(delay)
+    delay = delay or self.nextReminderDelay
     if not delay or ns.IsCombatLocked() then return end
+    local now = GetTime and GetTime() or 0
+    local wait = math.max(1, delay + 0.05)
+    local wakeAt = now + wait
+    if self.reminderWakeAt and self.reminderWakeAt <= wakeAt + 0.1 then return end
+    self.reminderWakeAt = wakeAt
     self.reminderToken = (self.reminderToken or 0) + 1
     local token = self.reminderToken
-    C_Timer.After(math.max(1, delay + 0.05), function()
-        if token ~= self.reminderToken or ns.IsCombatLocked() then return end
+    C_Timer.After(wait, function()
+        if token ~= self.reminderToken then return end
+        self.reminderWakeAt = nil
+        if ns.IsCombatLocked() then return end
         if ns.Palette then ns.Palette:Refresh() end
     end)
 end
@@ -707,6 +798,7 @@ function Actions:ReminderSummary()
 end
 
 function Actions:ReminderFor(entry)
+    if entry.resourceRecovery then return "Health or mana below " .. self:Percent(entry) .. "%" end
     if entry.permanent then return "Permanent effect" end
     if ns.IsShortBuff(entry) then return "Short duration" end
     local status = entryStatus("player", entry)

@@ -109,8 +109,8 @@ assert(emotes[2].token == "THANK" or emotes[2].token == "BOW" or emotes[2].token
 ns.Thanks:Queue("Power Word: Fortitude", "Helpfulpriest-OtherRealm", providerGUID, "party1")
 providerGUID = "Player-1-someone-else"
 scheduled[5].callback()
-equal(#emotes, 2, "a changed unit token is never thanked")
-equal(ns.Thanks.lastStatus, "skipped: emote target unavailable", "lost target is reported")
+equal(#emotes, 3, "a changed unit token keeps the captured original recipient")
+equal(emotes[3].target, "Helpfulpriest-OtherRealm", "changed token never redirects the emote")
 
 providerGUID = "Player-1-priest"
 ns.TARGET = "Camelot"
@@ -119,8 +119,8 @@ DoEmote = function(token, unit) emotes[#emotes + 1] = { token = token, target = 
 ns.db.thanksEmote = "BOW"
 ns.Thanks:Queue("Power Word: Fortitude", "Helpfulpriest-OtherRealm", providerGUID, "party1")
 scheduled[6].callback()
-equal(emotes[3].token, "BOW", "Forever uses its configured emote")
-equal(emotes[3].target, "party1", "Forever uses the confirmed unit token")
+equal(emotes[4].token, "BOW", "Forever uses its configured emote")
+equal(emotes[4].target, "party1", "Forever uses the confirmed unit token")
 
 ns.Thanks.tracked = nil
 ns.Thanks.seen = {}
@@ -235,8 +235,10 @@ local firstRetry = #scheduled + 1
 ns.Thanks:Observe(false)
 scheduled[firstRetry].callback()
 scheduled[firstRetry + 1].callback()
-equal(#emotes, 4, "an opted-in unknown caster gets one untargeted Forever emote")
-equal(emotes[4].target, "none", "the fallback never invents an emote target")
+equal(#emotes, 4, "unknown-caster emote waits for the configured delay after retries")
+scheduled[firstRetry + 2].callback()
+equal(#emotes, 5, "an opted-in unknown caster gets one untargeted Forever emote")
+equal(emotes[5].target, "none", "the fallback never invents an emote target")
 equal(ns.Thanks.lastStatus, "emoted without caster: THANK", "the fallback is visible in diagnostics")
 
 -- Identified group casters can be skipped without changing unknown fallback.
@@ -338,6 +340,8 @@ do
         if index == 1 then return { spellId = 1243, name = "Power Word: Fortitude" } end
     end
     current.Thanks:Observe(false)
+    equal(#output, 0, "unknown-caster fallback is delayed while grouped")
+    timers[#timers].callback()
     equal(#output, 1, "unknown-caster fallback still fires while grouped with skip enabled")
     equal(output[1][2], "none", "unknown-caster fallback remains untargeted")
     current = setup("Camelot")
@@ -418,6 +422,7 @@ do
     timers[#timers].callback()
     aura = { spellId = 1243 }
     current.Thanks:Observe(false)
+    timers[#timers].callback()
     equal(#output, 1, "unknown-caster fallback still fires after zone settling")
 end
 

@@ -2,13 +2,21 @@ local addonName, ns = ...
 
 ns.Thanks = { seen = {}, seenAuras = {}, seenProviders = {}, eligibleAuras = {}, attributedAuras = {}, retrying = {}, pending = {}, lastStatus = "not observed", lastScan = "not scanned", lastAttribution = "not probed" }
 local Thanks = ns.Thanks
+local UNKNOWN_REPLY = {}
+local function after(delay, callback)
+    C_Timer.After(delay, function()
+        callback()
+        Thanks:SaveDiagnostics()
+    end)
+end
 local FEATURED_EMOTES = { { "THANK", "Thank" }, { "BOW", "Bow" }, { "CHEER", "Cheer" }, { "APPLAUD", "Applaud" }, { "SALUTE", "Salute" } }
 
 -- Loading screens rebuild aura snapshots; treat them as a fresh baseline.
 function Thanks:ResetHistory(preservePending)
-    self.seen, self.seenAuras, self.seenProviders = {}, {}, {}
+    self.seen, self.seenAuras, self.seenProviders, self.seenProviderNames = {}, {}, {}, {}
+    self.eligibilityDeadline = {}
     self.eligibleAuras, self.attributedAuras, self.retrying = {}, {}, {}
-    if not preservePending then self.pending = {} end
+    if preservePending then self.pending[UNKNOWN_REPLY] = nil else self.pending = {} end
     self.initialized = false
 end
 
@@ -31,7 +39,7 @@ function Thanks:ZoneTransition(loading)
         self.zoneReady = true
         self:FinishZoneTransition(generation)
     end
-    if C_Timer and type(C_Timer.After) == "function" then C_Timer.After(1, finish) else finish() end
+    if C_Timer and type(C_Timer.After) == "function" then after(1, finish) else finish() end
 end
 
 local function emoteName(command, token)
@@ -80,8 +88,9 @@ local function selectedEmote()
 end
 
 local function trackedBuffs()
-    if Thanks.tracked then return Thanks.tracked end
+    if Thanks.tracked and not Thanks.namesIncomplete then return Thanks.tracked end
     local tracked, names = {}, {}
+    Thanks.namesIncomplete = false
     for _, classBuffs in pairs(ns.PARTY_BUFFS or {}) do
         for _, buff in ipairs(classBuffs) do
             if buff.auraID then tracked[buff.auraID] = buff end
@@ -97,7 +106,8 @@ local function trackedBuffs()
                     local ok, value = pcall(GetSpellInfo, buff.auraID)
                     if ok then spellName = ns.Plain(value) end
                 end
-                if type(spellName) == "string" then names[spellName] = buff end
+                if type(spellName) == "string" then names[spellName] = buff
+                else Thanks.namesIncomplete = true end
             end
         end
     end
@@ -112,6 +122,25 @@ local function plainCall(fn, ...)
     if ok then return ns.Plain(value) end
 end
 
+function Thanks:SaveDiagnostics()
+    if not ns.db then return end
+    local signature = table.concat({ tostring(self.lastStatus), tostring(self.lastAttribution), tostring(ns.db.thanksEnabled),
+        tostring(ns.db.thanksDelay), tostring(ns.db.thanksSkipGroupMembers), tostring(ns.db.thanksUnknownEmote), tostring(ns.db.thanksChannel) }, " | ")
+    if signature == self.savedDiagnosticSignature then return end
+    self.savedDiagnosticSignature = signature
+    local history = ns.db.thanksDiagnostics
+    if type(history) ~= "table" then history = {}; ns.db.thanksDiagnostics = history end
+    local pending = 0
+    for _ in pairs(self.pending) do pending = pending + 1 end
+    history[#history + 1] = {
+        at = plainCall(date, "%Y-%m-%d %H:%M:%S") or "time unavailable",
+        status = self.lastStatus, scan = self.lastScan, attribution = self.lastAttribution,
+        pending = pending, delay = ns.db.thanksDelay, skipGroup = ns.db.thanksSkipGroupMembers,
+        unknownEmote = ns.db.thanksUnknownEmote, channel = ns.db.thanksChannel,
+    }
+    while #history > 12 do table.remove(history, 1) end
+end
+
 local function isSelfSource(sourceUnit)
     if sourceUnit == "player" then return true end
     if type(sourceUnit) ~= "string" or not plainCall(UnitExists, sourceUnit) then return false end
@@ -123,15 +152,21 @@ local function sourceInfo(sourceUnit)
     if type(sourceUnit) ~= "string" then return nil, nil, "no caster token" end
     if isSelfSource(sourceUnit) then return nil, nil, "self" end
     if not plainCall(UnitExists, sourceUnit) then return nil, nil, "caster token unavailable" end
-    if not plainCall(UnitIsPlayer, sourceUnit) then return nil, nil, "caster is not a player" end
-    if not plainCall(UnitCanAssist, "player", sourceUnit) then return nil, nil, "caster is not friendly" end
-    local ok, name, realm = pcall(UnitName, sourceUnit)
-    if not ok or ns.IsSecret(name) or ns.IsSecret(realm) then return nil, nil, "caster name unavailable" end
-    name, realm = ns.Plain(name), ns.Plain(realm)
-    if type(name) ~= "string" or name == "" then return nil, nil, "caster name unavailable" end
-    local recipient = realm and realm ~= "" and name .. "-" .. realm:gsub("%s", "") or name
+    local player = plainCall(UnitIsPlayer, sourceUnit)
+    if player == false then return nil, nil, "caster is not a player" end
+    if player ~= true then return nil, nil, "caster player identity unavailable" end
+    if not plainCall(UnitGUID, "player") then return nil, nil, "player identity unavailable" end
     local guid = plainCall(UnitGUID, sourceUnit)
-    return recipient, type(guid) == "string" and guid ~= "" and guid or recipient
+    guid = type(guid) == "string" and guid ~= "" and guid or nil
+    local friendly = plainCall(UnitCanAssist, "player", sourceUnit)
+    if friendly == false then return nil, guid, "caster is not friendly" end
+    if friendly ~= true then return nil, guid, "caster friendliness unavailable" end
+    local ok, name, realm = pcall(UnitName, sourceUnit)
+    if not ok or ns.IsSecret(name) or ns.IsSecret(realm) then return nil, guid, "caster name unavailable" end
+    name, realm = ns.Plain(name), ns.Plain(realm)
+    if type(name) ~= "string" or name == "" then return nil, guid, "caster name unavailable" end
+    local recipient = realm and realm ~= "" and name .. "-" .. realm:gsub("%s", "") or name
+    return recipient, guid or recipient
 end
 
 -- GUID reads can succeed even when Forever supplies no source unit token.
@@ -173,17 +208,23 @@ end
 
 local function auraSource(aura, sourceUnit)
     local provider, key, reason = sourceInfo(sourceUnit)
-    if provider or reason == "self" or reason == "caster is not a player" then
+    if reason ~= "self" and reason ~= "caster is not a player" then
+        local ownGUID = plainCall(UnitGUID, "player")
+        if type(ownGUID) ~= "string" or ownGUID == "" then return nil, nil, "player identity unavailable" end
+    end
+    if provider or reason == "self" or reason == "caster is not a player"
+        or reason == "player identity unavailable" or reason == "caster is not friendly"
+        or reason == "caster friendliness unavailable" then
         return provider, key, reason, sourceUnit
     end
     local instanceID = ns.Plain(aura.auraInstanceID)
     local getter = C_UnitAuras and C_UnitAuras.GetAuraCasterGUID
     if type(instanceID) ~= "number" or type(getter) ~= "function" then
-        return nil, nil, reason, sourceUnit
+        return nil, key, reason, sourceUnit
     end
     local guid = plainCall(getter, "player", instanceID)
     if type(guid) ~= "string" or guid == "" then
-        return nil, nil, "caster GUID unavailable or restricted", sourceUnit
+        return nil, key, "caster GUID unavailable or restricted", sourceUnit
     end
     local ownGUID = plainCall(UnitGUID, "player")
     if type(ownGUID) ~= "string" or ownGUID == "" then return nil, nil, "player identity unavailable" end
@@ -256,8 +297,8 @@ local function skipGroupProvider(provider, providerKey, sourceUnit)
     -- membership when it still identifies the caster that supplied the buff.
     local currentProvider, currentKey = sourceInfo(sourceUnit)
     if currentProvider == provider and currentKey == providerKey then
-        local party = UnitInParty and ns.Plain(UnitInParty(sourceUnit))
-        local raid = UnitInRaid and ns.Plain(UnitInRaid(sourceUnit))
+        local party = plainCall(UnitInParty, sourceUnit)
+        local raid = plainCall(UnitInRaid, sourceUnit)
         if party == true or raid == true or (type(raid) == "number" and raid >= 0) then return true end
     end
     -- A known caster can join the group, move slots or lose their original
@@ -266,7 +307,7 @@ local function skipGroupProvider(provider, providerKey, sourceUnit)
         for _, group in ipairs(GROUP_ROSTERS) do
             for index = 1, group[2] do
                 local unit = group[1] .. index
-                if UnitExists(unit) and ns.Plain(UnitGUID(unit)) == providerKey then return true end
+                if plainCall(UnitExists, unit) and plainCall(UnitGUID, unit) == providerKey then return true end
             end
         end
     end
@@ -275,11 +316,14 @@ end
 
 local function messageFor(buff, provider)
     local message = tostring(ns.db.thanksMessage or "Thanks for the {buff}!")
-    message = message:gsub("{buff}", tostring(buff)):gsub("{player}", tostring(provider))
+    message = message:gsub("{buff}", function() return tostring(buff) end)
+        :gsub("{player}", function() return tostring(provider) end)
     return message:gsub("[\r\n]+", " "):sub(1, 240)
 end
 
-function Thanks:Send(buff, provider, providerKey, sourceUnit, allowName)
+function Thanks:Send(buff, provider, providerKey, sourceUnit)
+    local currentProvider, currentKey = sourceInfo(sourceUnit)
+    if providerKey == provider and currentProvider == provider then providerKey = currentKey end
     if skipGroupProvider(provider, providerKey, sourceUnit) then
         self.lastStatus = "skipped: caster is in your party or raid"
         return
@@ -298,7 +342,7 @@ function Thanks:Send(buff, provider, providerKey, sourceUnit, allowName)
                 if currentProvider == provider and currentKey == providerKey then emoteTarget = unit else unit = nil end
             end
             if not unit then
-                if not allowName or type(providerKey) ~= "string" or not providerKey:match("^Player%-") then
+                if type(providerKey) ~= "string" or not providerKey:match("^Player%-") then
                     self.lastStatus = "skipped: emote target unavailable"
                     return
                 end
@@ -308,12 +352,14 @@ function Thanks:Send(buff, provider, providerKey, sourceUnit, allowName)
         local token = selectedEmote()
         if ns.TARGET == "Camelot" then
             if type(DoEmote) ~= "function" then self.lastStatus = "skipped: emote API unavailable"; return end
-            if not pcall(DoEmote, token, emoteTarget) then self.lastStatus = "skipped: emote rejected"; return end
+            local ok, success = pcall(DoEmote, token, emoteTarget)
+            if not ok or success == false then self.lastStatus = "skipped: emote rejected"; return end
         elseif C_ChatInfo and type(C_ChatInfo.PerformEmote) == "function" then
             local ok, success = pcall(C_ChatInfo.PerformEmote, token, provider)
             if not ok or success == false then self.lastStatus = "skipped: emote rejected"; return end
         elseif type(DoEmote) == "function" then
-            if not pcall(DoEmote, token, emoteTarget) then self.lastStatus = "skipped: emote rejected"; return end
+            local ok, success = pcall(DoEmote, token, emoteTarget)
+            if not ok or success == false then self.lastStatus = "skipped: emote rejected"; return end
         else
             self.lastStatus = "skipped: emote API unavailable"
             return
@@ -321,19 +367,24 @@ function Thanks:Send(buff, provider, providerKey, sourceUnit, allowName)
         self.lastStatus = "emoted: " .. token
         return
     end
-    if type(SendChatMessage) ~= "function" or (channel ~= "WHISPER" and channel ~= "SAY" and channel ~= "PARTY") then return end
-    local message = messageFor(buff, provider)
-    if channel == "WHISPER" then
-        SendChatMessage(message, "WHISPER", nil, provider)
-    elseif channel == "PARTY" and IsInGroup and IsInGroup() then
-        local instanceCategory = LE_PARTY_CATEGORY_INSTANCE or (Enum and Enum.PartyCategory and Enum.PartyCategory.Instance)
-        SendChatMessage(message, instanceCategory and IsInGroup(instanceCategory) and "INSTANCE_CHAT" or "PARTY")
-    elseif channel == "SAY" then
-        SendChatMessage(message, "SAY")
-    else
+    if type(SendChatMessage) ~= "function" or (channel ~= "WHISPER" and channel ~= "SAY" and channel ~= "PARTY") then
+        self.lastStatus = "skipped: chat API or channel unavailable"
         return
     end
-    self.lastStatus = "sent"
+    local message = messageFor(buff, provider)
+    local ok, success
+    if channel == "WHISPER" then
+        ok, success = pcall(SendChatMessage, message, "WHISPER", nil, provider)
+    elseif channel == "PARTY" and IsInGroup and IsInGroup() then
+        local instanceCategory = LE_PARTY_CATEGORY_INSTANCE or (Enum and Enum.PartyCategory and Enum.PartyCategory.Instance)
+        ok, success = pcall(SendChatMessage, message, instanceCategory and IsInGroup(instanceCategory) and "INSTANCE_CHAT" or "PARTY")
+    elseif channel == "SAY" then
+        ok, success = pcall(SendChatMessage, message, "SAY")
+    else
+        self.lastStatus = "skipped: party channel unavailable while solo"
+        return
+    end
+    self.lastStatus = ok and success ~= false and "sent" or "skipped: chat rejected"
 end
 
 -- Forever can expose a newly applied buff without any usable caster token.
@@ -361,6 +412,75 @@ function Thanks:FallbackEmote(buff, auraKey)
     return true
 end
 
+-- Unknown replies share one delayed job. A later attribution, removal or
+-- baseline snapshot invalidates that aura's entry before delivery.
+function Thanks:QueueFallback(buff, auraKey)
+    if not ns.db.thanksEnabled or not ns.db.thanksUnknownEmote or ns.db.thanksChannel ~= "EMOTE"
+        or not self.eligibleAuras[auraKey] or self.attributedAuras[auraKey] then return false end
+    self.attributedAuras[auraKey] = "fallback pending"
+    local job = self.pending[UNKNOWN_REPLY]
+    if job then job.auras[auraKey] = buff; return true end
+    job = { auras = { [auraKey] = buff } }
+    self.pending[UNKNOWN_REPLY] = job
+    self.lastStatus = "queued: unknown-caster emote"
+    local function send()
+        if self.pending[UNKNOWN_REPLY] ~= job then return end
+        self.pending[UNKNOWN_REPLY] = nil
+        if not ns.db.thanksEnabled or not ns.db.thanksUnknownEmote or ns.db.thanksChannel ~= "EMOTE" then
+            self.lastStatus = "cancelled: unknown-caster emote disabled"
+            return
+        end
+        if ns.IsCombatLocked() then self.lastStatus = "cancelled: combat"; return end
+        local first, keys = nil, {}
+        for key, entry in pairs(job.auras) do
+            if self.eligibleAuras[key] and self.attributedAuras[key] == "fallback pending" then
+                first = first or entry
+                keys[#keys + 1] = key
+            end
+        end
+        if not first then
+            self.lastStatus = "cancelled: no eligible unknown-caster buffs"
+        elseif self:FallbackEmote(first, keys[1]) then
+            for _, key in ipairs(keys) do self.attributedAuras[key] = "untargeted" end
+        else
+            for _, key in ipairs(keys) do
+                self.attributedAuras[key], self.eligibleAuras[key] = "rejected", nil
+            end
+        end
+    end
+    local delay = math.max(1, math.min(5, tonumber(ns.db.thanksDelay) or 1))
+    if C_Timer and type(C_Timer.After) == "function" then after(delay, send) else send() end
+    return true
+end
+
+function Thanks:SuppressAura(auraKey)
+    self.attributedAuras[auraKey] = "suppressed"
+    self.eligibleAuras[auraKey], self.retrying[auraKey] = nil, nil
+end
+
+function Thanks:SetEnabled(enabled)
+    ns.db.thanksEnabled = enabled == true
+    self:ResetHistory()
+    self:Observe(true)
+    self.lastStatus = enabled and "ready: Thank You enabled" or "cancelled: Thank You disabled"
+    self:SaveDiagnostics()
+end
+
+function Thanks:CombatStarted()
+    self.pending, self.retrying, self.eligibleAuras = {}, {}, {}
+    self.combatPriming = true
+    self.lastStatus = "paused: combat"
+end
+
+function Thanks:CombatEnded()
+    if self.zonePriming then
+        self:FinishZoneTransition()
+    elseif self.combatPriming then
+        self:Observe(true)
+    end
+    self.combatPriming = nil
+end
+
 local function combinedBuffs(job)
     if #job.buffs == 1 then return job.buffs[1] end
     if #job.buffs == 2 then return job.buffs[1] .. " and " .. job.buffs[2] end
@@ -371,14 +491,24 @@ local function delayLabel(delay)
     return tostring(delay) .. (delay == 1 and " second" or " seconds")
 end
 
-function Thanks:Queue(buff, provider, providerKey, sourceUnit, allowName)
+function Thanks:Queue(buff, provider, providerKey, sourceUnit)
     if skipGroupProvider(provider, providerKey, sourceUnit) then
         self.lastStatus = "skipped: caster is in your party or raid"
         return false
     end
     local job = self.pending[providerKey]
+    if not job then
+        for key, candidate in pairs(self.pending) do
+            if candidate.provider == provider and (key == provider or providerKey == provider) then
+                job = candidate
+                if key == provider and providerKey ~= provider then
+                    self.pending[key], self.pending[providerKey], job.key = nil, job, providerKey
+                end
+                break
+            end
+        end
+    end
     if job then
-        job.allowName = job.allowName or allowName
         if type(sourceUnit) == "string" then job.sourceUnit = sourceUnit end
         if not job.buffSet[buff] then
             job.buffSet[buff] = true
@@ -389,8 +519,8 @@ function Thanks:Queue(buff, provider, providerKey, sourceUnit, allowName)
     end
     local delay = math.max(1, math.min(5, tonumber(ns.db.thanksDelay) or 1))
     local function send()
-        if self.pending[providerKey] ~= job then return end
-        self.pending[providerKey] = nil
+        if self.pending[job.key] ~= job then return end
+        self.pending[job.key] = nil
         if not ns.db.thanksEnabled then
             self.lastStatus = "cancelled: Thank You disabled"
             return
@@ -399,13 +529,13 @@ function Thanks:Queue(buff, provider, providerKey, sourceUnit, allowName)
             self.lastStatus = "cancelled: combat"
             return
         end
-        self:Send(combinedBuffs(job), job.provider, providerKey, job.sourceUnit, job.allowName)
+        self:Send(combinedBuffs(job), job.provider, job.key, job.sourceUnit)
     end
-    job = { provider = provider, sourceUnit = sourceUnit, allowName = allowName, delay = delay, buffs = { buff }, buffSet = { [buff] = true } }
+    job = { key = providerKey, provider = provider, sourceUnit = sourceUnit, delay = delay, buffs = { buff }, buffSet = { [buff] = true } }
     self.pending[providerKey] = job
     self.lastStatus = "queued: " .. delayLabel(delay)
     if C_Timer and type(C_Timer.After) == "function" then
-        C_Timer.After(delay, send)
+        after(delay, send)
     else
         send()
     end
@@ -439,11 +569,18 @@ function Thanks:RetryAttribution(aura, buff, auraKey)
     local marker = {}
     self.retrying[auraKey] = marker
     local function check(attempt)
-        C_Timer.After(attempt == 1 and 0.2 or 0.5, function()
+        after(attempt == 1 and 0.2 or 0.5, function()
             if self.retrying[auraKey] ~= marker then return end
             if not ns.db.thanksEnabled or not self.eligibleAuras[auraKey]
                 or ns.IsCombatLocked() or self.attributedAuras[auraKey] then
                 self.retrying[auraKey] = nil
+                return
+            end
+            local now = plainCall(GetTime)
+            local deadline = self.eligibilityDeadline and self.eligibilityDeadline[auraKey]
+            if deadline and type(now) == "number" and now > deadline then
+                self.retrying[auraKey], self.eligibleAuras[auraKey] = nil, nil
+                self.lastAttribution = buff.label .. ": attribution expired"
                 return
             end
             local current = auraByInstance(instanceID)
@@ -457,19 +594,19 @@ function Thanks:RetryAttribution(aura, buff, auraKey)
             if provider then
                 self.retrying[auraKey] = nil
                 self.attributedAuras[auraKey] = providerKey
-                self:Queue(buff.label, provider, providerKey, resolvedUnit, origin == "aura caster GUID")
+                self:Queue(buff.label, provider, providerKey, resolvedUnit)
                 self.lastAttribution = buff.label .. ": " .. (origin or "indexed aura") .. " after retry " .. tostring(attempt)
-            elseif reason == "self" or reason == "caster is not a player" or reason == "player identity unavailable"
+            elseif reason == "self" or reason == "caster is not a player" or reason == "caster is not friendly"
                 or (providerKey and skipGroupProvider(nil, providerKey, resolvedUnit)) then
                 self.retrying[auraKey] = nil
-                self.attributedAuras[auraKey] = providerKey
+                self:SuppressAura(auraKey)
                 self.lastAttribution = buff.label .. ": " .. (reason or "caster is in your party or raid")
             elseif attempt < 2 then
                 check(2)
             else
                 self.retrying[auraKey] = nil
                 self.lastAttribution = buff.label .. ": no caster after 0.7 seconds; " .. legacyProbe(current)
-                self:FallbackEmote(buff, auraKey)
+                if reason ~= "player identity unavailable" then self:QueueFallback(buff, auraKey) end
             end
         end)
     end
@@ -482,17 +619,30 @@ function Thanks:Observe(primeOnly, updateInfo)
     if self.loadingWorld then self.lastStatus = "paused: loading world"; return end
     local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
     if not getter then self.lastStatus = "unavailable: aura API"; return end
+    local snapshot = {}
+    for index = 1, 128 do
+        local ok, aura = pcall(getter, "player", index, "HELPFUL")
+        if not ok or ns.IsSecret(aura) then
+            self.scanRecovery = true
+            self.lastScan = "unavailable: incomplete aura snapshot"
+            return false
+        end
+        if not aura then break end
+        snapshot[#snapshot + 1] = aura
+    end
+    if self.scanRecovery then primeOnly = true; self.scanRecovery = nil end
     if self.zonePriming or (type(updateInfo) == "table" and not ns.IsSecret(updateInfo)
         and ns.Plain(updateInfo.isFullUpdate) == true) then primeOnly = true end
     if primeOnly then self:ResetHistory(not self.zonePriming) end
+    self.seenProviderNames = self.seenProviderNames or {}
+    self.eligibilityDeadline = self.eligibilityDeadline or {}
+    local now = plainCall(GetTime)
     local tracked = trackedBuffs()
     local current, currentAuras = {}, {}
     local skipped
     local queued = false
     local scanned, byID, byName, noProvider, selfBuffs = 0, 0, 0, 0, 0
-    for index = 1, 128 do
-        local ok, aura = pcall(getter, "player", index, "HELPFUL")
-        if not ok or ns.IsSecret(aura) or not aura then break end
+    for _, aura in ipairs(snapshot) do
         scanned = scanned + 1
         local spellID = tonumber(ns.Plain(aura.spellId))
         local buff = spellID and tracked[spellID]
@@ -513,6 +663,17 @@ function Thanks:Observe(primeOnly, updateInfo)
             local origin
             provider, providerKey, sourceReason, sourceUnit, origin = auraSource(aura, sourceUnit)
             sourceOrigin = origin or sourceOrigin
+            if not provider and sourceReason ~= "self" and sourceReason ~= "caster is not a player"
+                and sourceReason ~= "player identity unavailable" and sourceReason ~= "caster is not friendly" then
+                local eventUnit = eventSource(aura, updateInfo)
+                if eventUnit and eventUnit ~= sourceUnit then
+                    local eventProvider, eventKey, eventReason, resolvedUnit, eventOrigin = auraSource(aura, eventUnit)
+                    if eventProvider or eventReason == "self" or eventReason == "caster is not a player" then
+                        provider, providerKey, sourceReason, sourceUnit = eventProvider, eventKey, eventReason, resolvedUnit
+                        sourceOrigin = eventOrigin or "UNIT_AURA added aura"
+                    end
+                end
+            end
         end
         local auraKey
         if buff then
@@ -520,11 +681,29 @@ function Thanks:Observe(primeOnly, updateInfo)
             currentAuras[auraKey] = true
             if self.initialized and not primeOnly and ns.db.thanksEnabled and not self.seenAuras[auraKey] then
                 self.eligibleAuras[auraKey] = true
+                self.eligibilityDeadline[auraKey] = type(now) == "number" and now + 5 or nil
             end
             local previousProvider = self.seenProviders[auraKey]
-            if self.initialized and not primeOnly and ns.db.thanksEnabled
-                and previousProvider and providerKey and previousProvider ~= providerKey then
+            local previousName = self.seenProviderNames[auraKey]
+            if provider and previousProvider and providerKey == provider and previousName == provider then
+                providerKey = previousProvider
+            end
+            local bothGUIDs = type(previousProvider) == "string" and previousProvider:match("^Player%-")
+                and type(providerKey) == "string" and providerKey:match("^Player%-")
+            local providerChanged = previousProvider and providerKey and previousProvider ~= providerKey
+                and (bothGUIDs or (provider and previousName and provider ~= previousName))
+            if self.initialized and not primeOnly and ns.db.thanksEnabled and providerChanged then
                 self.eligibleAuras[auraKey] = true
+                self.attributedAuras[auraKey] = nil
+                self.eligibilityDeadline[auraKey] = type(now) == "number" and now + 5 or nil
+            elseif previousProvider and providerKey and previousProvider ~= providerKey
+                and self.attributedAuras[auraKey] == previousProvider then
+                self.attributedAuras[auraKey] = providerKey
+            end
+            if provider then self.seenProviderNames[auraKey] = provider end
+            local deadline = self.eligibilityDeadline[auraKey]
+            if deadline and type(now) == "number" and now > deadline and not self.attributedAuras[auraKey] then
+                self.eligibleAuras[auraKey], self.retrying[auraKey] = nil, nil
             end
             if providerKey then self.seenProviders[auraKey] = providerKey end
         end
@@ -533,24 +712,26 @@ function Thanks:Observe(primeOnly, updateInfo)
             current[key] = true
             if self.initialized and not primeOnly and ns.db.thanksEnabled
                 and self.eligibleAuras[auraKey] and not self.seen[key]
-                and self.attributedAuras[auraKey] ~= providerKey then
+                and self.attributedAuras[auraKey] ~= providerKey
+                and self.attributedAuras[auraKey] ~= "untargeted" then
                 self.attributedAuras[auraKey] = providerKey
-                queued = self:Queue(buff.label, provider, providerKey, sourceUnit, sourceOrigin == "aura caster GUID") or queued
+                queued = self:Queue(buff.label, provider, providerKey, sourceUnit) or queued
                 self.lastAttribution = buff.label .. ": " .. sourceOrigin
             end
         elseif buff and self.initialized and not primeOnly then
             if sourceReason == "self" then
+                self:SuppressAura(auraKey)
                 selfBuffs = selfBuffs + 1
-            elseif sourceReason == "caster is not a player" or sourceReason == "player identity unavailable"
+            elseif sourceReason == "caster is not a player" or sourceReason == "caster is not friendly"
                 or (providerKey and skipGroupProvider(nil, providerKey, sourceUnit)) then
-                self.attributedAuras[auraKey] = providerKey
+                self:SuppressAura(auraKey)
             else
                 noProvider = noProvider + 1
                 if not self.seenAuras[auraKey] then
                     skipped = buff.label .. " (" .. tostring(sourceReason) .. ")"
                     if ns.TARGET == "Camelot" and ns.db.thanksEnabled
                         and not self:RetryAttribution(aura, buff, auraKey) then
-                        self:FallbackEmote(buff, auraKey)
+                        if sourceReason ~= "player identity unavailable" then self:QueueFallback(buff, auraKey) end
                     end
                 end
             end
@@ -563,10 +744,15 @@ function Thanks:Observe(primeOnly, updateInfo)
         if not currentAuras[auraKey] then self.attributedAuras[auraKey] = nil end
     end
     for auraKey in pairs(self.seenProviders) do
-        if not currentAuras[auraKey] then self.seenProviders[auraKey] = nil end
+        if not currentAuras[auraKey] then
+            self.seenProviders[auraKey], self.seenProviderNames[auraKey], self.eligibilityDeadline[auraKey] = nil, nil, nil
+        end
     end
     for auraKey in pairs(self.eligibleAuras) do
         if not currentAuras[auraKey] or not ns.db.thanksEnabled then self.eligibleAuras[auraKey] = nil end
+    end
+    for auraKey in pairs(self.eligibilityDeadline) do
+        if not currentAuras[auraKey] then self.eligibilityDeadline[auraKey] = nil end
     end
     for auraKey in pairs(self.retrying) do
         if not currentAuras[auraKey] then self.retrying[auraKey] = nil end

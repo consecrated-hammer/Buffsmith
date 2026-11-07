@@ -7,6 +7,29 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-07
+
+### Added
+
+- On Forever, Read Leyline appears when health or mana is below 50% and the
+  learned ability is off cooldown. Its Buffs-page slider sets the resource
+  threshold. Normal out-of-combat, death, travel and meal rules still apply.
+
+### Fixed
+
+- Thank You retains an identified player's name when their unit token disappears
+  during the delay, including casters found without the aura-GUID fallback.
+- General thank-you emotes respect the delay and batch together. Learning the
+  caster later does not send a second thanks for the same buff.
+- Combat entry and turning Thank You off cancel pending replies immediately.
+  Combat exit and recovery from unreadable aura snapshots establish a quiet
+  baseline instead of thanking for old buffs.
+- Caster identity enrichment and temporary missing names preserve the original
+  application and known self, NPC and group exclusions. Attribution expires
+  after five seconds rather than sending a stale reply much later.
+- Rejected emote/chat calls are reported as failures. The debug report includes
+  the active Thank You settings and up to twelve recent decisions saved locally.
+
 ## [1.6.0] - 2026-11-06
 
 ### Added

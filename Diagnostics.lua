@@ -13,6 +13,14 @@ function Diagnostics:Report()
     local point, _, relativePoint, x, y = bar and bar:GetPoint()
     local position = bar and ("%s %s %.1f %.1f"):format(
         tostring(point), tostring(relativePoint), tonumber(x) or 0, tonumber(y) or 0) or "not built"
+    local history = {}
+    for _, entry in ipairs(ns.db.thanksDiagnostics or {}) do
+        history[#history + 1] = tostring(entry.at) .. ": " .. tostring(entry.status)
+            .. "; scan " .. tostring(entry.scan) .. "; attribution " .. tostring(entry.attribution)
+            .. "; delay " .. tostring(entry.delay) .. "s; skip group " .. tostring(entry.skipGroup)
+            .. "; unknown emote " .. tostring(entry.unknownEmote) .. "; channel " .. tostring(entry.channel)
+            .. "; pending " .. tostring(entry.pending)
+    end
     return table.concat({
         "Client",
         "Target: " .. tostring(ns.TARGET),
@@ -43,10 +51,14 @@ function Diagnostics:Report()
         "Pet buffs: " .. (#(ns.lastPetProbe or {}) > 0 and table.concat(ns.lastPetProbe, ", ") or "none missing or disabled"),
         "Party coverage: " .. (#(ns.lastCoverageProbe or {}) > 0 and table.concat(ns.lastCoverageProbe, ", ") or "not evaluated"),
         "Thank You: " .. (ns.db.thanksEnabled and "enabled" or "disabled")
+            .. "; delay " .. tostring(ns.db.thanksDelay) .. "s"
+            .. "; skip group " .. tostring(ns.db.thanksSkipGroupMembers)
+            .. "; unknown emote " .. tostring(ns.db.thanksUnknownEmote)
             .. "; channel " .. tostring(ns.db.thanksChannel) .. "; emote " .. tostring(ns.db.thanksEmote)
             .. "; status " .. tostring(ns.Thanks.lastStatus),
         "Thank You scan: " .. tostring(ns.Thanks.lastScan),
         "Thank You attribution: " .. tostring(ns.Thanks.lastAttribution),
+        "Recent Thank You decisions (saved locally, up to 12):\n" .. table.concat(history, "\n"),
         "",
         "Consumables",
         "Bag discovery: food " .. tostring(foods) .. ", scroll " .. tostring(scrolls)

@@ -36,6 +36,10 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
   attributed to them during the current group session. Untrained spells aren't
   assumed from class or level. Blood Pact also requires the pet that supplied it.
   If the client omits the caster, that buff cannot establish availability.
+- **Read Leyline.** On Forever, characters who know the racial see it when health
+  or mana is below 50% and it is off cooldown. Change its threshold on the Buffs
+  page. The reminder uses the normal bar and Buff trigger, with the same combat,
+  death, flight-path, rested-area and meal rules.
 - **Tracking.** Find Herbs, Find Minerals and other tracking spells can sit on the bar until you turn them on. Gathering tracking starts ticked, class and racial tracking start off.
 - **One key for the lot.** Bind **Buff trigger** in the game's key bindings and press it to work down the bar one missing buff at a time.
 - **Optional thank-you.** Buffsmith can whisper, say, post in party or emote a thanks when someone buffs you. It's off by default.
@@ -64,6 +68,15 @@ need to be bound to camera zoom first, then selected again in Buffsmith.
 
 Reminders and buff-trigger actions pause on flight paths and refresh when you
 land. Shared wheel zoom still works while there are no usable buff actions.
+
+Thank You cancels pending replies when combat starts or the feature is turned
+off. After combat or an unreadable aura snapshot, it quietly refreshes its
+baseline. Unknown-caster emotes on Forever use the configured delay and batch
+together, with the first queued reply starting the delay. Discovering the caster
+later does not send another thanks. Attribution
+expires after five seconds. `/buffsmith debug` includes up to twelve recent
+decisions saved locally, without caster names, so they remain available after
+logout. An accepted emote API call still needs an in-game delivery check.
 
 ## Getting started
 
