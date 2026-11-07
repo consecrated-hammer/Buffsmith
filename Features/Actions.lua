@@ -95,6 +95,28 @@ local function friendlyPlayer(unit)
         and UnitCanAssist("player", unit) and not UnitIsDeadOrGhost(unit)
 end
 
+-- Only readable PvP flags can establish a safe external recipient. Legacy
+-- clients may return nil for false; API failure/secret data stays unknown.
+local function pvpFlag(api, unit)
+    if type(api) ~= "function" then return nil end
+    local ok, value = pcall(api, unit)
+    if not ok or ns.IsSecret(value) then return nil end
+    if value == true or value == 1 then return true end
+    if value == false or value == nil or value == 0 then return false end
+end
+
+function Actions:CanBuffUnit(unit)
+    if not ns.db.skipPvPWhileUnflagged or not unit or unit == "player" then return true end
+    if UnitIsUnit and ns.Plain(UnitIsUnit("player", unit)) == true then return true end
+    local player = pvpFlag(UnitIsPVP, "player")
+    local free = UnitIsPVPFreeForAll and pvpFlag(UnitIsPVPFreeForAll, "player")
+    if player == true or free == true then return true end
+    if player == nil or (UnitIsPVPFreeForAll and free == nil) then return false end
+    local flagged = pvpFlag(UnitIsPVP, unit)
+    local freeTarget = UnitIsPVPFreeForAll and pvpFlag(UnitIsPVPFreeForAll, unit)
+    return flagged == false and (not UnitIsPVPFreeForAll or freeTarget == false)
+end
+
 local PET_UNITS = { "pet", "partypet1", "partypet2", "partypet3", "partypet4" }
 
 local function friendlyPet(unit)
@@ -249,6 +271,7 @@ function Actions:PartyCoverage()
         if #providers > 0 and #candidate.missing > 0 and not self:IsSuppressed(candidate) then
             candidate.count = #candidate.missing
             candidate.providerText = table.concat(providers, ", ")
+            candidate.providerNames = providers
             candidate.missingText = table.concat(candidate.missing, ", ")
             coverage[#coverage + 1] = candidate
             ns.lastCoverageProbe[#ns.lastCoverageProbe + 1] = candidate.name .. ": " .. candidate.count .. " missing"
@@ -275,9 +298,12 @@ local function eatingAuraNames()
     if eatingNames then return eatingNames end
     eatingNames = { Food = true, Drink = true, ["Food & Drink"] = true, Refreshment = true }
     for _, spellID in ipairs(EATING_SPELLS) do
-        local name = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID)
-            or GetSpellInfo and GetSpellInfo(spellID)
-        name = ns.Plain(name)
+        local ok, name
+        if C_Spell and C_Spell.GetSpellName then ok, name = pcall(C_Spell.GetSpellName, spellID) end
+        name = ok and ns.Plain(name)
+        if type(name) ~= "string" or name == "" then
+            if GetSpellInfo then ok, name = pcall(GetSpellInfo, spellID); name = ok and ns.Plain(name) end
+        end
         if type(name) == "string" and name ~= "" then eatingNames[name] = true end
     end
     return eatingNames
@@ -292,18 +318,38 @@ function Actions:ShowEatingNotice()
     end
 end
 
-function Actions:IsEating()
+function Actions:MealStatus(cached)
+    if cached and self.mealStatus and self.mealStatus.available ~= false then
+        local finish = self.mealStatus.ends
+        if not finish or (GetTime and finish > GetTime()) then return self.mealStatus end
+    end
     local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
-    if not getter or ns.IsCombatLocked() then return false end
-    local names = eatingAuraNames()
+    if not getter or ns.IsCombatLocked() then return { active = false, available = false } end
+    local names, active, finish, unknown, available = eatingAuraNames(), false, nil, false, true
     for index = 1, 128 do
         local ok, aura = pcall(getter, "player", index, "HELPFUL")
-        if not ok or not aura or ns.IsSecret(aura) then return false end
-        if names[ns.Plain(aura.name)] then return true end
+        if not ok or ns.IsSecret(aura) then unknown, available = true, false; break end
+        if not aura then break end
+        if names[ns.Plain(aura.name)] then
+            active = true
+            local expiration, duration = ns.Plain(aura.expirationTime), ns.Plain(aura.duration)
+            if type(expiration) == "number" and expiration == expiration and expiration > 0 and expiration < math.huge
+                and type(duration) == "number" and duration == duration and duration > 0 and duration < math.huge then
+                finish = math.max(finish or 0, expiration)
+            else unknown = true end
+        end
     end
-    return false
+    local ok, time
+    if GetTime then ok, time = pcall(GetTime) end
+    time = ok and ns.Plain(time)
+    if unknown or not finish or type(time) ~= "number" or finish <= time then finish = nil end
+    self.mealStatus = { active = active, ends = finish, available = available }
+    return self.mealStatus
 end
 
+function Actions:IsEating()
+    return self:MealStatus().active
+end
 
 
 local function resourceValue(api, ...)
@@ -422,7 +468,7 @@ function Actions:Entries()
         ns.lastTrackingProbe[#ns.lastTrackingProbe + 1] = entry.name
     end
     local known = ns.KnownSelfBuffs()
-    local selectedTarget = ns.db.showTargetBuffs
+    local selectedTarget = ns.db.showTargetBuffs and self:CanBuffUnit("target")
         and (friendlyPlayer("target") or (ns.db.showPetBuffs and friendlyPet("target")))
     if ns.db.showTargetBuffs and selectedTarget and not UnitIsUnit("player", "target") then
         ns.lastTargetProbe = {}
@@ -447,7 +493,7 @@ function Actions:Entries()
         for _, entry in ipairs(known) do
             if entry.target and not self:IsSuppressed(entry) then
                 for _, unit in ipairs({ "party1", "party2", "party3", "party4" }) do
-                    if visiblePartyPlayer(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
+                    if visiblePartyPlayer(unit) and self:CanBuffUnit(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
                         local status = entryStatus(unit, entry)
                         self:ConsiderReminder(entry, status)
                         local display, state = shouldShow(entry, status)
@@ -468,7 +514,7 @@ function Actions:Entries()
         for _, entry in ipairs(known) do
             if entry.target and not self:IsSuppressed(entry) then
                 for _, unit in ipairs(PET_UNITS) do
-                    if friendlyPet(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
+                    if friendlyPet(unit) and self:CanBuffUnit(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
                         local status = entryStatus(unit, entry)
                         self:ConsiderReminder(entry, status)
                         local display, state = shouldShow(entry, status)
@@ -634,6 +680,7 @@ function Actions:BeginAttempt(entry)
     local key = self:Key(entry)
     if not key then return end
     self.lastAttempt = { key = key, spellID = entry.castID or entry.spellID, untilTime = (GetTime and GetTime() or 0) + 0.25 }
+    return self.lastAttempt
 end
 
 function Actions:FinishAttempt(spellID)
@@ -655,9 +702,9 @@ function Actions:FinishAttempt(spellID)
     return changed
 end
 
-function Actions:ExpireAttempt(entry)
+function Actions:ExpireAttempt(entry, token)
     local attempt = self.lastAttempt
-    if attempt and attempt.key == self:Key(entry) then self.lastAttempt = nil end
+    if attempt and (not token or attempt == token) and attempt.key == self:Key(entry) then self.lastAttempt = nil end
 end
 
 -- The server, rather than addon-visible aura data, is authoritative for
@@ -677,6 +724,40 @@ function Actions:HandleAuraBounce(message)
     return true
 end
 
+local PROVIDER_HINTS = {
+    "%s might have a little magic to spare.",
+    "Perhaps %s could lend an enchantment.",
+    "Rumour has it %s might know a spell for this.",
+    "A little help from %s wouldn't go amiss.",
+    "The winds whisper that %s might help.",
+    "Perhaps %s could spare a blessing.",
+    "A polite bow to %s might work wonders.",
+    "%s may have just the incantation.",
+    "A hopeful glance towards %s might be in order.",
+    "With luck, %s could lend a little sparkle.",
+    "%s might have the right words of power.",
+    "Perhaps %s could weave a little protection.",
+}
+
+function Actions:ProviderHint(entry, renew)
+    local names = entry.providerNames
+    local text = tostring(entry.providerText or "a kind soul")
+    if type(names) == "table" and #names > 1 then
+        text = table.concat(names, ", ", 1, #names - 1) .. " and " .. names[#names]
+    end
+    self.providerHints = self.providerHints or {}
+    local key = self:Key(entry) or entry.name or "coverage"
+    local cached = self.providerHints[key]
+    if not renew and cached and cached.providers == text then
+        entry.providerHint = cached.hint
+        return cached.hint
+    end
+    self.providerHintIndex = ((self.providerHintIndex or math.random(#PROVIDER_HINTS)) % #PROVIDER_HINTS) + 1
+    entry.providerHint = PROVIDER_HINTS[self.providerHintIndex]:format(text)
+    self.providerHints[key] = { providers = text, hint = entry.providerHint }
+    return entry.providerHint
+end
+
 function Actions:ReportPartyCoverage(entry)
     if not entry or entry.kind ~= "notice" or type(SendChatMessage) ~= "function" then return false end
     if not (IsInGroup and IsInGroup()) then return false end
@@ -687,8 +768,12 @@ function Actions:ReportPartyCoverage(entry)
     if key then self.lastPartyReport[key] = now end
     local instanceCategory = (LE_PARTY_CATEGORY_INSTANCE or (Enum and Enum.PartyCategory and Enum.PartyCategory.Instance))
     local channel = instanceCategory and IsInGroup(instanceCategory) and "INSTANCE_CHAT" or "PARTY"
-    local message = ("[Buffsmith] %s is missing from %s. Possible provider: %s."):format(
-        tostring(entry.name), tostring(entry.missingText), tostring(entry.providerText))
+    local message = ("[Buffsmith] %s is missing from %s. %s"):format(
+        tostring(entry.name), tostring(entry.missingText), self:ProviderHint(entry))
+    if #message > 255 then
+        -- Drop a possibly partial trailing UTF-8 codepoint before the ellipsis.
+        message = message:sub(1, 252):gsub("[\194-\244][\128-\191]*$", "") .. "..."
+    end
     SendChatMessage(message, channel)
     return true
 end
@@ -747,7 +832,7 @@ function Actions:VisibleChoices(category)
                 ns.Inventory:RefreshAfterCooldown(choice, cooldown)
             else
                 local camping = ns.Inventory.CampingStatus and ns.Inventory:CampingStatus(choice)
-                local mapping = not choice.poison and ns.db.consumableAuras[choice.itemID]
+                local mapping = not choice.poison and ns.Inventory:LearnedAura(choice)
                 if camping then
                     choice.state, choice.auraDuration, choice.auraRemaining = camping.state, camping.duration, camping.remaining
                     -- Camp Benefits hides the chair until it is actually gone.
@@ -823,6 +908,7 @@ end
 
 function Actions:Configure(button, entry)
     if ns.IsCombatLocked() then return false end
+    button.buffsmithReadinessDisarmed = nil
     -- Securely disarm weapon-targeted item actions on combat entry, even if
     -- the bar stays visible. The normal out-of-combat refresh arms them again.
     if entry.poison and not button.buffsmithPoisonGuard then
@@ -834,6 +920,18 @@ function Actions:Configure(button, entry)
         RegisterStateDriver(button, "poisoncombat", "[combat] combat; safe")
         button.buffsmithPoisonGuard = true
     end
+    local pvpGuard = ns.db.skipPvPWhileUnflagged and entry.kind == "spell"
+        and entry.unit and entry.unit ~= "player"
+    if pvpGuard and not button.buffsmithPvPGuard then
+        button:SetAttribute("_onstate-buffsmithpvpcombat", [[
+            if newstate == "combat" and self:GetAttribute("buffsmith-pvp-guard") then
+                self:SetAttribute("type1", nil)
+            end
+        ]])
+        RegisterStateDriver(button, "buffsmithpvpcombat", "[combat] combat; safe")
+        button.buffsmithPvPGuard = true
+    end
+    button:SetAttribute("buffsmith-pvp-guard", pvpGuard == true)
     button:SetAttribute("buffsmith-poison", entry.poison == true)
     for mouseButton = 1, 5 do
         button:SetAttribute("type" .. mouseButton, nil)
@@ -847,7 +945,7 @@ function Actions:Configure(button, entry)
     button:SetAttribute("type", nil); button:SetAttribute("spell", nil); button:SetAttribute("item", nil)
     button:SetAttribute("target-slot", nil)
     button:SetAttribute("unit", entry.unit or "player")
-    if self.eatingPaused and entry.kind ~= "none" then
+    if entry.cooldownOnly or (self.eatingPaused and entry.kind ~= "none") then
         button.buffsmithEntry = entry
         return false
     elseif entry.kind == "spell" then

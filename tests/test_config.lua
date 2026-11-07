@@ -100,3 +100,13 @@ equal(ns.db.bindingZooms.account.enabled, false, "invalid saved camera preferenc
 equal(ns.db.bindingZooms.account.action, "CAMERAZOOMOUT", "reversed modified wheel action is retained")
 
 print("config tests passed")
+
+BuffsmithDB = {}
+ns.InitConfig()
+equal(ns.db.skipPvPWhileUnflagged, true, "PvP protection defaults on")
+BuffsmithDB = { skipPvPWhileUnflagged = false }
+ns.InitConfig()
+equal(ns.db.skipPvPWhileUnflagged, false, "PvP protection opt-out persists")
+BuffsmithDB = { skipPvPWhileUnflagged = "bad" }
+ns.InitConfig()
+equal(ns.db.skipPvPWhileUnflagged, true, "malformed PvP preference repairs to safe default")

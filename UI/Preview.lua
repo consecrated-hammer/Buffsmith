@@ -59,7 +59,7 @@ function Preview:Create()
     -- Above the settings window (DIALOG): the bar's saved spot is near screen
     -- centre, exactly where settings opens, so a MEDIUM preview sat hidden behind it.
     frame:SetFrameStrata("FULLSCREEN_DIALOG")
-    frame:SetClampedToScreen(true)
+    frame:SetClampedToScreen(false)
     frame:SetMovable(true)
     frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     frame:SetBackdropColor(0, 0, 0, 0.35)

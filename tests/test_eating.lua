@@ -45,4 +45,14 @@ equal(ns.Actions:IsEating(), true, "the client's localised Food name counts")
 auras[2] = nil
 equal(ns.Actions:IsEating(), false, "eating ends with the aura")
 
+GetTime = function() return 100 end
+auras = { { name = "Food", duration = 30, expirationTime = 130 }, { name = "Drink", duration = 40, expirationTime = 140 } }
+equal(ns.Actions:MealStatus().ends, 140, "simultaneous meal uses later expiry")
+auras[2].expirationTime = nil
+equal(ns.Actions:MealStatus().active, true, "unknown duration retains pause")
+equal(ns.Actions:MealStatus().ends, nil, "one unreadable meal prevents false overall timer")
+auras[2] = nil
+equal(ns.Actions:MealStatus().ends, 130, "known meal shows timer")
+GetTime = function() return 131 end
+equal(ns.Actions:MealStatus().ends, nil, "stale meal cannot create expired timer loop")
 print("eating tests passed")

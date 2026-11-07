@@ -205,24 +205,47 @@ local function button(name, direction, zoomAction)
             if type(camera) == "function" then camera(1) end
         end
         local entry = self.buffsmithEntry
+        self.buffsmithAttempt = nil
+        self.buffsmithPress = ns.Readiness and ns.Readiness:Press(self, entry) or nil
+        if self.buffsmithPress then
+            self.buffsmithPress.order = Bindings.order
+            if not self.buffsmithPress.allow then return end
+            entry = self.buffsmithPress.entry
+        end
         if entry and ns.Actions.eatingPaused then
             ns.Actions:ShowEatingNotice()
         elseif entry and entry.kind ~= "none" then
-            ns.Actions:BeginAttempt(entry)
+            self.buffsmithAttempt = ns.Actions:BeginAttempt(entry)
             if entry.kind == "item" then ns.Inventory:BeginConsumableUse(entry) end
         end
     end)
     frame:SetScript("PostClick", function(self)
         if ns.IsCombatLocked() or ns.Actions.eatingPaused then return end
-        local entry = self.buffsmithEntry
+        local result = self.buffsmithPress
+        if result and not result.allow then return end
+        local entry = result and result.entry or self.buffsmithEntry
         if not entry or entry.kind == "none" then return end
         if entry.kind == "item" then
             ns.Actions:RememberItem(entry)
             ns.Inventory:FinishConsumableUse()
         end
-        Bindings.index = Bindings.index + direction
+        local attempt = self.buffsmithAttempt
+        if attempt then C_Timer.After(0.25, function() ns.Actions:ExpireAttempt(entry, attempt) end) end
+        if result and result.ends then
+            -- One attempt per native queue window, shared by all trigger keys.
+            Bindings.candidate = result.key
+            return
+        end
+        if result and result.order then
+            Bindings.successors = {}
+            local at = 1
+            for index, key in ipairs(result.order) do if key == result.key then at = index; break end end
+            for offset = 1, #result.order do
+                Bindings.successors[#Bindings.successors + 1] = result.order[((at - 1 + direction * offset) % #result.order) + 1]
+            end
+            Bindings.candidate = nil
+        else Bindings.index = Bindings.index + direction end
         C_Timer.After(0, function() Bindings:Prepare() end)
-        C_Timer.After(0.25, function() ns.Actions:ExpireAttempt(entry) end)
     end)
     return frame
 end
@@ -245,10 +268,22 @@ function Bindings:Prepare()
     local entries = ns.Actions:BindingEntries()
     self.lastCount = #entries
     if #entries == 0 then
-        self.index = 1
+        self.index, self.candidate, self.successors, self.order = 1, nil, nil, nil
         configure({ kind = "none" })
         return
     end
-    self.index = ((self.index - 1) % #entries) + 1
+    if ns.Readiness then
+        local order, positions = {}, {}
+        for index, entry in ipairs(entries) do
+            order[index] = ns.Readiness:Key(entry)
+            positions[order[index]] = index
+        end
+        local selected = self.candidate and positions[self.candidate]
+        for _, key in ipairs(self.successors or {}) do
+            if positions[key] then selected = positions[key]; break end
+        end
+        self.index = selected or ((self.index - 1) % #entries) + 1
+        self.candidate, self.order, self.successors = order[self.index], order, nil
+    else self.index = ((self.index - 1) % #entries) + 1 end
     configure(entries[self.index])
 end

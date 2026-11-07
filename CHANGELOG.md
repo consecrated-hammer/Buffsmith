@@ -7,6 +7,39 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-07
+
+### Added
+
+- PvP protection is on by default under Buffs → Targets. While unflagged,
+  skip flagged or unreadable target, party and pet recipients. The option can
+  be turned off and does not toggle your PvP setting.
+- Twelve playful party-provider hints, with natural wording for multiple
+  providers. Reporting still requires a click and keeps its rate limit.
+- Cooldown sweeps on bar icons and a status line for casting and channeling. Eating/drinking shows a pause indicator and a remaining-time
+  display when all detected meal expiries are available, even with no buff icons.
+  The last used icon stays visible as a non-casting sweep while on cooldown.
+
+### Fixed
+
+- Consumables settings list owned food and other supported items even when the
+  client temporarily prevents using them. Unavailable items are labelled and
+  stay out of cast choices, rather than being reported as absent from bags.
+- Forever camp effects and lockouts cannot be learned or reused as food buffs.
+  Old saved camp mappings no longer suppress food reminders; real Well Fed and
+  the separate chair/tent rules still apply. New food learning requires a
+  Well Fed signal instead of accepting an unrelated buff arriving while eating.
+- Native queue timing no longer flashes a separate status line during a cooldown.
+  Cooldown feedback stays on the icon sweep.
+- The drag handle stays in the same place as the grid grows or shrinks.
+  Live and preview dragging share the fixed corner.
+- Buff trigger keys, shared wheel presses and icon clicks recheck readable
+  readiness before casting. Blocked presses keep the current buff selected;
+  camera sharing still zooms. WoW's native short queue window is preserved,
+  without automatic casts or changes to the game's queue setting.
+- Trigger selection keeps its successor when a completed buff disappears from
+  the list. Earlier attribution timers cannot clear a newer same-spell attempt.
+
 ## [1.7.0] - 2026-11-07
 
 ### Added

@@ -254,6 +254,8 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
         function() return ns.db.showPartyBuffs end, function(value) ns.Set("showPartyBuffs", value) end)
     _, y = UI.Check(panel, "Friendly pets", "Show targetable buffs for your pet and party pets.", y,
         function() return ns.db.showPetBuffs end, function(value) ns.Set("showPetBuffs", value) end)
+    _, y = UI.Check(panel, "Skip PvP-flagged players while I'm unflagged", "Skip flagged targets, party members and pets while you're unflagged. Unreadable PvP flags also skip that recipient. Self buffs still work.", y,
+        function() return ns.db.skipPvPWhileUnflagged end, function(value) ns.Set("skipPvPWhileUnflagged", value) end)
     _, y = UI.Check(panel, "Party coverage", "Show class buffs a party member may provide. These report to chat; they never cast.", y,
         function() return ns.db.showPartyCoverage end, function(value) ns.Set("showPartyCoverage", value) end)
     _, y = UI.Header(panel, "Detected buffs", y - 6)
@@ -361,7 +363,7 @@ HC.Settings:NewPage({ name = "Consumables", description = "Items appear while th
                 set = function(value) ns.db.reminderPercent[key] = value end,
                 result = function() return ns.Inventory:ReminderSummary(key) end,
             } end)
-            for _, item in ipairs(ns.Inventory:Choices(key)) do
+            for _, item in ipairs(ns.Inventory:OwnedChoices(key)) do
                 local entry = item
                 if not ns.db.excludedConsumables[entry.itemID] then
                     y = pool:Place("item:" .. entry.itemID, y, function() return {

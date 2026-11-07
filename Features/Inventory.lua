@@ -7,6 +7,27 @@ local function campRule(itemID)
     return ns.TARGET == "Camelot" and ns.CAMPING_ITEMS[itemID] or nil
 end
 
+-- Camp world effects and lockouts are not evidence that a consumed item supplied
+-- a food/flask buff. Apply this to new observations and old saved mappings alike.
+local function campingAura(spellID)
+    if ns.TARGET ~= "Camelot" then return false end
+    for _, rule in pairs(ns.CAMPING_ITEMS or {}) do
+        if rule.spellID == spellID then return true end
+    end
+    return false
+end
+
+local function foodAura(aura)
+    return not campingAura(aura.spellID) and (aura.icon == 136000
+        or (type(aura.name) == "string" and string.find(string.lower(aura.name), "well fed", 1, true)))
+end
+
+function Inventory:LearnedAura(item)
+    local mapping = item and ns.db.consumableAuras[item.itemID]
+    if mapping and campingAura(mapping.spellID) then return nil end
+    return mapping
+end
+
 local function helpfulAuras()
     local found = {}
     local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
@@ -50,7 +71,10 @@ end
 local function bagItemID(bag, slot)
     if C_Container and C_Container.GetContainerItemID then
         local ok, itemID = pcall(C_Container.GetContainerItemID, bag, slot)
-        if ok and itemID then return itemID end
+        if ok and itemID then
+            Inventory.lastContainerAPI = "C_Container.GetContainerItemID"
+            return itemID
+        end
     end
     local info = containerItemInfo(bag, slot)
     if info then return info.itemID end
@@ -248,7 +272,7 @@ function Inventory:Refresh()
         self.lastStatus = "deferred: combat lockdown"
         return false
     end
-    local found, unresolved = {}, 0
+    local found, unresolved, unavailable = {}, 0, 0
     for _, category in ipairs(ns.CONSUMABLE_ORDER) do found[category] = {} end
     self.lastItemInfoAPI = "not queried"
     self.lastContainerAPI = "not queried"
@@ -264,12 +288,12 @@ function Inventory:Refresh()
                     unresolved = unresolved + 1
                 else
                     local category = classify(itemType, itemSubType, name, itemID)
-                    if category and itemUsable(itemID) then
+                    if category then
                         local record = found[category][itemID]
                         if not record then
                             record = { kind = "item", itemID = itemID, name = name,
                                 itemLink = link or ("item:" .. itemID), icon = icon or 134400,
-                                category = category, count = 0, poison = category == "weapon" and isPoison(itemSubType, name) or nil }
+                                category = category, count = 0, usable = itemUsable(itemID), poison = category == "weapon" and isPoison(itemSubType, name) or nil }
                             found[category][itemID] = record
                         end
                         record.count = record.count + bagItemCount(bag, slot)
@@ -278,14 +302,20 @@ function Inventory:Refresh()
             end
         end
     end
-    self.items = {}
+    self.items, self.ownedItems = {}, {}
     for category, records in pairs(found) do
-        self.items[category] = {}
-        for _, record in pairs(records) do self.items[category][#self.items[category] + 1] = record end
+        self.items[category], self.ownedItems[category] = {}, {}
+        for _, record in pairs(records) do
+            self.ownedItems[category][#self.ownedItems[category] + 1] = record
+            if record.usable then self.items[category][#self.items[category] + 1] = record
+            else unavailable = unavailable + 1 end
+        end
         table.sort(self.items[category], function(a, b) return a.name < b.name end)
+        table.sort(self.ownedItems[category], function(a, b) return a.name < b.name end)
     end
-    self.lastStatus = ("ready: %d food, %d scroll, %d flask, %d other, %d weapon, %d uncached item(s)"):format(
+    self.lastStatus = ("usable: %d food, %d scroll, %d flask, %d other, %d weapon, %d uncached item(s)"):format(
         #self.items.food, #self.items.scroll, #self.items.flask, #self.items.other, #self.items.weapon, unresolved)
+        .. ("; %d detected item type(s) currently unavailable"):format(unavailable)
     if ns.Actions then ns.Actions:Refresh() end
     if ns.Palette then ns.Palette:Refresh() end
     return true
@@ -297,7 +327,7 @@ function Inventory:BeginConsumableUse(entry)
         self.pendingConsumable = nil
         return
     end
-    self.pendingConsumable = { itemID = entry.itemID, before = helpfulAuras() }
+    self.pendingConsumable = { itemID = entry.itemID, category = entry.category, before = helpfulAuras() }
 end
 
 function Inventory:CooldownRemaining(item)
@@ -335,7 +365,8 @@ function Inventory:FinishConsumableUse()
         if ns.IsCombatLocked() then return end
         local after = helpfulAuras()
         for spellID, aura in pairs(after) do
-            if not pending.before[spellID] and aura.duration > 0 then
+            if not pending.before[spellID] and aura.duration > 0 and not campingAura(spellID)
+                and (pending.category ~= "food" or foodAura(aura)) then
                 ns.db.consumableAuras[pending.itemID] = {
                     spellID = aura.spellID, name = aura.name, duration = aura.duration,
                 }
@@ -346,6 +377,12 @@ function Inventory:FinishConsumableUse()
         end
         self.lastConsumableAura = "no new timed effect observed"
     end)
+end
+
+-- Ownership belongs to settings/diagnostics; action choices retain the client's
+-- usability filter. A temporary restriction is never evidence of an empty bag.
+function Inventory:OwnedChoices(category)
+    return self.ownedItems and self.ownedItems[category] or self:Choices(category)
 end
 
 function Inventory:Choices(category)
@@ -391,8 +428,7 @@ function Inventory:CategoryStatus(category)
         -- The generic icon is present on many clients, but not all food buffs
         -- use it.  The client-facing Well Fed name is a second safe signal;
         -- item-specific effects continue to use the learned mapping below.
-        if category == "food" and (aura.icon == 136000
-            or (type(aura.name) == "string" and string.find(string.lower(aura.name), "well fed", 1, true))) then
+        if category == "food" and foodAura(aura) then
             return { state = "active", duration = aura.duration, remaining = aura.remaining }
         end
         if category == "flask" and type(aura.name) == "string"
@@ -402,8 +438,8 @@ function Inventory:CategoryStatus(category)
     end
     -- Once Buffsmith has observed an item's effect, the remembered aura is a
     -- client-neutral category signal as well as an item-specific one.
-    for _, item in ipairs(self:Choices(category)) do
-        local mapping = ns.db.consumableAuras[item.itemID]
+    for _, item in ipairs(self:OwnedChoices(category)) do
+        local mapping = self:LearnedAura(item)
         local aura = mapping and auras[mapping.spellID]
         if aura then
             return { state = "active", duration = aura.duration, remaining = aura.remaining }
@@ -413,29 +449,38 @@ function Inventory:CategoryStatus(category)
 end
 
 function Inventory:ReminderSummary(category)
-    local choices = self:Choices(category)
+    local choices = self:OwnedChoices(category)
     if #choices == 0 then return "None in your bags." end
+    local unavailable = 0
+    for _, item in ipairs(choices) do if item.usable == false then unavailable = unavailable + 1 end end
+    local function availability(text)
+        if unavailable == 0 then return text end
+        local suffix = unavailable == #choices and "; currently unavailable."
+            or ("; " .. unavailable .. " currently unavailable.")
+        return text:gsub("%.$", "") .. suffix
+    end
     local summaries = {}
     for _, item in ipairs(choices) do
-        local aura = ns.db.consumableAuras[item.itemID]
+        local aura = self:LearnedAura(item)
         if aura and tonumber(aura.duration) and aura.duration > 0 then
             local seconds = math.floor(aura.duration * ns.Actions:Percent(item) / 100 + 0.5)
             summaries[#summaries + 1] = item.name .. ": " .. (seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s") .. " left"
         end
     end
-    if #summaries > 0 then return table.concat(summaries, ", ") end
-    if category == "weapon" then return "Reminds while your weapon has no enhancement." end
-    return #choices == 1 and "1 in your bags." or (#choices .. " in your bags.")
+    if #summaries > 0 then return availability(table.concat(summaries, ", ")) end
+    if category == "weapon" then return availability("Reminds while your weapon has no enhancement.") end
+    return availability(#choices == 1 and "1 in your bags." or (#choices .. " in your bags."))
 end
 
 function Inventory:ReminderFor(item)
+    local prefix = item.usable == false and "Currently unavailable. " or ""
     local camp = campRule(item.itemID)
-    if camp then return "Reminds when " .. camp.label .. " is missing." end
-    if item.poison then return "Reminds while an equipped weapon has no coating." end
-    local aura = ns.db.consumableAuras[item.itemID]
+    if camp then return prefix .. "Reminds when " .. camp.label .. " is missing." end
+    if item.poison then return prefix .. "Reminds while an equipped weapon has no coating." end
+    local aura = self:LearnedAura(item)
     if aura and tonumber(aura.duration) and aura.duration > 0 then
         local seconds = math.floor(aura.duration * ns.Actions:Percent(item) / 100 + 0.5)
-        return "Reminds with " .. (seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s") .. " left"
+        return prefix .. "Reminds with " .. (seconds >= 60 and math.floor(seconds / 60) .. "m" or seconds .. "s") .. " left"
     end
-    return "Timer is set after you use it once."
+    return prefix .. "Timer is set after you use it once."
 end

@@ -19,6 +19,7 @@ local function installClient()
     UnitExists = function(unit) return unit == "player" end
     UnitIsUnit = function(a, b) return a == b end
     UnitIsPlayer = function() return true end
+    UnitIsPVP, UnitIsPVPFreeForAll = function() return false end, function() return false end
     UnitCanAssist = function() return true end
     UnitIsDeadOrGhost = function() return false end
     IsInGroup, IsInRaid, IsResting = function() return false end, function() return false end, function() return false end
@@ -120,7 +121,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(ns.db.showHandle, true, toc .. ": unlock shows it")
     ns.db.palettePoint = { "TOP", "TOP", 5, 5 }
     SlashCmdList.BUFFSMITH("reset position")
-    equal(ns.db.palettePoint[1], "CENTER", toc .. ": reset position centres the bar")
+    equal(ns.db.palettePoint[1], "TOPLEFT", toc .. ": reset position keeps fixed corner")
     SlashCmdList.BUFFSMITH("scan")
     equal(wow.LastPrint(), "Buffsmith: bags scanned: food 0, scroll 0, flask 0, other 0, weapon 0", toc .. ": scan reports")
 
@@ -567,6 +568,333 @@ do
     equal(ns.Palette.recoveryDisplayed, true, "binding query does not claim icon was removed")
     events.scripts.OnEvent(events, "UNIT_HEALTH", "player")
     equal(ns.Palette.recoveryDisplayed, false, "resource event removes stale icon")
+end
+
+-- Direct main and flyout buttons share the hardware-time guard and rearm.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    GetCVar = function() return "400" end
+    C_CVar = nil
+    local cd = { startTime = 100, duration = 3, isEnabled = true }
+    C_Spell.GetSpellCooldown = function() return cd end
+    for _, small in ipairs({ false, true }) do
+        local frame = ns.Palette:Acquire(91, small)
+        local entry = { kind = "spell", spellID = 465, name = "Spell 465", unit = "player" }
+        ns.Actions:Configure(frame, entry)
+        frame.scripts.PreClick(frame, "LeftButton")
+        equal(frame:GetAttribute("type1"), nil, toc .. ": direct blocked click clears secure action")
+        frame.scripts.PostClick(frame, "LeftButton")
+        cd = { startTime = 0, duration = 0, isEnabled = true }
+        frame.scripts.PreClick(frame, "LeftButton")
+        equal(frame:GetAttribute("type1"), "spell", toc .. ": next hardware click rearms main/flyout")
+        frame.scripts.PostClick(frame, "LeftButton")
+        cd = { startTime = 100, duration = 3, isEnabled = true }
+    end
+end
+
+-- Presentation remains useful with no actions and respects normal exclusions.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local time, meals, pending = 100, { { name = "Food", duration = 30, expirationTime = 130 } }, {}
+    GetTime = function() return time end
+    C_Timer.After = function(delay, fn) pending[#pending + 1] = { delay, fn } end
+    C_UnitAuras.GetAuraDataByIndex = function(_, index) return meals[index] end
+    ns.Palette.Items = function() ns.Actions:MealStatus(); return {}, {}, {}, {} end
+    ns.Actions.BindingEntries = function() return {} end
+    ns.Palette:Refresh()
+    equal(ns.Palette.lastLayout, "status only: waiting", toc .. ": meal can show with no icons")
+    equal(ns.Palette.statusText:GetText(), "Eating/drinking: 30s", toc .. ": meal countdown")
+    time = 110
+    ns.Palette.frame.scripts.OnUpdate(ns.Palette.frame, 0.2)
+    equal(ns.Palette.statusText:GetText(), "Eating/drinking: 20s", toc .. ": timer updates without rebuilding actions")
+    meals[1].duration = nil
+    ns.Palette:Refresh()
+    equal(ns.Palette.statusText:GetText(), "Eating/drinking: casts paused", toc .. ": unknown duration pause only")
+    ns.db.visibilityMode = "NEVER"
+    ns.Palette:Refresh()
+    equal(ns.Palette.lastLayout, "hidden: preference", toc .. ": never remains hidden")
+    ns.db.visibilityMode = "ALWAYS"
+    UnitOnTaxi = function() return true end
+    ns.Palette:Refresh()
+    equal(ns.Palette.statusState, nil, toc .. ": no meal status on taxi")
+    UnitOnTaxi = function() return false end
+    UnitIsDeadOrGhost = function() return true end
+    ns.Palette:Refresh()
+    equal(ns.Palette.statusState, nil, toc .. ": no meal status while dead")
+    UnitIsDeadOrGhost = function() return false end
+    ns.db.ignoreBuffsInRestedAreas = true; IsResting = function() return true end
+    ns.Palette:Refresh()
+    equal(ns.Palette.statusState, nil, toc .. ": rested exclusion applies to status")
+    ns.db.ignoreBuffsInRestedAreas = false
+    meals = {}
+    ns.Palette:Refresh()
+    equal(ns.Palette.lastLayout, "hidden: no available actions", toc .. ": meal removal clears status")
+    -- Deadline updates and expiry update presentation without rebuilding choices.
+    local rebuilds, oldRefresh = 0, ns.RefreshAll
+    ns.RefreshAll = function() rebuilds = rebuilds + 1 end
+    meals = { { name = "Food", duration = 30, expirationTime = 130 } }
+    ns.Palette:Refresh()
+    meals[1].expirationTime = 140
+    ns.Actions:MealStatus() -- UNIT_AURA/full action refresh updates the cache.
+    ns.Readiness:Feedback()
+    local work = pending; pending = {}
+    for _, timer in ipairs(work) do if timer[1] == 0 then timer[2]() end end
+    equal(ns.Palette.statusText:GetText(), "Eating/drinking: 30s", toc .. ": feedback updates new deadline")
+    equal(rebuilds, 0, toc .. ": status changes never rebuild action list")
+    time = 141; meals = {}
+    ns.Palette.frame.scripts.OnUpdate(ns.Palette.frame, 0.2)
+    work = pending; pending = {}
+    for _, timer in ipairs(work) do if timer[1] == 0 then timer[2]() end end
+    work = pending; pending = {}
+    for _, timer in ipairs(work) do if timer[1] == 0 then timer[2]() end end
+    equal(ns.Palette.statusState, nil, toc .. ": status expiry clears without stale signature")
+    ns.RefreshAll = oldRefresh
+    time = 110
+    -- Exercise the actual icon widget and cooldown event without an inventory scan.
+    local frame = CreateFrame("Button")
+    frame.buffsmithEntry = { kind = "spell", spellID = 465 }
+    frame.cooldown = CreateFrame("Cooldown"); frame:Show()
+    local cooldownArgs
+    frame.cooldown.SetCooldown = function(_, ...) cooldownArgs = { ... } end
+    ns.Palette.buttons = { test = frame }
+    C_Spell.GetSpellCooldown = function() return { startTime = 110, duration = 2, isEnabled = true, modRate = 2 } end
+    local scans = 0
+    ns.Inventory.Refresh = function() scans = scans + 1 end
+    ns.Readiness.feedbackSignature = "none"
+    _G.BuffsmithEventFrame.scripts.OnEvent(_G.BuffsmithEventFrame, "SPELL_UPDATE_COOLDOWN")
+    equal(cooldownArgs[2], 2, toc .. ": cooldown event updates sweep")
+    equal(cooldownArgs[3], 2, toc .. ": native sweep receives rate separately")
+    equal(scans, 0, toc .. ": sweep update does not rescan inventory")
+    time = 113
+    ns.Palette:RefreshCooldowns()
+    equal(frame.cooldown:IsShown(), false, toc .. ": ended sweep clears")
+    -- An earlier expiry callback cannot clear attribution for a newer same-spell press.
+    local entry = { kind = "spell", spellID = 465, scope = "self" }
+    local old = ns.Actions:BeginAttempt(entry)
+    local newer = ns.Actions:BeginAttempt(entry)
+    ns.Actions:ExpireAttempt(entry, old)
+    equal(ns.Actions.lastAttempt, newer, toc .. ": old timer leaves newer attempt")
+    ns.Actions:ExpireAttempt(entry, newer)
+    equal(ns.Actions.lastAttempt, nil, toc .. ": own timer expires attempt")
+end
+
+-- PvE protection covers every explicit recipient, current flags and combat entry.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local flags = { target = true, party1 = true, pet = true, partypet1 = true }
+    local units = { player = true, target = true, party1 = true, party2 = true, pet = true, partypet1 = true }
+    UnitIsPVP = function(unit) return flags[unit] == true end
+    UnitIsPVPFreeForAll = function() return false end
+    UnitExists = function(unit) return units[unit] == true end
+    UnitIsUnit = function(a, b) return a == b end
+    UnitIsPlayer = function(unit) return unit == "player" or unit == "target" or unit:match("^party%d+$") ~= nil end
+    UnitCanAssist, UnitIsVisible, UnitIsConnected = function() return true end, function() return true end, function() return true end
+    UnitPhaseReason = function() end
+    IsInGroup = function() return true end
+    ns.db.showTargetBuffs, ns.db.showPartyBuffs, ns.db.showPetBuffs, ns.db.showPartyCoverage = true, true, true, false
+    ns.KnownSelfBuffs = function() return { { kind = "spell", spellID = 19740, name = "Test Buff", target = true } } end
+    ns.Tracking.Entries = function() return {} end
+    local function offered(unit)
+        for _, entry in ipairs(ns.Actions:Entries()) do if (entry.unit or "player") == unit then return true end end
+        return false
+    end
+    equal(offered("player"), true, toc .. ": self buffs remain")
+    equal(offered("target"), false, toc .. ": flagged target skipped by default")
+    equal(offered("party1"), false, toc .. ": flagged party member skipped")
+    equal(offered("party2"), true, toc .. ": safe party alternative offered")
+    equal(offered("pet"), false, toc .. ": flagged pet skipped")
+    flags.player = true
+    equal(offered("target"), true, toc .. ": already flagged player can buff flagged recipients")
+    flags.player = nil
+    ns.db.skipPvPWhileUnflagged = false
+    equal(offered("target"), true, toc .. ": setting off restores targets")
+    ns.db.skipPvPWhileUnflagged = true
+    flags.target = false
+    local entry = { kind = "spell", spellID = 19740, name = "Test Buff", unit = "target", unitGUID = "guid-target" }
+    local button = ns.Bindings.trigger
+    ns.Actions:Configure(button, entry)
+    flags.target = true -- Flag changes after rendering, before hardware input.
+    button.scripts.PreClick(button)
+    equal(button:GetAttribute("type1"), nil, toc .. ": fresh flag blocks stale key action")
+    button.scripts.PostClick(button)
+    flags.target = false
+    button.scripts.PreClick(button)
+    equal(button:GetAttribute("type1"), "spell", toc .. ": safe next hardware input rearms")
+    local guard = assert(loadstring("return function(self, newstate) " .. button:GetAttribute("_onstate-buffsmithpvpcombat") .. " end"))()
+    guard(button, "combat")
+    equal(button:GetAttribute("type1"), nil, toc .. ": combat entry securely disarms guarded external buff")
+    ns.Actions:Configure(button, { kind = "spell", spellID = 19740, name = "Test Buff", unit = "player" })
+    guard(button, "combat")
+    equal(button:GetAttribute("type1"), "spell", toc .. ": reused self action is not a guarded external recipient")
+    UnitIsPVPFreeForAll = function(unit) return unit == "target" end
+    equal(ns.Actions:CanBuffUnit("target"), false, toc .. ": FFA recipient skipped too")
+    local secret = {}
+    issecretvalue = function(v) return v == secret end
+    UnitIsPVP = function() return secret end
+    equal(ns.Actions:CanBuffUnit("target"), false, toc .. ": secret flags do not establish safe recipient")
+    equal(ns.Actions:CanBuffUnit("player"), true, toc .. ": unknown external flags do not disable self buffs")
+    UnitIsPVP = function() error("unavailable") end
+    equal(ns.Actions:CanBuffUnit("target"), false, toc .. ": failed flag API safely skips")
+    issecretvalue = nil
+    UnitIsPVPFreeForAll = nil
+    UnitIsPVP = function(unit) if unit == "target" then return 1 end end
+    equal(ns.Actions:CanBuffUnit("target"), false, toc .. ": legacy 1/nil flags supported")
+    UnitIsPVP = function() return nil end
+    equal(ns.Actions:CanBuffUnit("target"), true, toc .. ": legacy nil means unflagged")
+    local refreshes = 0
+    ns.RefreshAll = function() refreshes = refreshes + 1 end
+    local events = _G.BuffsmithEventFrame
+    flags.target, flags.player = true, false
+    UnitIsPVP = function(unit) return flags[unit] == true end
+    events.scripts.OnEvent(events, "UNIT_FACTION", "target")
+    events.scripts.OnEvent(events, "UNIT_FLAGS", "target")
+    equal(refreshes, 1, toc .. ": repeated unchanged flags do not rebuild")
+    flags.player = true
+    events.scripts.OnEvent(events, "PLAYER_FLAGS_CHANGED", "player")
+    events.scripts.OnEvent(events, "UNIT_FLAGS", "party1")
+    equal(refreshes, 2, toc .. ": only eligibility transitions rebuild")
+end
+
+-- Provider hints name every provider and keep the uncertainty in every variant.
+do
+    local ns = loadAddon("Buffsmith.toc")
+    ns.Actions.providerHintIndex = 0
+    local entry = { kind = "notice", name = "Fortitude", missingText = "Rowan", providerText = "Skyward" }
+    equal(ns.Actions:ProviderHint(entry, true), "Skyward might have a little magic to spare.", "single provider grammar")
+    entry.providerNames = { "Skyward", "Mira" }
+    ns.Actions.providerHintIndex = 0
+    equal(ns.Actions:ProviderHint(entry, true), "Skyward and Mira might have a little magic to spare.", "two providers joined naturally")
+    entry.providerNames = { "Skyward", "Mira", "Rowan" }
+    local seen = {}
+    for index = 1, 12 do
+        local hint = ns.Actions:ProviderHint(entry, true)
+        assert(hint:find("Skyward, Mira and Rowan", 1, true), "all providers retained")
+        assert(hint:find("might", 1, true) or hint:find("could", 1, true) or hint:find("may", 1, true)
+            or hint:find("wouldn't", 1, true), "every hint preserves uncertainty")
+        seen[hint] = true
+    end
+    local count = 0; for _ in pairs(seen) do count = count + 1 end
+    equal(count, 12, "all twelve variants rotate without immediate repeats")
+    local hint = entry.providerHint
+    local rebuilt = { kind = "notice", name = entry.name, providerNames = entry.providerNames, providerText = entry.providerText }
+    equal(ns.Actions:ProviderHint(rebuilt), hint, "hint survives a rebuilt coverage entry")
+    local sent = {}
+    SendChatMessage = function(message) sent[#sent + 1] = message end
+    IsInGroup = function() return true end
+    equal(ns.Actions:ReportPartyCoverage(entry), true, "explicit report allowed")
+    assert(sent[1]:find(hint, 1, true), "report retains hint seen on hover")
+    equal(ns.Actions:ReportPartyCoverage(entry), false, "existing report rate limit retained")
+    equal(#sent, 1, "flavour does not add automatic reports")
+    entry.missingText = string.rep("é", 200)
+    GetTime = function() return 110 end
+    ns.Actions:ReportPartyCoverage(entry)
+    assert(#sent[2] <= 255, "long reports stay within chat byte limit")
+end
+
+-- The last used action remains as a non-casting sweep when eligibility hides it.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local time, timers = 100, {}
+    GetTime = function() return time end
+    C_Timer.After = function(delay, fn) timers[#timers + 1] = { delay, fn } end
+    C_Spell.GetSpellCooldown = function() return { startTime = 100, duration = 30, isEnabled = true } end
+    ns.KnownSelfBuffs, ns.Tracking.Entries = function() return {} end, function() return {} end
+    ns.CONSUMABLE_ORDER = {}
+    ns.Readiness.lastEntry = { kind = "spell", spellID = 1259705, name = "Read Leyline", resourceRecovery = true, icon = 1 }
+    local point, relative, anchor, x, y = ns.Palette.frame:GetPoint()
+    ns.Palette:Refresh()
+    equal(ns.Palette.hasActions, true, toc .. ": cooldown keeps an icon in the grid")
+    local ghost = ns.Palette.buttons.main1
+    equal(ghost.buffsmithEntry.cooldownOnly, true, toc .. ": cooling icon is presentation only")
+    equal(ghost:GetAttribute("type1"), nil, toc .. ": cooling icon has no secure cast")
+    equal(ghost.cooldown:IsShown(), true, toc .. ": cooling icon has sweep")
+    ns.Readiness.queueUntil = time + 0.3
+    ns.Palette:Refresh()
+    equal(ns.Palette.statusState, nil, toc .. ": native queue window cannot flash cooldown text")
+    equal(ns.Palette.statusText:IsShown(), false, toc .. ": queue window does not reveal footer")
+    equal(ghost.cooldown:IsShown(), true, toc .. ": sweep remains while queue footer is absent")
+    equal(ns.Palette.recoveryDisplayed, false, toc .. ": cooldown icon does not claim actionable recovery")
+    equal(ns.Bindings.trigger:GetAttribute("type1"), nil, toc .. ": cooldown icon is excluded from key binding")
+    local blocked = ns.Readiness.blocked
+    ghost.scripts.PreClick(ghost, "LeftButton")
+    equal(ns.Readiness.blocked, blocked, toc .. ": informational clicks do not alter trigger diagnostics")
+    equal(ghost:GetAttribute("type1"), nil, toc .. ": clicking cooling icon cannot rearm it")
+    ghost.scripts.PostClick(ghost, "RightButton")
+    equal(ns.Actions:IsSuppressed(ns.Readiness.lastEntry), false, toc .. ": informational icon cannot dismiss the spell")
+    local p2, r2, a2, x2, y2 = ns.Palette.frame:GetPoint()
+    equal(p2, point, toc .. ": resize keeps anchor kind")
+    equal(x2, x, toc .. ": resize keeps horizontal anchor")
+    equal(y2, y, toc .. ": resize keeps vertical anchor")
+    time = 131
+    local work = timers; timers = {}
+    for _, timer in ipairs(work) do if timer[1] == 30 then timer[2]() end end
+    equal(ns.Palette.cooldownDisplayKey, nil, toc .. ": cooldown expiry removes informational icon")
+    equal(ns.Palette.lastLayout, "hidden: no available actions", toc .. ": finished cooldown clears otherwise empty grid")
+    local _, _, _, x3, y3 = ns.Palette.frame:GetPoint()
+    equal(x3, x, toc .. ": shrinking keeps horizontal handle position")
+    equal(y3, y, toc .. ": shrinking keeps vertical handle position")
+end
+
+-- Reloading in combat defers anchor migration until the first OOC layout.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local frame = ns.Palette.frame
+    ns.db.paletteAnchorVersion = nil
+    ns.Palette.anchorReady = nil
+    frame:ClearAllPoints(); frame:SetPoint("CENTER", UIParent, "CENTER", 0, -120)
+    InCombatLockdown = function() return true end
+    ns.Palette:Refresh()
+    equal(ns.Palette.anchorReady, nil, toc .. ": no anchor writes during combat")
+    InCombatLockdown = function() return false end
+    ns.Palette:Refresh()
+    equal(ns.Palette.anchorReady, true, toc .. ": first OOC layout migrates anchor")
+    equal(ns.db.palettePoint[1], "TOPLEFT", toc .. ": combat reload cannot retain centred resize behavior")
+    equal(ns.db.palettePoint[4], -120 + ns.Palette.contentHeight / 2,
+        toc .. ": migration uses completed grid height rather than placeholder")
+end
+
+-- Owned consumables remain visible in the actual settings page during use pauses.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local usable = false
+    local names = { [9001] = "Coyote Steak", [9002] = "Crocolisk Steak" }
+    C_Container.GetContainerNumSlots = function(bag) return bag == 0 and 2 or 0 end
+    C_Container.GetContainerItemID = function(_, slot) return 9000 + slot end
+    C_Container.GetContainerItemInfo = function() return { stackCount = 2 } end
+    C_Item = {
+        GetItemInfo = function(id) return { itemName = names[id], itemLink = "item:" .. id,
+            itemType = "Consumable", itemSubType = "Food & Drink", iconFileID = 1 } end,
+        IsUsableItem = function() return usable end,
+    }
+    C_TooltipInfo = { GetItemByID = function() return { lines = { { leftText = "Use: Eat to become well fed." } } } end }
+    ns.Inventory:Refresh()
+    ns.HC.Settings:Show("Consumables")
+    equal(wow.FindText("Coyote Steak") ~= nil, true, toc .. ": settings list owned unavailable coyote steak")
+    equal(wow.FindText("Crocolisk Steak") ~= nil, true, toc .. ": settings list owned unavailable crocolisk steak")
+    equal(#ns.Inventory:Choices("food"), 0, toc .. ": unavailable foods never enter actions")
+    assert(ns.Diagnostics:Report():find("Bag discovery: food 2", 1, true), toc .. ": diagnostics count ownership")
+    assert(ns.Diagnostics:Report():find("Position: TOPLEFT CENTER", 1, true), toc .. ": diagnostics preserve full anchor tuple")
+    SlashCmdList.BUFFSMITH("scan")
+    assert(wow.LastPrint():find("bags scanned: food 2", 1, true), toc .. ": scan reports owned food, not use eligibility")
+    usable = true
+    local events = _G.BuffsmithEventFrame
+    events.scripts.OnEvent(events, "PLAYER_LEVEL_UP", 10)
+    equal(#ns.Inventory:Choices("food"), 2, toc .. ": level-up refresh restores newly usable cast choices")
+    usable = false; ns.Inventory:Refresh()
+    InCombatLockdown = function() return true end
+    usable = true
+    events.scripts.OnEvent(events, "PLAYER_LEVEL_UP", 11)
+    equal(#ns.Inventory:Choices("food"), 0, toc .. ": level-up does not rebuild during combat")
+    InCombatLockdown = function() return false end
+    events.scripts.OnEvent(events, "PLAYER_REGEN_ENABLED")
+    equal(#ns.Inventory:Choices("food"), 2, toc .. ": combat exit rescans deferred usability")
+    ns.db.ignoreBuffsInRestedAreas = true
+    IsResting = function() return true end
+    ns.Inventory:Refresh()
+    equal(#ns.Inventory:OwnedChoices("food"), 2, toc .. ": rested-area pause cannot remove owned items")
+    equal(#ns.Actions:VisibleChoices("food"), 0, toc .. ": rested-area pause still stops reminders")
+    IsResting = function() return false end
+    equal(#ns.Actions:VisibleChoices("food"), 2, toc .. ": leaving rested area restores reminders")
 end
 
 io.write("addon tests passed\n")

@@ -38,6 +38,12 @@ local function button(parent, small)
     frame.icon:SetAllPoints()
     frame.text = frame:CreateFontString(nil, "ARTWORK", small and "GameFontHighlightSmall" or "GameFontHighlight")
     frame.text:Hide()
+    frame.cooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate")
+    frame.cooldown:SetAllPoints(frame.icon)
+    frame.cooldown:EnableMouse(false)
+    if frame.cooldown.SetDrawEdge then frame.cooldown:SetDrawEdge(true) end
+    if frame.cooldown.SetHideCountdownNumbers then frame.cooldown:SetHideCountdownNumbers(false) end
+    frame.cooldown:Hide()
     frame.count = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     frame.count:SetPoint("BOTTOMRIGHT", -3, 2)
     frame:SetScript("OnEnter", function(self)
@@ -46,13 +52,15 @@ local function button(parent, small)
         if not entry or ns.db.showTooltip == false then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(entry.name)
-        if entry.kind == "spell" and not entry.tracking then
+        if entry.kind == "spell" and not entry.tracking and not entry.cooldownOnly then
             local name = recipientName(entry)
             GameTooltip:AddLine(name and ("Cast on: " .. name) or "Recipient unavailable.", 0.8, 0.8, 0.8, true)
         end
-        if entry.kind == "notice" then
+        if entry.cooldownOnly then
+            GameTooltip:AddLine("On cooldown. This icon cannot cast.", 0.8, 0.8, 0.8, true)
+        elseif entry.kind == "notice" then
             GameTooltip:AddLine("Party coverage reminder — informational only.", 0.7, 0.7, 0.7)
-            GameTooltip:AddLine("Potential provider: " .. tostring(entry.providerText), 0.8, 0.8, 0.8, true)
+            GameTooltip:AddLine(ns.Actions:ProviderHint(entry, true), 0.8, 0.8, 0.8, true)
             GameTooltip:AddLine("Missing on: " .. tostring(entry.missingText), 0.8, 0.8, 0.8, true)
             GameTooltip:AddLine("Left-click: report to party. Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
         elseif entry.kind == "item" then
@@ -81,8 +89,8 @@ local function button(parent, small)
         if ns.Actions.eatingPaused and entry.kind ~= "notice" then
             GameTooltip:AddLine(ns.Actions.EATING_NOTICE, 1, 0.82, 0)
         end
-        GameTooltip:AddLine("Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
-        if entry.kind ~= "notice" then
+        if not entry.cooldownOnly then GameTooltip:AddLine("Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7) end
+        if entry.kind ~= "notice" and not entry.cooldownOnly then
             GameTooltip:AddLine("Shift-right-click: ignore.", 0.7, 0.7, 0.7)
         end
         if self.buffsmithFlyout and not self.buffsmithSmall then
@@ -96,15 +104,23 @@ local function button(parent, small)
     end)
     frame:SetScript("PreClick", function(self, mouseButton)
         local entry = self.buffsmithEntry
+        self.buffsmithPress, self.buffsmithAttempt = nil, nil
+        if entry and entry.cooldownOnly then return end
+        if mouseButton == "LeftButton" and entry and entry.kind ~= "notice" and ns.Readiness then
+            self.buffsmithPress = ns.Readiness:Press(self, entry)
+            if not self.buffsmithPress.allow then return end
+            entry = self.buffsmithPress.entry
+        end
         if mouseButton == "LeftButton" and entry and ns.Actions.eatingPaused and entry.kind ~= "notice" then
             ns.Actions:ShowEatingNotice()
         elseif mouseButton == "LeftButton" and entry then
-            ns.Actions:BeginAttempt(entry)
+            self.buffsmithAttempt = ns.Actions:BeginAttempt(entry)
             if entry.kind == "item" then ns.Inventory:BeginConsumableUse(entry) end
         end
     end)
     frame:SetScript("PostClick", function(self, mouseButton)
         local entry = self.buffsmithEntry
+        if entry and entry.cooldownOnly then return end
         if entry and mouseButton == "RightButton" then
             if IsShiftKeyDown and IsShiftKeyDown() then
                 ns.Actions:Ignore(entry)
@@ -121,14 +137,16 @@ local function button(parent, small)
             ns.Actions:ReportPartyCoverage(entry)
             return
         end
-        if ns.Actions.eatingPaused then return end
+        if ns.Actions.eatingPaused or (self.buffsmithPress and not self.buffsmithPress.allow) then return end
+        entry = self.buffsmithPress and self.buffsmithPress.entry or entry
         if entry and entry.kind == "item" then
             ns.Actions:RememberItem(entry)
             ns.Inventory:FinishConsumableUse()
             Palette:CloseFlyout()
         end
         C_Timer.After(0.2, function() if ns.Inventory then ns.Inventory:Refresh() end end)
-        C_Timer.After(0.25, function() ns.Actions:ExpireAttempt(entry) end)
+        local attempt = self.buffsmithAttempt
+        if attempt then C_Timer.After(0.25, function() ns.Actions:ExpireAttempt(entry, attempt) end) end
     end)
     return frame
 end
@@ -234,11 +252,38 @@ function Palette.FlyoutSide(frame, vertical)
     local preference = vertical and ns.db.flyoutVerticalDirection or ns.db.flyoutHorizontalDirection
     if preference and preference ~= "AUTO" then return preference end
     local x, y = frame:GetCenter()
+    -- The fixed handle, rather than a status-widened frame centre, determines
+    -- which side faces away from the nearest screen edge.
+    if type(x) == "number" then x = x - frame:GetWidth() / 2 end
+    if type(y) == "number" then y = y + frame:GetHeight() / 2 end
     return ns.Layout.FlyoutSide(vertical, x, y, UIParent:GetWidth(), UIParent:GetHeight())
 end
 
 -- Resolves the live bar's contents into ns.Layout's item list. Flyout icons
 -- follow their primary in item order, which is the order Layout returns them.
+function Palette:CooldownEntry()
+    if not ns.Readiness or not ns.Readiness:DisplayAllowed() then return nil end
+    local entry = ns.Readiness.lastEntry
+    if not entry or (entry.kind ~= "spell" and entry.kind ~= "item") then return nil end
+    if ns.Actions:IsSuppressed(entry) or (entry.kind == "spell" and ns.db.excludedBuffs[entry.spellID])
+        or (entry.kind == "item" and ns.db.excludedConsumables[entry.itemID]) then return nil end
+    if entry.kind == "spell" and not ns.Actions:CanBuffUnit(entry.unit) then return nil end
+    local key = ns.Readiness:Key(entry)
+    if self.renderedActionKeys and self.renderedActionKeys[key] then return nil end
+    local cd = ns.Readiness:Cooldown(entry)
+    if not cd or not cd.enabled or cd.remaining <= 0 then return nil end
+    local copy = {}
+    for field, value in pairs(entry) do copy[field] = value end
+    copy.cooldownOnly, copy.outOfRange = true, false
+    return copy, key, cd
+end
+
+function Palette:UpdateFeedback()
+    if ns.IsCombatLocked() then return end
+    local _, key = self:CooldownEntry()
+    if key ~= self.cooldownDisplayKey then self:Refresh() else self:RefreshStatus() end
+end
+
 function Palette:Items()
     local items, mainEntries, subEntries, mainCategories = {}, {}, {}, {}
     for _, entry in ipairs(ns.Actions:Entries()) do
@@ -261,6 +306,24 @@ function Palette:Items()
             items[#items + 1] = { subs = shown }
         end
     end
+    self.renderedActionKeys = {}
+    for _, entry in ipairs(mainEntries) do self.renderedActionKeys[ns.Readiness:Key(entry)] = true end
+    for _, entry in ipairs(subEntries) do self.renderedActionKeys[ns.Readiness:Key(entry)] = true end
+    local cooldown, key, cd = self:CooldownEntry()
+    self.cooldownDisplayKey = key
+    if cooldown then
+        items[#items + 1] = {}
+        mainEntries[#mainEntries + 1] = cooldown
+        if self.cooldownWakeAt ~= cd.ends then
+            self.cooldownWakeAt = cd.ends
+            local deadline = cd.ends
+            C_Timer.After(cd.remaining, function()
+                if self.cooldownWakeAt ~= deadline then return end
+                self.cooldownWakeAt = nil
+                if not ns.IsCombatLocked() then self:Refresh() end
+            end)
+        end
+    else self.cooldownWakeAt = nil end
     return items, mainEntries, subEntries, mainCategories
 end
 
@@ -269,8 +332,70 @@ end
 function Palette:RecordRecovery(entries)
     self.recoveryDisplayed = false
     for _, entry in ipairs(entries) do
-        if entry.resourceRecovery then self.recoveryDisplayed = true; break end
+        if entry.resourceRecovery and not entry.cooldownOnly then self.recoveryDisplayed = true; break end
     end
+end
+
+function Palette:RefreshCooldowns()
+    if ns.IsCombatLocked() or not ns.Readiness then return end
+    for _, frame in pairs(self.buttons) do
+        if frame:IsShown() then
+            local cd = ns.Readiness:Cooldown(frame.buffsmithEntry)
+            if cd and cd.enabled and cd.remaining > 0 then
+                frame.cooldown:SetCooldown(cd.start, cd.duration, cd.rate)
+                frame.cooldown:Show()
+            else frame.cooldown:Hide() end
+        end
+    end
+end
+
+local function statusText(state)
+    if not state then return "" end
+    local remaining = state.ends and GetTime and math.max(0, state.ends - GetTime())
+    if not remaining then return state.kind == "meal" and (state.label .. ": casts paused") or state.label end
+    if remaining >= 60 then return state.label .. ": " .. math.ceil(remaining / 60) .. "m" end
+    return state.label .. ": " .. (remaining >= 10 and tostring(math.ceil(remaining)) or string.format("%.1f", remaining)) .. "s"
+end
+
+function Palette:PrepareStatus()
+    if not ns.Readiness then return false end
+    if not self.statusText then
+        self.statusText = self.frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        self.statusText:SetPoint("BOTTOM", self.frame, "BOTTOM", 0, 4)
+        self.statusText:SetJustifyH("CENTER")
+        if self.statusText.SetWordWrap then self.statusText:SetWordWrap(false) end
+        self.statusElapsed = 0
+        self.frame:HookScript("OnUpdate", function(_, elapsed)
+            if ns.IsCombatLocked() or not self.statusState then return end
+            self.statusElapsed = self.statusElapsed + elapsed
+            if self.statusElapsed < 0.1 then return end
+            self.statusElapsed = 0
+            self.statusText:SetText(statusText(self.statusState))
+            if self.statusState.ends and self.statusState.ends <= GetTime() and not self.statusExpired then
+                self.statusExpired = true
+                C_Timer.After(0, function() if not ns.IsCombatLocked() then ns.Readiness:Feedback() end end)
+            end
+        end)
+    end
+    self.statusState = ns.Readiness:Status()
+    ns.Readiness.feedbackSignature = ns.Readiness:Signature(self.statusState)
+    self.statusExpired = nil
+    self.statusText:SetText(statusText(self.statusState))
+    self.statusText:SetShown(self.statusState ~= nil)
+    return self.statusState ~= nil
+end
+
+-- Timer/event feedback only changes presentation, never scans action choices.
+function Palette:RefreshStatus()
+    if not self.frame or ns.IsCombatLocked() or ns.db.visibilityMode == "NEVER" then return end
+    if not self.anchorReady then self:Refresh(); return end
+    local hasStatus = self:PrepareStatus()
+    local width, height = self.contentWidth or 0, self.contentHeight or 0
+    self.frame:SetWidth(hasStatus and math.max(170, width) or math.max(1, width))
+    self.frame:SetHeight(math.max(1, height + (hasStatus and (self.hasActions and 24 or 26) or 0)))
+    ns.Visibility:Apply(self.frame, self.hasActions or hasStatus)
+    if not self.hasActions then self.lastLayout = hasStatus and "status only: waiting" or "hidden: no available actions" end
+    if ns.Handle then ns.Handle:Update() end
 end
 
 function Palette:Refresh()
@@ -292,6 +417,8 @@ function Palette:Refresh()
     end
     local items, mainEntries, subEntries, mainCategories = self:Items()
     self:RecordRecovery(mainEntries)
+    self.hasActions = #items > 0
+    local hasStatus = self:PrepareStatus()
     ns.Actions:UpdateTargetRangeChecks(mainEntries)
     local vertical = ns.db.orientation == "VERTICAL"
     local layout = ns.Layout.Compute(items, {
@@ -299,11 +426,23 @@ function Palette:Refresh()
         vertical = vertical,
         flyout = Palette.FlyoutSide(self.frame, vertical),
     })
+    if not self.anchorReady and ns.Handle then
+        self.frame:SetWidth(layout.width)
+        self.frame:SetHeight(layout.height)
+        self.anchorReady = ns.Handle:Anchor(self.frame)
+        if ns.Preview then ns.Preview:ApplyPosition() end
+    end
+    self.contentWidth, self.contentHeight = layout.width, layout.height
+    self.hasActions = #layout.mains > 0
     if #layout.mains == 0 then
+        self.contentWidth, self.contentHeight = 0, 0
         self.openFlyout = nil
         self.rangeWatching = false
-        ns.Visibility:Apply(self.frame, false)
-        self.lastLayout = "hidden: no available actions"
+        self.frame:SetWidth(170)
+        self.frame:SetHeight(26)
+        ns.Visibility:Apply(self.frame, hasStatus)
+        self.lastLayout = hasStatus and "status only: waiting" or "hidden: no available actions"
+        if ns.Handle then ns.Handle:Update() end
         ns.Actions:ArmReminder()
         if ns.Bindings then ns.Bindings:Prepare() end
         return
@@ -324,9 +463,10 @@ function Palette:Refresh()
     end
     if not stillOpen then self.openFlyout = nil end
     self:ApplyFlyout()
-    self.frame:SetWidth(layout.width)
-    self.frame:SetHeight(layout.height)
+    self.frame:SetWidth(hasStatus and math.max(170, layout.width) or layout.width)
+    self.frame:SetHeight(layout.height + (hasStatus and 24 or 0))
     ns.Visibility:Apply(self.frame, true)
+    self:RefreshCooldowns()
     self.rangeWatching = self:RefreshRange()
     self.lastLayout = ("%d primary, %d alternatives"):format(#layout.mains, #layout.subs)
     if ns.Handle then ns.Handle:Update() end

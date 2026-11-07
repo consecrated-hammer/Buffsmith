@@ -66,6 +66,61 @@ character-specific bindings.
 Existing Buffsmith wheel bindings whose original action was already replaced
 need to be bound to camera zoom first, then selected again in Buffsmith.
 
+Buff trigger keys, the shared wheel and left-clicked icons recheck readiness
+before casting. Readable cooldowns and normal casts outside WoW's current
+`SpellQueueWindow` suppress the press without advancing the trigger; channels
+and eating/drinking also pause casts. One attempted spell is held through the
+short native queue window so repeated input doesn't replace it. This doesn't
+create an addon cast queue: timers never cast, and a later key press is still
+needed. Buffsmith only reads the queue setting. Unknown or restricted readiness
+data preserves native input, so this reduces avoidable errors rather than
+silencing every possible game error.
+
+Icons show native cooldown sweeps when timing is readable. If the last used
+action leaves the reminder list while cooling down, its icon stays as a
+non-casting cooldown display until the cooldown ends. This also applies to
+Read Leyline; it does not put a cooling ability into the Buff trigger. Cooldowns
+use the icon sweep without a separate cooldown text row. A status line shows
+casting or channeling. Native queue timing stays internal and has no text row.
+Eating/drinking shows a pause
+indicator, with a countdown only when every detected meal aura has a readable
+expiry. The meal status can remain visible when there are no missing buffs.
+Unrelated casts don't reveal an otherwise empty bar. Normal visibility, death,
+flight-path and rested-area exclusions apply. Recovery abilities such as Read
+Leyline are only actionable when ready; ready consumable alternatives keep their
+existing selection rules. `/buffsmith debug` reports the latest input decision
+and blocked-press count.
+
+The Consumables page lists supported items you own, including those the client
+currently marks unavailable. This can happen during travel or other use
+restrictions. These items remain configurable but stay out of cast choices until
+a later inventory refresh finds them usable. Diagnostics distinguish discovered
+bag contents from currently usable choices. Forever camp benefits and lockouts
+are kept separate from consumed-item buffs; an old camp mapping cannot satisfy
+a food reminder. New food-effect learning requires a Well Fed signal, so an
+unrelated class buff arriving during eating cannot replace the food timer.
+
+The drag handle stays at a fixed top-left corner while icons, cooldowns and
+status rows come and go. The grid grows right and down from there. Dragging the
+live bar or preview saves the same fixed corner. The changing-size grid no
+longer clamps itself back onto the screen, since that would move the handle;
+use `reset position` if you need to bring it back into view.
+
+**Skip PvP-flagged players while I'm unflagged** is on by default under
+**Buffs → Targets**. It filters explicit target, party and pet recipients while
+you're unflagged, checks flags again on input, and skips recipients whose flags
+can't be read. Self buffs still work. Turning the option off restores previous
+recipient selection; already flagged players can buff normally. Guarded external
+buff buttons disarm securely on combat entry and rearm after combat. This doesn't
+toggle your PvP setting or control a spell's area effects, other addons or manual
+casts outside Buffsmith.
+
+Party-coverage tooltips rotate through twelve playful provider hints, such as
+“Skyward and Mira might have a little magic to spare.” Every line keeps all
+eligible names and uncertainty about current availability. A clicked report
+uses that hint and retains its existing three-second rate limit. Reports still
+require a click; very long reports are shortened to fit the chat byte limit.
+
 Reminders and buff-trigger actions pause on flight paths and refresh when you
 land. Shared wheel zoom still works while there are no usable buff actions.
 

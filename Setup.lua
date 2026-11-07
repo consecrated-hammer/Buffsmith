@@ -53,10 +53,11 @@ local function setHandle(shown)
 end
 
 local function resetBarPosition()
-    ns.db.palettePoint = { "CENTER", "CENTER", 0, -120 }
+    ns.db.palettePoint = { "TOPLEFT", "CENTER", 0, -120 }
+    ns.db.paletteAnchorVersion = 1
     if ns.Palette.frame then
         ns.Palette.frame:ClearAllPoints()
-        ns.Palette.frame:SetPoint(unpack(ns.db.palettePoint))
+        ns.Palette.frame:SetPoint("TOPLEFT", UIParent, "CENTER", 0, -120)
     end
     ns.Preview:ApplyPosition()
 end
@@ -64,7 +65,7 @@ end
 local function bagSummary()
     local parts = {}
     for _, category in ipairs(ns.CONSUMABLE_ORDER) do
-        parts[#parts + 1] = category .. " " .. #ns.Inventory:Choices(category)
+        parts[#parts + 1] = category .. " " .. #ns.Inventory:OwnedChoices(category)
     end
     return table.concat(parts, ", ")
 end

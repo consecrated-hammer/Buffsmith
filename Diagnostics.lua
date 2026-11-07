@@ -4,13 +4,14 @@ ns.Diagnostics = {}
 local Diagnostics = ns.Diagnostics
 
 function Diagnostics:Report()
-    local foods = #ns.Inventory:Choices("food")
-    local scrolls = #ns.Inventory:Choices("scroll")
-    local flasks = #ns.Inventory:Choices("flask")
-    local others = #ns.Inventory:Choices("other")
-    local weapons = #ns.Inventory:Choices("weapon")
+    local foods = #ns.Inventory:OwnedChoices("food")
+    local scrolls = #ns.Inventory:OwnedChoices("scroll")
+    local flasks = #ns.Inventory:OwnedChoices("flask")
+    local others = #ns.Inventory:OwnedChoices("other")
+    local weapons = #ns.Inventory:OwnedChoices("weapon")
     local bar = ns.Palette.frame
-    local point, _, relativePoint, x, y = bar and bar:GetPoint()
+    local point, relativeFrame, relativePoint, x, y
+    if bar then point, relativeFrame, relativePoint, x, y = bar:GetPoint() end
     local position = bar and ("%s %s %.1f %.1f"):format(
         tostring(point), tostring(relativePoint), tonumber(x) or 0, tonumber(y) or 0) or "not built"
     local history = {}
@@ -50,6 +51,8 @@ function Diagnostics:Report()
         "Party buffs: " .. (#(ns.lastPartyProbe or {}) > 0 and table.concat(ns.lastPartyProbe, ", ") or "none missing or unsupported"),
         "Pet buffs: " .. (#(ns.lastPetProbe or {}) > 0 and table.concat(ns.lastPetProbe, ", ") or "none missing or disabled"),
         "Party coverage: " .. (#(ns.lastCoverageProbe or {}) > 0 and table.concat(ns.lastCoverageProbe, ", ") or "not evaluated"),
+        "Buff trigger readiness: " .. tostring(ns.Readiness and ns.Readiness.lastStatus or "not available"),
+        "Buff trigger blocked presses: " .. tostring(ns.Readiness and ns.Readiness.blocked or 0),
         "Thank You: " .. (ns.db.thanksEnabled and "enabled" or "disabled")
             .. "; delay " .. tostring(ns.db.thanksDelay) .. "s"
             .. "; skip group " .. tostring(ns.db.thanksSkipGroupMembers)

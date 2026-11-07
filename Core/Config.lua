@@ -6,6 +6,7 @@ ns.defaults = {
     showHandle = true,
     showTargetBuffs = true,
     showPartyBuffs = true,
+    skipPvPWhileUnflagged = true,
     showPartyCoverage = true,
     showTooltip = true,
     tooltipSpellDescriptions = false,
@@ -108,6 +109,7 @@ function ns.InitConfig()
     if type(BuffsmithDB.showHandle) ~= "boolean" then BuffsmithDB.showHandle = true end
     if type(BuffsmithDB.showTargetBuffs) ~= "boolean" then BuffsmithDB.showTargetBuffs = true end
     if type(BuffsmithDB.showPartyBuffs) ~= "boolean" then BuffsmithDB.showPartyBuffs = true end
+    if type(BuffsmithDB.skipPvPWhileUnflagged) ~= "boolean" then BuffsmithDB.skipPvPWhileUnflagged = true end
     if type(BuffsmithDB.showPartyCoverage) ~= "boolean" then BuffsmithDB.showPartyCoverage = true end
     if type(BuffsmithDB.showTooltip) ~= "boolean" then BuffsmithDB.showTooltip = true end
     if type(BuffsmithDB.tooltipSpellDescriptions) ~= "boolean" then BuffsmithDB.tooltipSpellDescriptions = false end
@@ -143,6 +145,7 @@ function ns.InitConfig()
     end
     if not validPoint(BuffsmithDB.palettePoint) then
         BuffsmithDB.palettePoint = { "CENTER", "CENTER", 0, -120 }
+        BuffsmithDB.paletteAnchorVersion = nil
     end
     ns.db = BuffsmithDB
     return ns.db
