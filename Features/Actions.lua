@@ -12,6 +12,14 @@ local function playerOnTaxi()
     return UnitOnTaxi and ns.Plain(UnitOnTaxi("player")) == true
 end
 
+-- Moving cancels eating but still uses up the food, so food waits until you stop.
+local function playerMoving()
+    if IsPlayerMoving then return ns.Plain(IsPlayerMoving()) == true end
+    local speed = GetUnitSpeed and tonumber(ns.Plain(GetUnitSpeed("player")))
+    return speed ~= nil and speed > 0
+end
+ns.PlayerMoving = playerMoving
+
 local function currentSpecKey()
     local spec = GetSpecialization and GetSpecialization()
     return tostring(spec or 0)
@@ -863,6 +871,7 @@ end
 function Actions:VisibleChoices(category)
     local choices = {}
     if playerIsDead() or playerOnTaxi() or not ns.db.categories[category] or self:IsRestedPaused() then return choices end
+    if category == "food" and playerMoving() then return choices end
     -- A category-level active effect suppresses alternatives of the same kind.
     -- This prevents a second food or weapon oil appearing while one is active.
     local categoryStatus = ns.Inventory:CategoryStatus(category)

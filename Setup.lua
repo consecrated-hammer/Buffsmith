@@ -75,6 +75,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.10.2", date = "2026-11-09", items = {
+        { title = "No snacking on the run", text = "Food hides while you're moving, since moving cancels the meal and still eats the food.",
+            kind = "fixed" },
+    } },
     { version = "1.10.1", date = "2026-11-09", items = {
         { title = "Bar stays put", text = "Move the bar on one character and it stays there on the rest, instead of drifting back to an old spot.",
             kind = "fixed" },

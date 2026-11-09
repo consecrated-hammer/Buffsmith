@@ -457,6 +457,24 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     UnitOnTaxi = nil
 end
 
+-- Moving cancels eating but uses up the food, so food hides until you stop.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local moving = false
+    IsPlayerMoving = function() return moving end
+    ns.Inventory.items.food = { { kind = "item", itemID = 4599, name = "Cured Ham Steak", category = "food" } }
+    equal(#ns.Actions:VisibleChoices("food"), 1, toc .. ": food offered standing still")
+    moving = true
+    equal(#ns.Actions:VisibleChoices("food"), 0, toc .. ": food hidden while moving")
+    IsPlayerMoving = nil
+    local speed = 7
+    GetUnitSpeed = function() return speed end
+    equal(#ns.Actions:VisibleChoices("food"), 0, toc .. ": unit speed fallback detects moving")
+    speed = 0
+    equal(#ns.Actions:VisibleChoices("food"), 1, toc .. ": unit speed fallback detects standing")
+    GetUnitSpeed = nil
+end
+
 -- Health/mana and cooldown changes refresh a known Forever recovery action.
 do
     local ns = loadAddon("Buffsmith_Camelot.toc")

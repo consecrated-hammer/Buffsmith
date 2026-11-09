@@ -5,6 +5,13 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.2] - 2026-11-09
+
+### Fixed
+
+- Food hides while you're moving. Moving cancels the meal but still eats the
+  food, so the bar now waits until you stop. Running buffet is closed.
+
 ## [1.10.1] - 2026-11-09
 
 ### Fixed

@@ -31,6 +31,8 @@ frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("PLAYER_LEAVING_WORLD")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("UNIT_AURA")
+pcall(frame.RegisterEvent, frame, "PLAYER_STARTED_MOVING")
+pcall(frame.RegisterEvent, frame, "PLAYER_STOPPED_MOVING")
 frame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 for _, event in ipairs({ "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_MAXPOWER" }) do
     frame:RegisterUnitEvent(event, "player")
@@ -146,6 +148,8 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         if arg1 == "player" or arg1 == "target" or arg1 == "pet"
             or string.match(tostring(arg1), "^partypet%d+$")
             or string.match(tostring(arg1), "^party%d+pet$") or string.match(tostring(arg1), "^party%d$") then refresh() end
+    elseif event == "PLAYER_STARTED_MOVING" or event == "PLAYER_STOPPED_MOVING" then
+        if ns.db.categories.food then refresh() end
     elseif event == "PLAYER_LEAVING_WORLD" then
         ns.Thanks:ZoneTransition(true)
         if ns.Readiness then ns.Readiness.queueUntil, ns.Readiness.lastEntry, ns.Readiness.lastEntryAt = nil, nil, nil end
