@@ -149,6 +149,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
             or string.match(tostring(arg1), "^partypet%d+$")
             or string.match(tostring(arg1), "^party%d+pet$") or string.match(tostring(arg1), "^party%d$") then refresh() end
     elseif event == "PLAYER_STARTED_MOVING" or event == "PLAYER_STOPPED_MOVING" then
+        if event == "PLAYER_STOPPED_MOVING" then ns.Actions:StoppedMoving(refresh) end
         if ns.db.categories.food then refresh() end
     elseif event == "PLAYER_LEAVING_WORLD" then
         ns.Thanks:ZoneTransition(true)

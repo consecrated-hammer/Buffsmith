@@ -75,6 +75,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.10.3", date = "2026-11-09", items = {
+        { title = "Food after stopping", text = "Food waits until you've stood still for 5 seconds, so a quick pause mid-run doesn't flash it up. Change the wait on Visibility.",
+            kind = "improved", page = "Visibility" },
+    } },
     { version = "1.10.2", date = "2026-11-09", items = {
         { title = "No snacking on the run", text = "Food hides while you're moving, since moving cancels the meal and still eats the food.",
             kind = "fixed" },

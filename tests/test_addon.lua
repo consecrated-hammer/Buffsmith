@@ -473,6 +473,29 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     speed = 0
     equal(#ns.Actions:VisibleChoices("food"), 1, toc .. ": unit speed fallback detects standing")
     GetUnitSpeed = nil
+
+    -- Stopping starts the grace period; food returns once it has passed.
+    local now, timers, refreshed = 100, {}, 0
+    GetTime = function() return now end
+    C_Timer.After = function(delay, fn) timers[#timers + 1] = { delay = delay, fn = fn } end
+    equal(ns.db.foodStillSeconds, 5, toc .. ": five-second wait by default")
+    ns.Actions:StoppedMoving(function() refreshed = refreshed + 1 end)
+    equal(#ns.Actions:VisibleChoices("food"), 0, toc .. ": food waits just after stopping")
+    equal(timers[#timers].delay, 5, toc .. ": refresh scheduled for the end of the wait")
+    now = 105
+    timers[#timers].fn()
+    equal(refreshed, 1, toc .. ": wait ending refreshes the bar")
+    equal(#ns.Actions:VisibleChoices("food"), 1, toc .. ": food back after the wait")
+    now = 110
+    ns.Actions:StoppedMoving(function() refreshed = refreshed + 1 end)
+    local stale = timers[#timers]
+    now = 112
+    ns.Actions:StoppedMoving(function() refreshed = refreshed + 1 end)
+    stale.fn()
+    equal(refreshed, 1, toc .. ": an older stop's timer is ignored")
+    ns.db.foodStillSeconds = 0
+    equal(#ns.Actions:VisibleChoices("food"), 1, toc .. ": zero wait shows food on stopping")
+    GetTime = function() return 100 end
 end
 
 -- Health/mana and cooldown changes refresh a known Forever recovery action.

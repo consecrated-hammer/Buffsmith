@@ -20,6 +20,25 @@ local function playerMoving()
 end
 ns.PlayerMoving = playerMoving
 
+-- Food waits while you move and for a few seconds after you stop, so a
+-- quick pause mid-run doesn't flash it up.
+function Actions:FoodWaiting()
+    if playerMoving() then return true end
+    local grace = tonumber(ns.db.foodStillSeconds) or 0
+    return self.stoppedAt ~= nil and grace > 0 and GetTime() - self.stoppedAt < grace
+end
+
+function Actions:StoppedMoving(refresh)
+    local stoppedAt = GetTime()
+    self.stoppedAt = stoppedAt
+    local grace = tonumber(ns.db.foodStillSeconds) or 0
+    if grace > 0 and C_Timer then
+        C_Timer.After(grace, function()
+            if self.stoppedAt == stoppedAt then refresh() end
+        end)
+    end
+end
+
 local function currentSpecKey()
     local spec = GetSpecialization and GetSpecialization()
     return tostring(spec or 0)
@@ -871,7 +890,7 @@ end
 function Actions:VisibleChoices(category)
     local choices = {}
     if playerIsDead() or playerOnTaxi() or not ns.db.categories[category] or self:IsRestedPaused() then return choices end
-    if category == "food" and playerMoving() then return choices end
+    if category == "food" and self:FoodWaiting() then return choices end
     -- A category-level active effect suppresses alternatives of the same kind.
     -- This prevents a second food or weapon oil appearing while one is active.
     local categoryStatus = ns.Inventory:CategoryStatus(category)

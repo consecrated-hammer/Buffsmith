@@ -5,6 +5,14 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.3] - 2026-11-09
+
+### Changed
+
+- Food waits until you've stood still for 5 seconds before it comes back, so
+  a quick pause mid-run doesn't flash it up. Change the wait with **Food after
+  stopping** on Visibility (0 brings it back the moment you stop).
+
 ## [1.10.2] - 2026-11-09
 
 ### Fixed

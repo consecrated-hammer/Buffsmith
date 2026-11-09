@@ -230,6 +230,11 @@ HC.spec.visibility = function(panel, y)
         "Hide buff and consumable reminders while resting in a city or inn.", y,
         function() return ns.db.ignoreBuffsInRestedAreas end,
         function(value) ns.Set("ignoreBuffsInRestedAreas", value) end)
+    _, y = UI.Slider(panel, "Food after stopping",
+        "Food hides while you move, since moving wastes it. Seconds to stand still before it comes back.",
+        y, 0, 15, 1, function() return ns.db.foodStillSeconds end,
+        function(value) ns.Set("foodStillSeconds", value) end,
+        function(value) return value .. " s" end)
     return y
 end
 

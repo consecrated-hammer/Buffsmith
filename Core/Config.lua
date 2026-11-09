@@ -19,6 +19,7 @@ ns.defaults = {
     thanksMessage = "Thanks for the {buff}!",
     showPetBuffs = false,
     ignoreBuffsInRestedAreas = false,
+    foodStillSeconds = 5,
     palettePoint = { "CENTER", "CENTER", 0, -120 },
     iconSize = 40,
     orientation = "VERTICAL",
