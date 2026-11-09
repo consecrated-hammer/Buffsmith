@@ -167,6 +167,8 @@ function Palette:Create()
     frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
+    -- Clears a spot WoW cached from older drags (see Handle's drag stop).
+    if frame.SetUserPlaced then frame:SetUserPlaced(false) end
     local point = ns.db.palettePoint
     frame:SetPoint(point[1], UIParent, point[2], point[3], point[4])
     self.frame = frame

@@ -5,6 +5,13 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] - 2026-11-09
+
+### Fixed
+
+- The bar keeps the spot you dragged it to on every character. WoW was also
+  remembering the spot per character and could put an older one back.
+
 ## [1.10.0] - 2026-11-09
 
 ### Added

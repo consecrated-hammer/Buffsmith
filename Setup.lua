@@ -75,6 +75,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.10.1", date = "2026-11-09", items = {
+        { title = "Bar stays put", text = "Move the bar on one character and it stays there on the rest, instead of drifting back to an old spot.",
+            kind = "fixed" },
+    } },
     { version = "1.10.0", date = "2026-11-09", items = {
         { title = "A fresh coat of paint", text = "Settings got a new look: two columns, switches, icons on every heading, and this What's new page.",
             kind = "improved" },

@@ -57,6 +57,9 @@ function Handle.Attach(parent, name, opts)
     frame:SetScript("OnDragStop", function()
         if ns.IsCombatLocked() then return end
         parent:StopMovingOrSizing()
+        -- Buffsmith saves the spot account-wide; WoW's per-character layout
+        -- cache would put an older one back on other characters.
+        if parent.SetUserPlaced then parent:SetUserPlaced(false) end
         Handle.SavePosition(parent, false)
         if opts.onMoved then opts.onMoved() end
     end)
