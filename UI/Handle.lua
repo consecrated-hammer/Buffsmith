@@ -95,5 +95,6 @@ end
 
 function Handle:Update()
     if not self.frame then return end
-    self.frame:SetShown(ns.db.showHandle == true and not ns.IsCombatLocked())
+    self.frame:SetShown(ns.db.showHandle == true and not ns.IsCombatLocked()
+        and not (ns.Palette and ns.Palette.onlyFaded))
 end

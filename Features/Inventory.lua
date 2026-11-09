@@ -64,14 +64,18 @@ local function classAura(mapping)
     return resolved and cache.names[resolved] == true or false
 end
 
+local function mealAura(aura)
+    return ns.Actions and ns.Actions.IsMealAura and ns.Actions:IsMealAura(aura)
+end
+
 local function foodAura(aura)
-    return not campingAura(aura.spellID) and (aura.icon == 136000
+    return not campingAura(aura.spellID) and not mealAura(aura) and (aura.icon == 136000
         or (type(aura.name) == "string" and string.find(string.lower(aura.name), "well fed", 1, true)))
 end
 
 function Inventory:LearnedAura(item)
     local mapping = item and ns.db.consumableAuras[item.itemID]
-    if mapping and (campingAura(mapping.spellID) or (item.category == "food" and classAura(mapping))) then return nil end
+    if mapping and (campingAura(mapping.spellID) or (item.category == "food" and (mealAura(mapping) or classAura(mapping)))) then return nil end
     return mapping
 end
 

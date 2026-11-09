@@ -90,6 +90,19 @@ for _, invalid in ipairs({ false, 0, secret }) do
     state.cooldown = { startTime = 0, duration = 0, isEnabled = invalid }
     equal(#ns.Actions:Entries(), 0, "disabled or unreadable cooldown stays hidden")
 end
+-- WoW Forever leaves isEnabled out; that isn't "disabled".
+state.cooldown = { startTime = 0, duration = 0 }
+equal(#ns.Actions:Entries(), 1, "a ready cooldown without isEnabled shows")
+-- The client's own flags win, as in Salve's cooldown icons.
+state.cooldown = { isActive = false }
+equal(#ns.Actions:Entries(), 1, "isActive false is ready even without times")
+state.cooldown = { startTime = 99, duration = 1.5, isActive = true, isOnGCD = true }
+equal(#ns.Actions:Entries(), 1, "the global cooldown alone doesn't hide it")
+state.cooldown = { isActive = true, isOnGCD = false }
+equal(#ns.Actions:Entries(), 0, "active with unknown times stays hidden")
+equal(ns.Actions.nextReminderDelay, 5, "and looks again shortly")
+state.cooldown = { startTime = 90, duration = 120, isActive = true, isOnGCD = false }
+equal(#ns.Actions:Entries(), 0, "a real cooldown stays hidden")
 C_Spell.GetSpellCooldown = function() error("unreadable") end
 equal(#ns.Actions:Entries(), 0, "cooldown errors hide conservatively")
 C_Spell.GetSpellCooldown = nil
@@ -145,5 +158,26 @@ state.now = 211
 timers[1]()
 equal(refreshed, 1, "the shared timer refreshes once")
 equal(ns.Actions.reminderWakeAt, nil, "completed wakeup clears its deadline")
+
+-- Grouped on Forever: current health and mana are secret.
+ns = load("Camelot")
+ns.CONSUMABLE_ORDER = {}
+state.health, state.mana = secret, secret
+equal(#ns.Actions:Entries(), 0, "secret resources without curve support stay hidden")
+C_CurveUtil = { CreateCurve = function() return {} end }
+Enum.LuaCurveType = { Step = 1 }
+UnitHealthPercent, UnitPowerPercent = function() return secret end, function() return secret end
+local faded = ns.Actions:Entries()
+equal(#faded, 1, "secret resources carry a faded reminder")
+equal(faded[1].secretRecovery, true, "reminder is marked for client-side fading")
+equal(#ns.Actions:BindingEntries(), 0, "the key never casts a faded reminder")
+state.cooldown = { startTime = 90, duration = 120, isEnabled = true, modRate = 1 }
+equal(#ns.Actions:Entries(), 0, "faded reminder still waits for the cooldown")
+state.cooldown = { startTime = 0, duration = 0, isEnabled = true, modRate = 1 }
+state.health, state.mana = 40, 100
+local plain = ns.Actions:Entries()
+equal(plain[1] and plain[1].secretRecovery, nil, "readable resources use the normal reminder")
+equal(#ns.Actions:BindingEntries(), 1, "normal reminder stays on the key")
+C_CurveUtil, UnitHealthPercent, UnitPowerPercent = nil, nil, nil
 
 print("resource recovery tests passed")

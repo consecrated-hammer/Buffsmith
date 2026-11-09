@@ -90,7 +90,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     local names = {}
     for _, spec in ipairs(HC.Settings.order) do names[#names + 1] = spec.name end
     equal(table.concat(names, ","),
-        "Visibility,Appearance,Tooltips,Buffs,Consumables,Ignored,Key Bindings,Thank You,Commands,Troubleshooting,About",
+        "Visibility,Appearance,Tooltips,Buffs,Consumables,Ignored,Key Bindings,Thank You,What's new,Commands,Troubleshooting,About",
         toc .. ": rail order")
     local failures = {}
     for name, err in pairs(HC.Settings.errors) do failures[#failures + 1] = name .. ": " .. err end
@@ -100,6 +100,8 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
         equal(HC.Settings.selected, spec.name, toc .. ": " .. spec.name .. " opens")
     end
 
+    -- Every page builds in the new shell, including What's new.
+    for _, spec in ipairs(HC.Settings.order) do HC.Settings:Show(spec.name) end
     HC.Settings:Show("Buffs")
     equal(wow.FindText("Find Minerals") ~= nil, true, toc .. ": the Buffs page lists tracking")
     HC.Settings:Show("Thank You")
@@ -172,11 +174,11 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(HC.Copy.frame.edit:GetText():find("Known self-buffs", 1, true) ~= nil, true,
         toc .. ": debug includes Buffsmith's report")
 
-    -- The rail preview button and the preview command agree.
-    HC.Settings:Show()
-    equal(HC.Settings.railButton:GetText(), "Preview on screen", toc .. ": rail offers the preview")
+    -- The header preview button and the preview command agree.
+    HC.Settings:Show("Appearance")
+    equal(HC.Settings.headerAction:GetText(), "Preview on screen", toc .. ": Appearance offers the preview")
     SlashCmdList.BUFFSMITH("preview")
-    equal(HC.Settings.railButton:GetText(), "Hide preview", toc .. ": preview command updates the rail")
+    equal(HC.Settings.headerAction:GetText(), "Hide preview", toc .. ": preview command updates the header")
 
     wow.printed = {}
     SlashCmdList.BUFFSMITH("help")
@@ -599,56 +601,41 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     GetTime = function() return time end
     C_Timer.After = function(delay, fn) pending[#pending + 1] = { delay, fn } end
     C_UnitAuras.GetAuraDataByIndex = function(_, index) return meals[index] end
-    ns.Palette.Items = function() ns.Actions:MealStatus(); return {}, {}, {}, {} end
+    ns.KnownSelfBuffs = function() return {} end
+    ns.Tracking.Entries = function() return {} end
     ns.Actions.BindingEntries = function() return {} end
     ns.Palette:Refresh()
-    equal(ns.Palette.lastLayout, "status only: waiting", toc .. ": meal can show with no icons")
-    equal(ns.Palette.statusText:GetText(), "Eating/drinking: 30s", toc .. ": meal countdown")
+    equal(ns.Palette.buttons.main1.buffsmithEntry.displayOnly, true, toc .. ": meal shows without missing actions")
+    equal(ns.Palette.statusText:IsShown(), false, toc .. ": meal has no text row")
+    equal(ns.Palette.buttons.main1.cooldown:IsShown(), true, toc .. ": meal uses native sweep")
     time = 110
     ns.Palette.frame.scripts.OnUpdate(ns.Palette.frame, 0.2)
-    equal(ns.Palette.statusText:GetText(), "Eating/drinking: 20s", toc .. ": timer updates without rebuilding actions")
+    equal(ns.Palette.statusText:IsShown(), false, toc .. ": no timer text flash")
     meals[1].duration = nil
     ns.Palette:Refresh()
-    equal(ns.Palette.statusText:GetText(), "Eating/drinking: casts paused", toc .. ": unknown duration pause only")
+    equal(ns.Palette.buttons.main1.cooldown:IsShown(), false, toc .. ": unknown duration has no invented sweep")
     ns.db.visibilityMode = "NEVER"
     ns.Palette:Refresh()
     equal(ns.Palette.lastLayout, "hidden: preference", toc .. ": never remains hidden")
     ns.db.visibilityMode = "ALWAYS"
     UnitOnTaxi = function() return true end
     ns.Palette:Refresh()
-    equal(ns.Palette.statusState, nil, toc .. ": no meal status on taxi")
+    equal(ns.Palette.frame:IsShown(), false, toc .. ": no meal icon on taxi")
     UnitOnTaxi = function() return false end
     UnitIsDeadOrGhost = function() return true end
     ns.Palette:Refresh()
-    equal(ns.Palette.statusState, nil, toc .. ": no meal status while dead")
+    equal(ns.Palette.frame:IsShown(), false, toc .. ": no meal icon while dead")
     UnitIsDeadOrGhost = function() return false end
     ns.db.ignoreBuffsInRestedAreas = true; IsResting = function() return true end
     ns.Palette:Refresh()
-    equal(ns.Palette.statusState, nil, toc .. ": rested exclusion applies to status")
+    equal(ns.Palette.frame:IsShown(), false, toc .. ": rested exclusion applies to meal icons")
     ns.db.ignoreBuffsInRestedAreas = false
-    meals = {}
+    meals = { { name = "Food", duration = 30, expirationTime = 140 } }
     ns.Palette:Refresh()
-    equal(ns.Palette.lastLayout, "hidden: no available actions", toc .. ": meal removal clears status")
-    -- Deadline updates and expiry update presentation without rebuilding choices.
-    local rebuilds, oldRefresh = 0, ns.RefreshAll
-    ns.RefreshAll = function() rebuilds = rebuilds + 1 end
-    meals = { { name = "Food", duration = 30, expirationTime = 130 } }
-    ns.Palette:Refresh()
-    meals[1].expirationTime = 140
-    ns.Actions:MealStatus() -- UNIT_AURA/full action refresh updates the cache.
-    ns.Readiness:Feedback()
-    local work = pending; pending = {}
-    for _, timer in ipairs(work) do if timer[1] == 0 then timer[2]() end end
-    equal(ns.Palette.statusText:GetText(), "Eating/drinking: 30s", toc .. ": feedback updates new deadline")
-    equal(rebuilds, 0, toc .. ": status changes never rebuild action list")
     time = 141; meals = {}
-    ns.Palette.frame.scripts.OnUpdate(ns.Palette.frame, 0.2)
-    work = pending; pending = {}
-    for _, timer in ipairs(work) do if timer[1] == 0 then timer[2]() end end
-    work = pending; pending = {}
-    for _, timer in ipairs(work) do if timer[1] == 0 then timer[2]() end end
-    equal(ns.Palette.statusState, nil, toc .. ": status expiry clears without stale signature")
-    ns.RefreshAll = oldRefresh
+    local work = pending; pending = {}
+    for _, timer in ipairs(work) do if timer[1] == 30 then timer[2]() end end
+    equal(ns.Palette.lastLayout, "hidden: no available actions", toc .. ": meal expiry clears icon without text or false success")
     time = 110
     -- Exercise the actual icon widget and cooldown event without an inventory scan.
     local frame = CreateFrame("Button")
@@ -801,6 +788,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     ns.KnownSelfBuffs, ns.Tracking.Entries = function() return {} end, function() return {} end
     ns.CONSUMABLE_ORDER = {}
     ns.Readiness.lastEntry = { kind = "spell", spellID = 1259705, name = "Read Leyline", resourceRecovery = true, icon = 1 }
+    ns.Readiness.lastEntryAt = time
     local point, relative, anchor, x, y = ns.Palette.frame:GetPoint()
     ns.Palette:Refresh()
     equal(ns.Palette.hasActions, true, toc .. ": cooldown keeps an icon in the grid")

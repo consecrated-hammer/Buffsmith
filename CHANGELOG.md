@@ -5,6 +5,43 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-11-09
+
+### Added
+
+- **A fresh coat of paint.** Settings match the other Consecrated Hammer
+  addons: a cleaner header, two columns, proper switches, an icon on every
+  heading and a Window scale slider. The forge got a spring clean; the anvil
+  is still where you left it.
+- **What's new.** A page under REFERENCE with every release's highlights. A
+  yellow "!" on it means there's something you haven't read.
+- **Support links.** CurseForge, Discord and Buy me a coffee in the footer.
+  Hide them on Visibility.
+
+### Changed
+
+- **Preview on screen** is now a button at the top of Appearance, Buffs and
+  Consumables instead of on the side rail.
+- **Key Bindings** uses the shared bindings page: click the Buff trigger,
+  press a key, done.
+
+- While eating or drinking, the food-reminder slot becomes a single quiet
+  progress icon with readable duration timing and no alternative-food flyout.
+  A satisfied food buff hides the slot, including while still eating. Stopping
+  early restores the normal reminder. No persistent Well Fed icon or tick.
+  Meal progress is informational and does not interrupt eating.
+
+### Fixed
+
+- An unrelated global cooldown, including changing druid forms, no longer brings
+  back the last used buff's informational cooldown icon after that buff has
+  already been applied. Real cooldowns and genuinely missing buffs still show.
+- **Read Leyline works in a group.** The game hides your health and mana from
+  addons while you're grouped, so the reminder never fired. Now the game itself
+  fades the icon in when you drop below the threshold. In a group it's a
+  heads-up only: no click, tooltip, cooldown sweep or Buff key, so it can't
+  fire off at full mana or give itself away.
+
 ## [1.9.0] - 2026-11-08
 
 ### Added

@@ -57,6 +57,34 @@ function Readiness:Cooldown(entry)
         ends = start + duration, remaining = math.max(0, start + duration - time) }
 end
 
+-- A spell's cooldown API also reports later unrelated global cooldowns.
+-- Retained icons may only follow the cooldown started by their own successful cast.
+function Readiness:LastCooldown()
+    local entry = self.lastEntry
+    local cd = self:Cooldown(entry)
+    if not cd then return nil end
+    if entry and entry.kind == "spell" then
+        if type(self.lastEntryAt) ~= "number" or cd.start > self.lastEntryAt + 0.05 then return nil end
+    end
+    return cd
+end
+
+function Readiness:NoteSpellCast(spellID)
+    spellID = ns.Plain(spellID)
+    local entry = self.lastEntry
+    if type(spellID) ~= "number" or not entry or entry.kind ~= "spell" then return end
+    local matches = spellID == (entry.castID or entry.spellID)
+    -- Ranked clients can cast a later rank than the logical catalogue ID.
+    -- Resolve only readable spell metadata, never infer from a party cast.
+    if not matches and not ns.IsCombatLocked() and type(entry.name) == "string" then
+        local info = plain(C_Spell and C_Spell.GetSpellInfo, spellID)
+        local name = type(info) == "table" and ns.Plain(info.name)
+        if not name then name = plain(GetSpellInfo, spellID) end
+        matches = type(name) == "string" and name == entry.name
+    end
+    if matches then self.lastEntryAt = now() end
+end
+
 function Readiness:CastStatus(channel)
     local fn
     if channel then fn = UnitChannelInfo else fn = UnitCastingInfo end
@@ -89,7 +117,7 @@ function Readiness:Status()
 end
 
 function Readiness:Signature(status)
-    local cd = self:Cooldown(self.lastEntry)
+    local cd = self:LastCooldown()
     local endTime = cd and cd.enabled and cd.remaining > 0 and cd.ends or nil
     return (status and (status.kind .. ":" .. tostring(status.ends)) or "none") .. ":" .. tostring(endTime)
 end
@@ -111,6 +139,7 @@ end
 
 function Readiness:Check(entry)
     if not entry or entry.kind == "none" or entry.kind == "notice" then return { allow = true } end
+    if entry.displayOnly then return { allow = false, reason = "aura display only" } end
     if entry.cooldownOnly then return { allow = false, reason = "cooldown display only" } end
     local time = now()
     if entry.kind == "spell" and not ns.Actions:CanBuffUnit(entry.unit) then
@@ -160,7 +189,13 @@ function Readiness:Press(button, entry)
         result.key = self:Key(entry)
     end
     self.lastStatus = result.reason or "no action"
-    if entry and not entry.cooldownOnly and entry.kind ~= "none" and entry.kind ~= "notice" then self.lastEntry = result.entry end
+    if entry and not entry.displayOnly and not entry.cooldownOnly and entry.kind ~= "none" and entry.kind ~= "notice" then
+        local same = self:Key(self.lastEntry) == result.key
+        if result.allow or same then
+            if not same then self.lastEntryAt = nil end
+            self.lastEntry = result.entry
+        end
+    end
     if not result.allow then
         button:SetAttribute("type1", nil)
         button.buffsmithReadinessDisarmed = true

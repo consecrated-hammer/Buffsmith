@@ -36,6 +36,11 @@ local function button(parent, small)
     frame:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
     frame.icon = frame:CreateTexture(nil, "ARTWORK")
     frame.icon:SetAllPoints()
+    -- Second copy for faded recovery reminders: health fades one, mana the
+    -- other, so either resource running low shows the icon.
+    frame.secretIcon = frame:CreateTexture(nil, "ARTWORK", nil, 1)
+    frame.secretIcon:SetAllPoints()
+    frame.secretIcon:Hide()
     frame.text = frame:CreateFontString(nil, "ARTWORK", small and "GameFontHighlightSmall" or "GameFontHighlight")
     frame.text:Hide()
     frame.cooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate")
@@ -56,7 +61,11 @@ local function button(parent, small)
             local name = recipientName(entry)
             GameTooltip:AddLine(name and ("Cast on: " .. name) or "Recipient unavailable.", 0.8, 0.8, 0.8, true)
         end
-        if entry.cooldownOnly then
+        if entry.displayOnly then
+            GameTooltip:AddLine("Eating or drinking. Casts are paused.", 0.8, 0.8, 0.8, true)
+            GameTooltip:AddLine("Shows this aura's remaining duration. Casting waits until all eating or drinking ends.", 0.7, 0.7, 0.7, true)
+            GameTooltip:AddLine("Informational aura icon. Clicking does nothing.", 0.7, 0.7, 0.7, true)
+        elseif entry.cooldownOnly then
             GameTooltip:AddLine("On cooldown. This icon cannot cast.", 0.8, 0.8, 0.8, true)
         elseif entry.kind == "notice" then
             GameTooltip:AddLine("Party coverage reminder — informational only.", 0.7, 0.7, 0.7)
@@ -86,11 +95,11 @@ local function button(parent, small)
         if entry.outOfRange then
             GameTooltip:AddLine("Out of range.", 1, 0.35, 0.35)
         end
-        if ns.Actions.eatingPaused and entry.kind ~= "notice" then
+        if ns.Actions.eatingPaused and entry.kind ~= "notice" and not entry.displayOnly then
             GameTooltip:AddLine(ns.Actions.EATING_NOTICE, 1, 0.82, 0)
         end
-        if not entry.cooldownOnly then GameTooltip:AddLine("Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7) end
-        if entry.kind ~= "notice" and not entry.cooldownOnly then
+        if not entry.cooldownOnly and not entry.displayOnly then GameTooltip:AddLine("Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7) end
+        if entry.kind ~= "notice" and not entry.cooldownOnly and not entry.displayOnly then
             GameTooltip:AddLine("Shift-right-click: ignore.", 0.7, 0.7, 0.7)
         end
         if self.buffsmithFlyout and not self.buffsmithSmall then
@@ -105,7 +114,7 @@ local function button(parent, small)
     frame:SetScript("PreClick", function(self, mouseButton)
         local entry = self.buffsmithEntry
         self.buffsmithPress, self.buffsmithAttempt = nil, nil
-        if entry and entry.cooldownOnly then return end
+        if entry and (entry.cooldownOnly or entry.displayOnly) then return end
         if mouseButton == "LeftButton" and entry and entry.kind ~= "notice" and ns.Readiness then
             self.buffsmithPress = ns.Readiness:Press(self, entry)
             if not self.buffsmithPress.allow then return end
@@ -120,7 +129,7 @@ local function button(parent, small)
     end)
     frame:SetScript("PostClick", function(self, mouseButton)
         local entry = self.buffsmithEntry
-        if entry and entry.cooldownOnly then return end
+        if entry and (entry.cooldownOnly or entry.displayOnly) then return end
         if entry and mouseButton == "RightButton" then
             if IsShiftKeyDown and IsShiftKeyDown() then
                 ns.Actions:Ignore(entry)
@@ -184,13 +193,70 @@ local function applyVisualState(buttonFrame, entry)
     end
 end
 
+local curves = {}
+local function lowCurve(threshold)
+    if curves[threshold] then return curves[threshold] end
+    local ok, curve = pcall(C_CurveUtil.CreateCurve)
+    if not ok or not curve then return nil end
+    curve:SetType(Enum.LuaCurveType.Step)
+    -- Flat on both sides of the threshold, so even interpolated evaluation
+    -- gives fully shown or fully hidden, never a faint in-between.
+    curve:AddPoint(0, 1)
+    curve:AddPoint(math.max(0, threshold - 0.001), 1)
+    curve:AddPoint(threshold, 0)
+    curve:AddPoint(1, 0)
+    curves[threshold] = curve
+    return curve
+end
+
+-- The client evaluates the curve and hands back a secret alpha, which
+-- SetAlpha accepts without Lua ever reading the percentage.
+local function fade(texture, api, ...)
+    local ok = pcall(function(...) texture:SetAlpha(api(...)) end, ...)
+    if not ok then texture:SetAlpha(1) end
+end
+
+function Palette:ApplySecretAlpha(buttonFrame)
+    local entry = buttonFrame.buffsmithEntry
+    if not (entry and entry.secretRecovery) then
+        buttonFrame.icon:SetAlpha(1)
+        buttonFrame.secretIcon:Hide()
+        return
+    end
+    local curve = lowCurve(ns.Actions:Percent(entry) / 100)
+    if not curve then
+        buttonFrame.icon:SetAlpha(1)
+        buttonFrame.secretIcon:Hide()
+        return
+    end
+    local manaType = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
+    buttonFrame.secretIcon:SetTexture(entry.icon)
+    buttonFrame.secretIcon:SetDesaturated(buttonFrame.icon:IsDesaturated())
+    buttonFrame.secretIcon:Show()
+    fade(buttonFrame.icon, UnitHealthPercent, "player", false, curve)
+    fade(buttonFrame.secretIcon, UnitPowerPercent, "player", manaType, false, curve)
+end
+
+function Palette:RefreshSecretAlpha()
+    for _, buttonFrame in pairs(self.buttons) do
+        if buttonFrame.buffsmithEntry and buttonFrame.buffsmithEntry.secretRecovery and buttonFrame:IsShown() then
+            self:ApplySecretAlpha(buttonFrame)
+        end
+    end
+end
+
 local function show(buttonFrame, entry, x, y, size, visible)
     buttonFrame:ClearAllPoints(); buttonFrame:SetPoint("TOPLEFT", x, y)
     buttonFrame:SetSize(size, size)
     buttonFrame.icon:SetTexture(entry.icon)
+    buttonFrame:SetHighlightTexture((entry.displayOnly or entry.secretRecovery) and "" or "Interface\\Buttons\\ButtonHilight-Square", "ADD")
     buttonFrame.count:SetText(entry.count and tostring(entry.count) or "")
     applyVisualState(buttonFrame, entry)
     ns.Actions:Configure(buttonFrame, entry)
+    Palette:ApplySecretAlpha(buttonFrame)
+    -- A faded reminder can't tell when it's visible, so it never takes the
+    -- mouse: no hover, tooltip or click on an empty-looking slot.
+    buttonFrame:EnableMouse(not entry.secretRecovery)
     buttonFrame:SetShown(visible ~= false)
 end
 
@@ -270,29 +336,63 @@ function Palette:CooldownEntry()
     if entry.kind == "spell" and not ns.Actions:CanBuffUnit(entry.unit) then return nil end
     local key = ns.Readiness:Key(entry)
     if self.renderedActionKeys and self.renderedActionKeys[key] then return nil end
-    local cd = ns.Readiness:Cooldown(entry)
+    local cd = ns.Readiness:LastCooldown()
     if not cd or not cd.enabled or cd.remaining <= 0 then return nil end
+    if entry.kind == "item" and entry.category == "food" then
+        if ns.Actions.eatingPaused then return nil end
+        local food = ns.Inventory:CategoryStatus("food")
+        if food and food.state == "active" then return nil end
+    end
     local copy = {}
     for field, value in pairs(entry) do copy[field] = value end
     copy.cooldownOnly, copy.outOfRange = true, false
     return copy, key, cd
 end
 
+local function mealSignature()
+    local meal = ns.Actions.mealStatus
+    if not meal then return "none" end
+    return tostring(meal.active) .. ":" .. tostring(meal.ends) .. ":" .. tostring(meal.available)
+end
+
 function Palette:UpdateFeedback()
     if ns.IsCombatLocked() then return end
     local _, key = self:CooldownEntry()
-    if key ~= self.cooldownDisplayKey then self:Refresh() else self:RefreshStatus() end
+    if key ~= self.cooldownDisplayKey or mealSignature() ~= self.mealDisplaySignature then
+        self:Refresh()
+    else self:RefreshStatus() end
 end
 
 function Palette:Items()
     local items, mainEntries, subEntries, mainCategories = {}, {}, {}, {}
-    for _, entry in ipairs(ns.Actions:Entries()) do
-        items[#items + 1] = {}
-        mainEntries[#mainEntries + 1] = entry
+    local actions = ns.Actions:Entries()
+    self.mealDisplaySignature = mealSignature()
+    local mealEntry = ns.Actions:MealEntries()[1]
+    local mealDeadline = mealEntry and mealEntry.auraEnds
+    if type(mealDeadline) ~= "number" or not GetTime or mealDeadline <= GetTime() then mealDeadline = nil end
+    if mealDeadline ~= self.mealWakeAt then
+        self.mealWakeAt = mealDeadline
+        if mealDeadline then
+            C_Timer.After(math.max(0.05, mealDeadline - GetTime()), function()
+                if self.mealWakeAt ~= mealDeadline then return end
+                self.mealWakeAt = nil
+                if not ns.IsCombatLocked() then self:Refresh() end
+            end)
+        end
+    end
+    local faded
+    for _, entry in ipairs(actions) do
+        if entry.secretRecovery then faded = entry else
+            items[#items + 1] = {}
+            mainEntries[#mainEntries + 1] = entry
+        end
     end
     for _, category in ipairs(ns.CONSUMABLE_ORDER) do
-        local choices = ns.Actions:VisibleChoices(category)
-        if #choices > 0 then
+        local choices = category == "food" and mealEntry and {} or ns.Actions:VisibleChoices(category)
+        if category == "food" and mealEntry then
+            items[#items + 1] = {}
+            mainEntries[#mainEntries + 1] = mealEntry
+        elseif #choices > 0 then
             local entry = choices[ns.Actions:Preferred(category, choices)]
             mainEntries[#mainEntries + 1] = entry
             mainCategories[#mainEntries] = category
@@ -324,6 +424,12 @@ function Palette:Items()
             end)
         end
     else self.cooldownWakeAt = nil end
+    -- Last, so its slot leaves no visible gap while the client keeps it faded.
+    if faded then
+        items[#items + 1] = {}
+        mainEntries[#mainEntries + 1] = faded
+        self.renderedActionKeys[ns.Readiness:Key(faded)] = true
+    end
     return items, mainEntries, subEntries, mainCategories
 end
 
@@ -340,7 +446,23 @@ function Palette:RefreshCooldowns()
     if ns.IsCombatLocked() or not ns.Readiness then return end
     for _, frame in pairs(self.buttons) do
         if frame:IsShown() then
-            local cd = ns.Readiness:Cooldown(frame.buffsmithEntry)
+            local entry = frame.buffsmithEntry
+            local cd = ns.Readiness:Cooldown(entry)
+            if entry and entry.cooldownOnly then
+                cd = ns.Readiness:Key(entry) == ns.Readiness:Key(ns.Readiness.lastEntry)
+                    and ns.Readiness:LastCooldown() or nil
+            end
+            if frame.cooldown.SetReverse then frame.cooldown:SetReverse(entry and entry.displayOnly == true) end
+            if entry and entry.displayOnly then
+                local finish, duration = entry.auraEnds, entry.auraDuration
+                if type(finish) == "number" and finish == finish and finish < math.huge
+                    and type(duration) == "number" and duration == duration and duration > 0 and duration < math.huge
+                    and GetTime and finish > GetTime() then
+                    cd = { enabled = true, remaining = finish - GetTime(), start = finish - duration, duration = duration, rate = 1 }
+                end
+            end
+            -- A faded reminder may be invisible; a sweep would give it away.
+            if entry and entry.secretRecovery then cd = nil end
             if cd and cd.enabled and cd.remaining > 0 then
                 frame.cooldown:SetCooldown(cd.start, cd.duration, cd.rate)
                 frame.cooldown:Show()
@@ -379,6 +501,7 @@ function Palette:PrepareStatus()
     end
     self.statusState = ns.Readiness:Status()
     ns.Readiness.feedbackSignature = ns.Readiness:Signature(self.statusState)
+    if self.statusState and self.statusState.kind == "meal" then self.statusState = nil end
     self.statusExpired = nil
     self.statusText:SetText(statusText(self.statusState))
     self.statusText:SetShown(self.statusState ~= nil)
@@ -417,6 +540,11 @@ function Palette:Refresh()
     end
     local items, mainEntries, subEntries, mainCategories = self:Items()
     self:RecordRecovery(mainEntries)
+    -- Only a faded reminder on the bar: nothing visible, so no handle either.
+    self.onlyFaded = #mainEntries > 0
+    for _, entry in ipairs(mainEntries) do
+        if not entry.secretRecovery then self.onlyFaded = false; break end
+    end
     self.hasActions = #items > 0
     local hasStatus = self:PrepareStatus()
     ns.Actions:UpdateTargetRangeChecks(mainEntries)

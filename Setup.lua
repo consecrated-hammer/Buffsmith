@@ -70,6 +70,48 @@ local function bagSummary()
     return table.concat(parts, ", ")
 end
 
+-- Highlights for HammerCore's What's new page, newest first. Every
+-- CurseForge release gets an entry, fixes included (Kevin, 2026-11-09);
+-- HammerCore's tools/whatsnew_check.py fails the release without one. A
+-- `page` adds a link to that settings page.
+local WHATS_NEW = {
+    { version = "1.10.0", date = "2026-11-09", items = {
+        { title = "A fresh coat of paint", text = "Settings got a new look: two columns, switches, icons on every heading, and this What's new page.",
+            kind = "improved" },
+        { title = "Key bindings", text = "The Buff trigger sits on the same tidy bindings page as other Consecrated Hammer addons.",
+            kind = "improved", page = "Key Bindings" },
+        { title = "Preview on screen", text = "Moved to a button at the top of Appearance, Buffs and Consumables.",
+            kind = "improved", page = "Appearance" },
+        { title = "Support links", text = "CurseForge, Discord and Buy me a coffee sit at the bottom of the settings window. Hide them on Visibility.",
+            kind = "improved", page = "Visibility" },
+        { title = "Meal progress", text = "While eating or drinking, the food slot becomes one quiet progress icon.",
+            kind = "improved", page = "Consumables" },
+        { title = "Read Leyline in a group", text = "The icon now fades in when you're low, even grouped. In a group it's a heads-up only: no click or key.",
+            kind = "fix", page = "Buffs" },
+        { title = "Cooldown icon", text = "A druid form change no longer brings back the last buff's cooldown icon.", kind = "fix" },
+    } },
+    -- History: written after the fact for releases from before What's new.
+    { version = "1.9.0", date = "2026-11-08", history = true, items = {
+        "Nameplates help find who buffed you, so more thank-yous reach the right player.",
+        "Hunters get reminders for every aspect they know.",
+        "Food comes back properly after a temporary use restriction.",
+    } },
+    { version = "1.8.0", date = "2026-11-07", history = true, items = {
+        "Skip PvP-flagged players while you're unflagged, on by default.",
+        "Cooldown sweeps on bar icons, and a status line while casting or eating.",
+    } },
+    { version = "1.7.0", date = "2026-11-07", history = true, items = {
+        { text = "Read Leyline reminds you when health or mana runs low.", page = "Buffs" },
+    } },
+    { version = "1.6.0", date = "2026-11-06", history = true, items = {
+        "A mouse-wheel Buff trigger can keep zooming the camera too.",
+        "Reminders pause on flight paths.",
+    } },
+    { version = "1.0.0", date = "2026-09-27", history = true, items = {
+        "Tracking reminders, and a Thank You emote when the caster is unknown.",
+    } },
+}
+
 HC:Init({
     name = "Buffsmith",
     command = "buffsmith",
@@ -90,11 +132,6 @@ HC:Init({
         rightClick = function() setHandle(not ns.db.showHandle) end,
         rightClickLabel = "show or hide the drag handle",
     },
-    railButton = {
-        label = function() return ns.Preview:IsShown() and "Hide preview" or "Preview on screen" end,
-        run = function() ns.Preview:Toggle() end,
-        active = function() return ns.Preview:IsShown() end,
-    },
     onSettingsHidden = function() ns.Preview:Hide() end,
     toggle = { help = "Show or hide the bar", run = function()
         ns.Set("visibilityMode", ns.db.visibilityMode == "NEVER" and "ALWAYS" or "NEVER")
@@ -111,6 +148,7 @@ HC:Init({
         }, "\n")
     end,
     diagnostics = function() return ns.Diagnostics:Report() end,
+    whatsNew = WHATS_NEW,
     about = {
         note = "FROM THE FORGE",
         tips = anvilLines,
@@ -118,6 +156,8 @@ HC:Init({
     },
 })
 
+HC.Commands:Add({ name = "leyline", section = "Diagnostics", help = "Explain why Read Leyline is or isn't on the bar",
+    run = function() ns.Actions:DebugRecovery() end })
 HC.Commands:AddAction({ section = "Bar", usage = "Left-click an icon", help = "Use that buff or item" })
 HC.Commands:AddAction({ section = "Bar", usage = "Right-click an icon", help = "Dismiss it until you change zones" })
 HC.Commands:AddAction({ section = "Bar", usage = "Shift-right-click an icon", help = "Ignore it; restore on Ignored" })
@@ -127,7 +167,7 @@ HC.Commands:AddAction({ section = "Bar", usage = "Drag the handle", help = "Move
 HC.Commands:Add({ name = "preview", section = "Bar", help = "Show or hide the on-screen preview",
     run = function()
         ns.Preview:Toggle()
-        HC.Settings:RefreshRail()
+        if HC.Settings.RefreshHeaderAction then HC.Settings:RefreshHeaderAction() end
     end })
 HC.Commands:Add({ name = "scan", section = "Bar", help = "Rescan your bags for consumables",
     run = function()

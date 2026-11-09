@@ -309,6 +309,12 @@ local function eatingAuraNames()
     return eatingNames
 end
 
+function Actions:IsMealAura(aura)
+    local id = ns.Plain(aura.spellId) or ns.Plain(aura.spellID)
+    for _, knownID in ipairs(EATING_SPELLS) do if id == knownID then return true end end
+    return eatingAuraNames()[ns.Plain(aura.name)] == true
+end
+
 -- Shown in the middle of the screen, like the game's own "can't do that"
 -- errors, when a click or the trigger is ignored mid-meal.
 Actions.EATING_NOTICE = "Waits until you finish eating or drinking."
@@ -325,17 +331,22 @@ function Actions:MealStatus(cached)
     end
     local getter = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
     if not getter or ns.IsCombatLocked() then return { active = false, available = false } end
-    local names, active, finish, unknown, available = eatingAuraNames(), false, nil, false, true
+    local active, finish, unknown, available = false, nil, false, true
+    local meals = {}
     for index = 1, 128 do
         local ok, aura = pcall(getter, "player", index, "HELPFUL")
         if not ok or ns.IsSecret(aura) then unknown, available = true, false; break end
         if not aura then break end
-        if names[ns.Plain(aura.name)] then
+        if self:IsMealAura(aura) then
             active = true
+            local meal = { name = ns.Plain(aura.name), icon = ns.Plain(aura.icon) or ns.Plain(aura.iconFileID),
+                spellID = ns.Plain(aura.spellId) }
+            meals[#meals + 1] = meal
             local expiration, duration = ns.Plain(aura.expirationTime), ns.Plain(aura.duration)
             if type(expiration) == "number" and expiration == expiration and expiration > 0 and expiration < math.huge
                 and type(duration) == "number" and duration == duration and duration > 0 and duration < math.huge then
                 finish = math.max(finish or 0, expiration)
+                meal.ends, meal.duration = expiration, duration
             else unknown = true end
         end
     end
@@ -343,8 +354,24 @@ function Actions:MealStatus(cached)
     if GetTime then ok, time = pcall(GetTime) end
     time = ok and ns.Plain(time)
     if unknown or not finish or type(time) ~= "number" or finish <= time then finish = nil end
-    self.mealStatus = { active = active, ends = finish, available = available }
+    self.mealStatus = { active = active, ends = finish, available = available, auras = meals }
     return self.mealStatus
+end
+
+-- One informational progress entry replaces the food reminder while eating.
+-- A satisfied food benefit hides it; active buffs are never persistent icons.
+function Actions:MealEntries()
+    if ns.IsCombatLocked() or playerIsDead() or playerOnTaxi() or self:IsRestedPaused()
+        or (ns.db.categories and ns.db.categories.food == false) then return {} end
+    local meal = self:MealStatus(true)
+    if not meal.active then return {} end
+    local food = ns.Inventory and ns.Inventory:CategoryStatus("food")
+    if food and not shouldShow({ kind = "item", category = "food" }, food) then return {} end
+    local aura = meal.auras and meal.auras[1]
+    if not aura then return {} end
+    return { { kind = "meal", displayOnly = true, name = type(aura.name) == "string" and aura.name or "Food / Drink",
+        icon = aura.icon or 134062, spellID = aura.spellID,
+        auraEnds = aura.ends, auraDuration = aura.duration } }
 end
 
 function Actions:IsEating()
@@ -361,6 +388,22 @@ local function resourceValue(api, ...)
     end
 end
 
+local function rawSecret(api, ...)
+    if type(api) ~= "function" then return false end
+    local ok, value = pcall(api, ...)
+    return ok and ns.IsSecret(value) or false
+end
+
+-- Grouped on WoW Forever, current health and mana are secret: Lua can show
+-- them but never compare them. The client can still turn a percentage into
+-- an icon alpha through a step curve, so the bar can carry a ready reminder
+-- that only becomes visible when a resource is actually low.
+function Actions:CanFadeRecovery()
+    return type(C_CurveUtil) == "table" and type(C_CurveUtil.CreateCurve) == "function"
+        and type(Enum) == "table" and type(Enum.LuaCurveType) == "table"
+        and type(UnitHealthPercent) == "function" and type(UnitPowerPercent) == "function"
+end
+
 function Actions:RecoveryStatus(entry)
     if ns.IsCombatLocked() then return false, "combat" end
     local threshold = self:Percent(entry) / 100
@@ -369,25 +412,44 @@ function Actions:RecoveryStatus(entry)
     local mana, maxMana = resourceValue(UnitPower, "player", manaType), resourceValue(UnitPowerMax, "player", manaType)
     local healthLow = health and maxHealth and maxHealth > 0 and health / maxHealth < threshold
     local manaLow = mana and maxMana and maxMana > 0 and mana / maxMana < threshold
-    if not healthLow and not manaLow then return false, "resources sufficient or unreadable" end
+    local hidden = false
+    if not healthLow and not manaLow then
+        hidden = (rawSecret(UnitHealth, "player") or rawSecret(UnitPower, "player", manaType))
+            and self:CanFadeRecovery()
+        if not hidden then return false, "resources sufficient or unreadable" end
+    end
 
-    local start, duration, enabled, rate
+    local reason = hidden and "hidden resources" or healthLow and "low health" or "low mana"
+    local start, duration, enabled, rate, active, onGCD
     local getter = C_Spell and C_Spell.GetSpellCooldown
     if type(getter) == "function" then
         local ok, info = pcall(getter, entry.castID or entry.spellID)
         if not ok or ns.IsSecret(info) or type(info) ~= "table" then return false, "cooldown unknown" end
-        if ns.IsSecret(info.modRate) then return false, "cooldown unknown" end
-        start, duration, enabled, rate = ns.Plain(info.startTime), ns.Plain(info.duration), ns.Plain(info.isEnabled), ns.Plain(info.modRate)
+        if ns.IsSecret(info.isEnabled) or ns.IsSecret(info.modRate) then return false, "cooldown unknown" end
+        start, duration, enabled = ns.Plain(info.startTime), ns.Plain(info.duration), info.isEnabled
+        rate = ns.Plain(info.modRate)
+        if not (ns.IsSecret(info.isActive) or ns.IsSecret(info.isOnGCD)) then
+            active, onGCD = info.isActive, info.isOnGCD
+        end
     elseif type(GetSpellCooldown) == "function" then
         local ok, a, b, c, d = pcall(GetSpellCooldown, entry.castID or entry.spellID)
-        if not ok or ns.IsSecret(d) then return false, "cooldown unknown" end
-        start, duration, enabled, rate = ns.Plain(a), ns.Plain(b), ns.Plain(c), ns.Plain(d)
+        if not ok or ns.IsSecret(d) or ns.IsSecret(c) then return false, "cooldown unknown" end
+        start, duration, enabled, rate = ns.Plain(a), ns.Plain(b), c, ns.Plain(d)
     else
         return false, "cooldown unknown"
     end
-    if enabled ~= true and enabled ~= 1 then return false, "cooldown disabled or unreadable" end
+    -- Only an explicit "disabled" counts: WoW Forever leaves isEnabled out,
+    -- which used to read as unreadable and hid the reminder for good.
+    if enabled == false or enabled == 0 then return false, "cooldown disabled" end
+    -- The client's own flags come first, as in Salve's cooldown icons: not
+    -- active, or only the global cooldown, is ready.
+    if active == false or (active == true and onGCD == true) then return true, reason end
     if type(start) ~= "number" or type(duration) ~= "number" or start ~= start or duration ~= duration
-        or start < 0 or duration < 0 or start == math.huge or duration == math.huge then return false, "cooldown unknown" end
+        or start < 0 or duration < 0 or start == math.huge or duration == math.huge then
+        -- Known to be cooling but not for how long: look again shortly.
+        if active == true then return false, "cooldown", 5 end
+        return false, "cooldown unknown"
+    end
     if duration > 0 then
         local now = resourceValue(GetTime)
         rate = rate == nil and 1 or rate
@@ -399,7 +461,7 @@ function Actions:RecoveryStatus(entry)
             return false, "cooldown", remaining
         end
     end
-    return true, healthLow and "low health" or "low mana"
+    return true, reason
 end
 
 -- Resource events are frequent. Rebuild secure buttons only when this
@@ -447,6 +509,7 @@ function Actions:Entries()
         if entry.resourceRecovery then
             local remaining
             display, state, remaining = self:RecoveryStatus(entry)
+            entry.secretRecovery = display and state == "hidden resources" or nil
             if remaining and not self:IsSuppressed(entry) then
                 self.nextReminderDelay = math.min(self.nextReminderDelay or remaining, remaining)
             end
@@ -861,7 +924,10 @@ end
 function Actions:BindingEntries()
     local entries, displayed = {}, self:Entries()
     for _, entry in ipairs(displayed) do
-        if entry.kind == "spell" or entry.kind == "item" then entries[#entries + 1] = entry end
+        -- A faded recovery reminder may be invisible; the key must not cast it.
+        if (entry.kind == "spell" or entry.kind == "item") and not entry.secretRecovery then
+            entries[#entries + 1] = entry
+        end
     end
     for _, category in ipairs(ns.CONSUMABLE_ORDER) do
         local choices = self:VisibleChoices(category)
@@ -945,7 +1011,7 @@ function Actions:Configure(button, entry)
     button:SetAttribute("type", nil); button:SetAttribute("spell", nil); button:SetAttribute("item", nil)
     button:SetAttribute("target-slot", nil)
     button:SetAttribute("unit", entry.unit or "player")
-    if entry.cooldownOnly or (self.eatingPaused and entry.kind ~= "none") then
+    if entry.displayOnly or entry.cooldownOnly or (self.eatingPaused and entry.kind ~= "none") then
         button.buffsmithEntry = entry
         return false
     elseif entry.kind == "spell" then
@@ -971,4 +1037,99 @@ end
 function Actions:Refresh()
     if ns.IsCombatLocked() then return false end
     return true
+end
+
+-- /buffsmith leyline: every check behind the Read Leyline reminder, printed
+-- and kept in saved settings (lastRecoveryDebug) so it can be read after a
+-- reload.  Read-only: it changes nothing.
+function Actions:DebugRecovery()
+    local lines = {}
+    local function show(value)
+        if ns.IsSecret(value) then return "secret" end
+        return tostring(value)
+    end
+    local function add(text) lines[#lines + 1] = text end
+    add("client=" .. tostring(ns.TARGET) .. " combatLocked=" .. show(ns.IsCombatLocked()))
+    local spellID = ns.RECOVERY_SPELLS and ns.RECOVERY_SPELLS[1] and ns.RECOVERY_SPELLS[1].spellID
+    add("spellID=" .. show(spellID))
+    if spellID then
+        if C_SpellBook and C_SpellBook.IsSpellKnown then
+            local ok, v = pcall(C_SpellBook.IsSpellKnown, spellID, Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player or 0)
+            add("C_SpellBook.IsSpellKnown=" .. (ok and show(v) or "error"))
+        end
+        if IsPlayerSpell then local ok, v = pcall(IsPlayerSpell, spellID); add("IsPlayerSpell=" .. (ok and show(v) or "error")) end
+        if IsSpellKnown then local ok, v = pcall(IsSpellKnown, spellID); add("IsSpellKnown=" .. (ok and show(v) or "error")) end
+        if C_Spell and C_Spell.GetSpellName then local ok, v = pcall(C_Spell.GetSpellName, spellID); add("name=" .. (ok and show(v) or "error")) end
+    end
+    if ns.ResetSpellbook then ns.ResetSpellbook() end
+    local entry = ns.KnownRecoveryEntry and ns.KnownRecoveryEntry()
+    add("knownEntry=" .. (entry and ("castID " .. show(entry.castID)) or "nil"))
+    local probe = {}
+    for _, line in ipairs(ns.lastSelfBuffProbe or {}) do
+        if line:find("Leyline", 1, true) then probe[#probe + 1] = line end
+    end
+    add("candidateProbe=" .. (#probe > 0 and table.concat(probe, ", ") or "none"))
+    local manaType = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
+    add(("health=%s/%s mana=%s/%s manaType=%s"):format(show(resourceValue(UnitHealth, "player")),
+        show(resourceValue(UnitHealthMax, "player")), show(resourceValue(UnitPower, "player", manaType)),
+        show(resourceValue(UnitPowerMax, "player", manaType)), show(manaType)))
+    local function raw(api, ...)
+        if type(api) ~= "function" then return "missing" end
+        local ok, value = pcall(api, ...)
+        return ok and show(value) or "error"
+    end
+    add(("raw health=%s/%s mana=%s/%s powerType=%s inGroup=%s"):format(raw(UnitHealth, "player"),
+        raw(UnitHealthMax, "player"), raw(UnitPower, "player", manaType), raw(UnitPowerMax, "player", manaType),
+        raw(UnitPowerType, "player"), raw(IsInGroup)))
+    if UnitPowerPercent then
+        add("UnitPowerPercent mana=" .. raw(UnitPowerPercent, "player", manaType, true,
+            CurveConstants and CurveConstants.ScaleTo100))
+    end
+    if entry then
+        add("threshold=" .. show(self:Percent(entry)) .. "%")
+        local id = entry.castID or entry.spellID
+        if C_Spell and C_Spell.GetSpellCooldown then
+            local ok, info = pcall(C_Spell.GetSpellCooldown, id)
+            if ok and type(info) == "table" then
+                local fields = {}
+                for _, key in ipairs({ "startTime", "duration", "isEnabled", "modRate", "isActive", "isOnGCD" }) do
+                    fields[#fields + 1] = key .. "=" .. show(info[key])
+                end
+                add("C_Spell.GetSpellCooldown: " .. table.concat(fields, " "))
+            else
+                add("C_Spell.GetSpellCooldown: " .. (ok and show(info) or "error"))
+            end
+        end
+        if GetSpellCooldown then
+            local ok, a, b, c, d = pcall(GetSpellCooldown, id)
+            add("GetSpellCooldown: " .. (ok and (show(a) .. " " .. show(b) .. " " .. show(c) .. " " .. show(d)) or "error"))
+        end
+        add("GetTime=" .. show(resourceValue(GetTime)))
+        local display, state, remaining = self:RecoveryStatus(entry)
+        add("RecoveryStatus=" .. show(display) .. " / " .. show(state) .. " / " .. show(remaining))
+        add("client fade=" .. (self:CanFadeRecovery() and "yes" or "no"))
+        add("excluded=" .. show(self:IsExcluded(entry)) .. " suppressed=" .. show(self:IsSuppressed(entry)))
+    end
+    add("rested=" .. show(self:IsRestedPaused()) .. " eating=" .. show(self:IsEating())
+        .. " dead=" .. show(playerIsDead()) .. " taxi=" .. show(playerOnTaxi()))
+    local inList = false
+    for _, known in ipairs(ns.KnownSelfBuffs and ns.KnownSelfBuffs() or {}) do
+        if known.resourceRecovery then inList = true end
+    end
+    add("inKnownSelfBuffs=" .. show(inList))
+    local onBar = false
+    for _, shown in ipairs(self:Entries()) do
+        if shown.resourceRecovery then onBar = true end
+    end
+    add("inEntries=" .. show(onBar) .. " auraProbe=" .. table.concat(ns.lastAuraProbe or {}, ", "))
+    if ns.db then ns.db.lastRecoveryDebug = lines end
+    -- Chat can't be copied, so the report opens in a copy box.
+    local copy = ns.HammerCore and ns.HammerCore.Copy
+    if copy and copy.Show then
+        copy:Show("Read Leyline check", table.concat(lines, "\n"), "Press Ctrl+C to copy, then paste it to Claude.")
+    else
+        ns.Print("Read Leyline check")
+        for _, line in ipairs(lines) do print("  " .. line) end
+    end
+    return lines
 end

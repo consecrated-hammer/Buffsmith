@@ -112,6 +112,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
     elseif event == "UI_ERROR_MESSAGE" then
         if ns.Actions:HandleAuraBounce(arg2) and not ns.IsCombatLocked() then refresh() end
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        if arg1 == "player" and ns.Readiness then ns.Readiness:NoteSpellCast(arg3) end
         if ns.Actions:FinishAttempt(arg3) then refresh() end
         if ns.Readiness then ns.Readiness:Feedback() end
     elseif event:match("^UNIT_SPELLCAST_") then
@@ -134,6 +135,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
             ns.Palette:RefreshCooldowns()
             if ns.Readiness then ns.Readiness:Feedback() end
         end
+        if arg1 == "player" and event ~= "SPELL_UPDATE_COOLDOWN" then ns.Palette:RefreshSecretAlpha() end
         local powerEvent = event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER"
         if (event == "SPELL_UPDATE_COOLDOWN" or arg1 == "player")
             and (not powerEvent or arg2 == nil or arg2 == "MANA") then ns.Actions:RefreshRecovery() end
@@ -146,7 +148,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
             or string.match(tostring(arg1), "^party%d+pet$") or string.match(tostring(arg1), "^party%d$") then refresh() end
     elseif event == "PLAYER_LEAVING_WORLD" then
         ns.Thanks:ZoneTransition(true)
-        if ns.Readiness then ns.Readiness.queueUntil, ns.Readiness.lastEntry = nil, nil end
+        if ns.Readiness then ns.Readiness.queueUntil, ns.Readiness.lastEntry, ns.Readiness.lastEntryAt = nil, nil, nil end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
         if event == "PLAYER_ENTERING_WORLD" or not ns.Thanks.loadingWorld then ns.Thanks:ZoneTransition(false) end
         ns.Actions:ResetDismissals()

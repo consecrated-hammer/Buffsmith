@@ -78,13 +78,19 @@ silencing every possible game error.
 
 Icons show native cooldown sweeps when timing is readable. If the last used
 action leaves the reminder list while cooling down, its icon stays as a
-non-casting cooldown display until the cooldown ends. This also applies to
+non-casting cooldown display until the cooldown ends. Later unrelated global
+cooldowns, including druid form changes, do not bring that old spell icon back. This also applies to
 Read Leyline; it does not put a cooling ability into the Buff trigger. Cooldowns
 use the icon sweep without a separate cooldown text row. A status line shows
 casting or channeling. Native queue timing stays internal and has no text row.
-Eating/drinking shows a pause
-indicator, with a countdown only when every detected meal aura has a readable
-expiry. The meal status can remain visible when there are no missing buffs.
+While eating or drinking, one informational aura icon replaces the food
+reminder in its usual slot. It has a duration sweep/countdown when readable,
+no action highlight and no alternative-food flyout. The normal food reminder
+returns if you stop before gaining the benefit; a satisfied food buff hides the
+slot even if you are still eating. There is no persistent Well Fed icon or tick.
+Meal progress can remain visible after consuming your last bag item. The Food
+category toggle controls this display. Clicking the progress icon does nothing,
+and casting stays paused until eating/drinking actually ends.
 Unrelated casts don't reveal an otherwise empty bar. Normal visibility, death,
 flight-path and rested-area exclusions apply. Recovery abilities such as Read
 Leyline are only actionable when ready; ready consumable alternatives keep their
@@ -143,7 +149,7 @@ logout. An accepted emote API call still needs an in-game delivery check.
 
 ## Getting started
 
-Install, then type `/buffsmith` (or `/bs`) for settings. **Preview on screen**, at the bottom of the settings list, draws a test bar where yours will sit, so you can place and size it without deliberately removing half your buffs first.
+Install, then type `/buffsmith` (or `/bs`) for settings. **Preview on screen**, at the top of Appearance, Buffs and Consumables, draws a test bar where yours will sit, so you can place and size it without deliberately removing half your buffs first.
 
 On the bar:
 
