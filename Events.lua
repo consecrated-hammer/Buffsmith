@@ -153,7 +153,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         if ns.db.categories.food then refresh() end
     elseif event == "PLAYER_LEAVING_WORLD" then
         ns.Thanks:ZoneTransition(true)
-        if ns.Readiness then ns.Readiness.queueUntil, ns.Readiness.lastEntry, ns.Readiness.lastEntryAt = nil, nil, nil end
+        if ns.Readiness then ns.Readiness.queueUntil, ns.Readiness.lastEntry, ns.Readiness.lastEntryAt, ns.Readiness.lastItemPressAt = nil, nil, nil, nil end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
         if event == "PLAYER_ENTERING_WORLD" or not ns.Thanks.loadingWorld then ns.Thanks:ZoneTransition(false) end
         ns.Actions:ResetDismissals()

@@ -65,6 +65,15 @@ function Readiness:LastCooldown()
     if not cd then return nil end
     if entry and entry.kind == "spell" then
         if type(self.lastEntryAt) ~= "number" or cd.start > self.lastEntryAt + 0.05 then return nil end
+    elseif entry and entry.kind == "item" then
+        -- An item's cooldown API also reports every later global cooldown,
+        -- such as a druid form change. A GCD-length one only counts if it
+        -- began right after the item was pressed; a real item cooldown
+        -- always does. An item that's left the bags never shows.
+        if cd.duration <= 1.5 and (type(self.lastItemPressAt) ~= "number"
+            or cd.start > self.lastItemPressAt + 1) then return nil end
+        local count = plain(C_Item and C_Item.GetItemCount or GetItemCount, entry.itemID)
+        if type(count) == "number" and count <= 0 then return nil end
     end
     return cd
 end
@@ -194,6 +203,7 @@ function Readiness:Press(button, entry)
         if result.allow or same then
             if not same then self.lastEntryAt = nil end
             self.lastEntry = result.entry
+            if result.allow and entry.kind == "item" then self.lastItemPressAt = now() end
         end
     end
     if not result.allow then

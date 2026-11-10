@@ -5,6 +5,15 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-11-10
+
+### Fixed
+
+- Used a scroll earlier? Shifting into cat form (or anything else on the
+  global cooldown) no longer brings its icon back from the dead for a second
+  and a half. Items now only keep their icon for their own cooldown, and
+  never once they've left your bags.
+
 ## [1.11.0] - 2026-11-10
 
 ### Changed

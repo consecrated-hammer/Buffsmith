@@ -170,4 +170,28 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     cooldown = { startTime = 183, duration = 1.5, isEnabled = true }
     equal(ns.Readiness:LastCooldown(), nil, "failed attempt cannot retain unrelated GCD")
 end
+-- Items: a later GCD (cat form) can't bring back a used scroll, and an item
+-- that's left the bags never shows. Its own GCD and real cooldowns still do.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local clock = 200
+    GetTime = function() return clock end
+    local itemCD, count = { 0, 0, 1 }, 1
+    C_Item = { GetItemCooldown = function() return itemCD[1], itemCD[2], itemCD[3] end,
+        GetItemCount = function() return count end }
+    local scroll = { kind = "item", itemID = 1180, name = "Scroll of Stamina", icon = 1 }
+    local button = ns.Palette:Acquire(97, false)
+    ns.Readiness.Check = function() return { allow = true } end
+    ns.Readiness:Press(button, scroll)
+    equal(ns.Readiness.lastEntry.itemID, 1180, toc .. ": the scroll is remembered")
+    clock = 200.2; itemCD = { 200.1, 1.5, 1 }
+    assert(ns.Readiness:LastCooldown(), toc .. ": the scroll's own GCD sweep shows")
+    clock = 230; itemCD = { 229.9, 1.5, 1 }
+    equal(ns.Readiness:LastCooldown(), nil, toc .. ": a later cat-form GCD doesn't bring the scroll back")
+    count = 0; itemCD = { 200.1, 120, 1 }
+    equal(ns.Readiness:LastCooldown(), nil, toc .. ": an item that's left the bags never shows")
+    count = 2
+    assert(ns.Readiness:LastCooldown(), toc .. ": a real item cooldown still shows")
+end
+
 io.write("Retained spell cooldown regression tests passed\n")

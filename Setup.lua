@@ -96,6 +96,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.11.1", date = "2026-11-10", items = {
+        { title = "No ghost scrolls", text = "A scroll or other item you used earlier no longer flashes back on the bar when you change form or cast something else.",
+            kind = "fix" },
+    } },
     { version = "1.11.0", date = "2026-11-10", items = {
         { title = "Minimap menu", text = "Right-click the minimap button to show or hide the bar or drag handle, rescan bags or open settings. Prefer straight to settings? Change it on Visibility.",
             kind = "improved", page = "Visibility" },
