@@ -2,7 +2,7 @@ local addonName, ns = ...
 local HC = ns.HammerCore
 
 -- Declares Buffsmith to HammerCore: commands, the shared verbs, the rail
--- preview, the minimap right-click, status, diagnostics and About content.
+-- preview, the minimap menu, status, diagnostics and About content.
 -- Everything here is read lazily, after saved variables exist.
 
 local anvilLines = {
@@ -52,14 +52,9 @@ local function setHandle(shown)
     HC.Print("drag handle " .. (shown and "shown" or "hidden"))
 end
 
-local function resetBarPosition()
-    ns.db.palettePoint = { "TOPLEFT", "CENTER", 0, -120 }
-    ns.db.paletteAnchorVersion = 1
-    if ns.Palette.frame then
-        ns.Palette.frame:ClearAllPoints()
-        ns.Palette.frame:SetPoint("TOPLEFT", UIParent, "CENTER", 0, -120)
-    end
-    ns.Preview:ApplyPosition()
+local function toggleBar()
+    ns.Set("visibilityMode", ns.db.visibilityMode == "NEVER" and "ALWAYS" or "NEVER")
+    HC.Print("bar " .. (ns.db.visibilityMode == "NEVER" and "hidden" or "shown"))
 end
 
 local function bagSummary()
@@ -70,22 +65,54 @@ local function bagSummary()
     return table.concat(parts, ", ")
 end
 
+local function scanBags()
+    ns.Inventory:Refresh()
+    HC.Print("bags scanned: " .. bagSummary())
+end
+
+-- Buffsmith's own items on the minimap right-click menu, under HammerCore's
+-- settings entry. Re-read on every open so the ticks match.
+local function minimapMenu()
+    return {
+        { text = "Show bar", checked = ns.db.visibilityMode ~= "NEVER", func = toggleBar },
+        { text = "Show drag handle", checked = ns.db.showHandle and true or false,
+            func = function() setHandle(not ns.db.showHandle) end },
+        { text = "Rescan bags", func = scanBags },
+    }
+end
+
+local function resetBarPosition()
+    ns.db.palettePoint = { "TOPLEFT", "CENTER", 0, -120 }
+    ns.db.paletteAnchorVersion = 1
+    if ns.Palette.frame then
+        ns.Palette.frame:ClearAllPoints()
+        ns.Palette.frame:SetPoint("TOPLEFT", UIParent, "CENTER", 0, -120)
+    end
+    ns.Preview:ApplyPosition()
+end
+
 -- Highlights for HammerCore's What's new page, newest first. Every
 -- CurseForge release gets an entry, fixes included (Kevin, 2026-11-09);
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.11.0", date = "2026-11-10", items = {
+        { title = "Minimap menu", text = "Right-click the minimap button to show or hide the bar or drag handle, rescan bags or open settings. Prefer straight to settings? Change it on Visibility.",
+            kind = "improved", page = "Visibility" },
+        { title = "Settings search", text = "Type in the box at the top of settings to find any setting and jump straight to it.",
+            kind = "new" },
+    } },
     { version = "1.10.3", date = "2026-11-09", items = {
         { title = "Food after stopping", text = "Food waits until you've stood still for 5 seconds, so a quick pause mid-run doesn't flash it up. Change the wait on Visibility.",
             kind = "improved", page = "Visibility" },
     } },
     { version = "1.10.2", date = "2026-11-09", items = {
         { title = "No snacking on the run", text = "Food hides while you're moving, since moving cancels the meal and still eats the food.",
-            kind = "fixed" },
+            kind = "fix" },
     } },
     { version = "1.10.1", date = "2026-11-09", items = {
         { title = "Bar stays put", text = "Move the bar on one character and it stays there on the rest, instead of drifting back to an old spot.",
-            kind = "fixed" },
+            kind = "fix" },
     } },
     { version = "1.10.0", date = "2026-11-09", items = {
         { title = "A fresh coat of paint", text = "Settings got a new look: two columns, switches, icons on every heading, and this What's new page.",
@@ -141,14 +168,10 @@ HC:Init({
     clientLabel = function() return ns.TARGET == "Camelot" and "WoW Forever" or "Retail" end,
     minimap = {
         icon = "Interface\\AddOns\\Buffsmith\\Textures\\BuffsmithMinimap",
-        rightClick = function() setHandle(not ns.db.showHandle) end,
-        rightClickLabel = "show or hide the drag handle",
+        menu = minimapMenu,
     },
     onSettingsHidden = function() ns.Preview:Hide() end,
-    toggle = { help = "Show or hide the bar", run = function()
-        ns.Set("visibilityMode", ns.db.visibilityMode == "NEVER" and "ALWAYS" or "NEVER")
-        HC.Print("bar " .. (ns.db.visibilityMode == "NEVER" and "hidden" or "shown"))
-    end },
+    toggle = { help = "Show or hide the bar", run = toggleBar },
     lock = { help = "Hide the drag handle", run = function() setHandle(false) end },
     unlock = { help = "Show the drag handle", run = function() setHandle(true) end },
     resetPosition = resetBarPosition,
@@ -182,7 +205,4 @@ HC.Commands:Add({ name = "preview", section = "Bar", help = "Show or hide the on
         if HC.Settings.RefreshHeaderAction then HC.Settings:RefreshHeaderAction() end
     end })
 HC.Commands:Add({ name = "scan", section = "Bar", help = "Rescan your bags for consumables",
-    run = function()
-        ns.Inventory:Refresh()
-        HC.Print("bags scanned: " .. bagSummary())
-    end })
+    run = scanBags })

@@ -121,6 +121,41 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(ns.db.showHandle, false, toc .. ": lock hides the handle")
     SlashCmdList.BUFFSMITH("unlock")
     equal(ns.db.showHandle, true, toc .. ": unlock shows it")
+
+    -- Minimap right-click: HammerCore's menu with Buffsmith's own items.
+    equal(HC.Minimap.RightClickMode(), "menu", toc .. ": minimap right-click opens the menu")
+    equal(HC.Minimap.RightClickLabel(), "menu", toc .. ": minimap tooltip says menu")
+    local function menuItem(text)
+        for _, item in ipairs(HC.Minimap:MenuItems()) do
+            if item.text == text then return item end
+        end
+    end
+    equal(menuItem("Buffsmith settings") ~= nil, true, toc .. ": menu leads with settings")
+    equal(menuItem("Show bar").checked, true, toc .. ": Show bar is ticked")
+    menuItem("Show bar").func()
+    equal(ns.db.visibilityMode, "NEVER", toc .. ": Show bar hides the bar")
+    equal(menuItem("Show bar").checked, false, toc .. ": Show bar unticks")
+    menuItem("Show bar").func()
+    equal(ns.db.visibilityMode, "ALWAYS", toc .. ": Show bar brings it back")
+    equal(menuItem("Show drag handle").checked, true, toc .. ": Show drag handle is ticked")
+    menuItem("Show drag handle").func()
+    equal(ns.db.showHandle, false, toc .. ": Show drag handle hides the handle")
+    menuItem("Show drag handle").func()
+    equal(ns.db.showHandle, true, toc .. ": Show drag handle shows it again")
+    menuItem("Rescan bags").func()
+    equal(wow.LastPrint():find("bags scanned", 1, true) ~= nil, true, toc .. ": Rescan bags scans")
+    HC.Minimap:RightClick()
+    equal(HC.Menu:IsShown(), true, toc .. ": right-click opens the menu")
+    HC.Menu:Close()
+    HC.Settings:Show("Visibility")
+    equal(wow.FindText("Minimap right-click") ~= nil, true, toc .. ": Visibility offers Minimap right-click")
+
+    -- Settings search finds Buffsmith's own rows.
+    local found = false
+    for _, match in ipairs(HC.Settings:Search("drag handle")) do
+        if match.label == "Show drag handle" then found = match.page end
+    end
+    equal(found ~= false, true, toc .. ": search finds Show drag handle")
     ns.db.palettePoint = { "TOP", "TOP", 5, 5 }
     SlashCmdList.BUFFSMITH("reset position")
     equal(ns.db.palettePoint[1], "TOPLEFT", toc .. ": reset position keeps fixed corner")

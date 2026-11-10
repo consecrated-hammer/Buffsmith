@@ -5,6 +5,21 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-11-10
+
+### Changed
+
+- Right-clicking the minimap button opens a little menu now: settings, Show
+  bar, Show drag handle and Rescan bags. It used to just flip the drag handle,
+  which was handy right up until you forgot that's what it did. Prefer
+  straight to settings? Set **Minimap right-click** on Visibility.
+
+### Added
+
+- A search box at the top of the settings window. Type a bit of a setting's
+  name and it takes you there. Turn it off with **Settings search** on
+  Visibility.
+
 ## [1.10.3] - 2026-11-09
 
 ### Changed

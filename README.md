@@ -157,6 +157,8 @@ On the bar:
 - **Right-click** to dismiss it until you change zones.
 - **Shift-right-click** to ignore it for good. Ignored buffs and consumables are listed on the **Ignored** page, where you can bring them back.
 
+Right-click the minimap button or the drag handle for a quick menu: settings, **Show bar**, **Show drag handle** and **Rescan bags**. If you'd rather it went straight to settings, change **Minimap right-click** on Visibility. The search box at the top of the settings window finds any setting by name.
+
 ## Commands
 
 | Command | What it does |

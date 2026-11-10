@@ -64,14 +64,22 @@ function Handle.Attach(parent, name, opts)
         if opts.onMoved then opts.onMoved() end
     end)
     frame:SetScript("OnClick", function(_, mouseButton)
-        if mouseButton == "RightButton" then ns.HC.Settings:Toggle() end
+        if mouseButton ~= "RightButton" then return end
+        local menu = ns.HC.Minimap
+        if menu and menu.RightClickMode and menu.RightClickMode() == "menu" then
+            menu:OpenMenu(frame)
+        else
+            ns.HC.Settings:Toggle()
+        end
     end)
     frame:SetScript("OnEnter", function(self)
         self:SetBackdropColor(unpack(HOVER))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(opts.title or "Buffsmith")
         GameTooltip:AddLine(opts.dragHint or "Drag: move the bar", 0.85, 0.85, 0.85)
-        GameTooltip:AddLine("Right-click: open settings", 0.85, 0.85, 0.85)
+        local menu = ns.HC.Minimap
+        local label = menu and menu.RightClickMode and menu.RightClickMode() == "menu" and "menu" or "open settings"
+        GameTooltip:AddLine("Right-click: " .. label, 0.85, 0.85, 0.85)
         GameTooltip:Show()
     end)
     frame:SetScript("OnLeave", function(self)
