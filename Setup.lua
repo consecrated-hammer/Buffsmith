@@ -96,6 +96,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.11.2", date = "2026-11-10", items = {
+        { title = "Quieter bar", text = "No more \"Casting\" line under the bar when you mount or cast something.",
+            kind = "fix" },
+    } },
     { version = "1.11.1", date = "2026-11-10", items = {
         { title = "No ghost scrolls", text = "A scroll or other item you used earlier no longer flashes back on the bar when you change form or cast something else.",
             kind = "fix" },

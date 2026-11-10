@@ -5,6 +5,14 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - 2026-11-10
+
+### Removed
+
+- The "Casting 1.2s" line under the bar is gone. It popped up whenever you
+  mounted or cast anything with a cast time while a reminder was showing,
+  and nobody needed a running commentary.
+
 ## [1.11.1] - 2026-11-10
 
 ### Fixed

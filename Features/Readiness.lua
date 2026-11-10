@@ -121,8 +121,7 @@ function Readiness:Status()
     local meal = ns.Actions:MealStatus(true)
     local eating = meal.active or (meal.available == false and ns.Actions.eatingPaused)
     if eating then return { kind = "meal", label = "Eating/drinking", ends = meal.ends } end
-    local cast = self:CastStatus(true) or self:CastStatus(false)
-    if cast and ((ns.Palette and ns.Palette.hasActions) or (self.lastEntry and self.lastEntry.name == cast.name)) then return cast end
+    -- No casting or channeling line: the bar never narrates casts.
 end
 
 function Readiness:Signature(status)

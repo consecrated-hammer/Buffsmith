@@ -268,7 +268,7 @@ HC.Settings:NewPage({ name = "Appearance", description = "Size, direction and th
         function() return ns.db.maxAlternatives end,
         function(value) ns.Set("maxAlternatives", value) end)
     _, y = UI.Check(panel, "Show drag handle",
-        "Drag the grip above the bar to move it. Right-click it to open settings.", y,
+        "Drag the grip above the bar to move it. Right-click it for the menu.", y,
         function() return ns.db.showHandle end,
         function(value)
             ns.db.showHandle = value

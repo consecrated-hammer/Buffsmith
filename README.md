@@ -81,8 +81,8 @@ action leaves the reminder list while cooling down, its icon stays as a
 non-casting cooldown display until the cooldown ends. Later unrelated global
 cooldowns, including druid form changes, do not bring that old spell icon back. This also applies to
 Read Leyline; it does not put a cooling ability into the Buff trigger. Cooldowns
-use the icon sweep without a separate cooldown text row. A status line shows
-casting or channeling. Native queue timing stays internal and has no text row.
+use the icon sweep without a separate cooldown text row. There's no casting
+or channeling line. Native queue timing stays internal and has no text row.
 While eating or drinking, one informational aura icon replaces the food
 reminder in its usual slot. It has a duration sweep/countdown when readable,
 no action highlight and no alternative-food flyout. The normal food reminder
