@@ -1,8 +1,8 @@
 ## Interface: 120105
 ## Title: Buffsmith
 ## Author: consecrated-hammer
-## Version: 1.11.2
-## X-ReleaseDate: 2026-11-10
+## Version: 1.12.0
+## X-ReleaseDate: 2026-11-11
 ## Notes: Out-of-combat self-buff and consumable bar.
 ## SavedVariables: BuffsmithDB
 ## LoadSavedVariablesFirst: 1

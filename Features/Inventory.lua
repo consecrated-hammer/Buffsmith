@@ -330,6 +330,36 @@ end
 
 Inventory.ItemInfo = itemInfo
 
+-- What an item does, for the bar tooltip. Food reads as its Well Fed buff
+-- ("Well fed: 25 Stamina for 1 hour."); anything else is its "Use:" line.
+-- Only read on hover, and cached once the item data has loaded.
+local USE_PREFIX = ITEM_SPELL_TRIGGER_ONUSE or "Use:"
+Inventory.effects = {}
+
+function Inventory:ItemEffect(itemID)
+    if type(itemID) ~= "number" then return nil end
+    if self.effects[itemID] then return self.effects[itemID] end
+    if not (C_TooltipInfo and C_TooltipInfo.GetItemByID) then return nil end
+    local ok, tooltip = pcall(C_TooltipInfo.GetItemByID, itemID)
+    if not ok or type(tooltip) ~= "table" or type(tooltip.lines) ~= "table" then return nil end
+    local effect
+    for _, line in ipairs(tooltip.lines) do
+        local text = ns.Plain(line.leftText)
+        if type(text) == "string" and string.sub(text, 1, #USE_PREFIX) == USE_PREFIX then
+            text = string.gsub(string.sub(text, #USE_PREFIX + 1), "^%s+", "")
+            local fed = string.match(text, "[Ww]ell [Ff]ed and gain (.-)%.?$")
+            if fed and fed ~= "" then
+                effect = "Well fed: " .. fed .. "."
+            elseif text ~= "" then
+                effect = text
+            end
+            break
+        end
+    end
+    if effect then self.effects[itemID] = effect end
+    return effect
+end
+
 function Inventory:Refresh()
     if ns.IsCombatLocked() then
         self.lastStatus = "deferred: combat lockdown"

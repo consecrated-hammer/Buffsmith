@@ -289,6 +289,9 @@ HC.Settings:NewPage({ name = "Tooltips", description = "Who a buff is for, and w
     _, y = UI.Check(panel, "Show spell descriptions", "Add Blizzard's static description for the offered spell. This can make the tooltip taller.", y,
         function() return ns.db.tooltipSpellDescriptions end,
         function(value) ns.Set("tooltipSpellDescriptions", value) end)
+    _, y = UI.Check(panel, "Show item effects", "Show what food, flasks and other bag items give you, such as the Well Fed buff.", y,
+        function() return ns.db.tooltipItemEffects end,
+        function(value) ns.Set("tooltipItemEffects", value) end)
     return y
 end)
 

@@ -5,6 +5,15 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-11-11
+
+### Added
+
+- Bar tooltips now tell you what you're about to eat. Hover food and you'll
+  see the Well Fed buff it gives (say, "Well fed: 12 Stamina and Spirit for
+  15 min."), and flasks, scrolls and other bag items show their effect too.
+  Turn it off with "Show item effects" on the Tooltips page.
+
 ## [1.11.2] - 2026-11-10
 
 ### Removed

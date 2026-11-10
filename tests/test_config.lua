@@ -20,6 +20,9 @@ BuffsmithDB = { showTooltip = "bad", tooltipSpellDescriptions = {} }
 ns.InitConfig()
 equal(ns.db.showTooltip, true, "invalid tooltip preference repaired")
 equal(ns.db.tooltipSpellDescriptions, false, "invalid description preference repaired")
+BuffsmithDB = { tooltipItemEffects = "bad" }
+ns.InitConfig()
+equal(ns.db.tooltipItemEffects, true, "item effects default on and repair")
 -- Settings-window position, startup message and minimap now live in
 -- HammerCore's state and are tested there.
 BuffsmithDB = { showStartupMessage = false, showMinimap = false, minimapAngle = 12 }

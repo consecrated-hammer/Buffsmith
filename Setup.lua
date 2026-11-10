@@ -96,6 +96,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.12.0", date = "2026-11-11", items = {
+        { title = "Food effects", text = "Hover food, a flask or any other bag item on the bar to see what it gives you, like the Well Fed buff.",
+            kind = "new", page = "Tooltips" },
+    } },
     { version = "1.11.2", date = "2026-11-10", items = {
         { title = "Quieter bar", text = "No more \"Casting\" line under the bar when you mount or cast something.",
             kind = "fix" },

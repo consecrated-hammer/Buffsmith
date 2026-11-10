@@ -73,6 +73,8 @@ local function button(parent, small)
             GameTooltip:AddLine("Missing on: " .. tostring(entry.missingText), 0.8, 0.8, 0.8, true)
             GameTooltip:AddLine("Left-click: report to party. Right-click: dismiss until you change zones.", 0.7, 0.7, 0.7)
         elseif entry.kind == "item" then
+            local effect = ns.db.tooltipItemEffects and ns.Inventory:ItemEffect(entry.itemID)
+            if effect then GameTooltip:AddLine(effect, 0.1, 1, 0.1, true) end
             if entry.poison then
                 GameTooltip:AddLine(entry.targetSlot == 17 and "Left-click: coat your off-hand weapon."
                     or "Left-click: coat your main-hand weapon.", 0.7, 0.7, 0.7)

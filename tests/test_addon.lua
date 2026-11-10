@@ -295,6 +295,32 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     local before = calls
     hover({ kind = "item", name = "Keg", itemID = 1262 })
     equal(calls, before, toc .. ": bag items do not query a spell description")
+    equal(ns.db.tooltipItemEffects, true, toc .. ": item effects default on")
+    local itemLines = {
+        [2001] = { "Hearty Stew", "Use: Restores 874 health over 30 sec. Must remain seated while eating. If you spend at least 10 seconds eating you will become well fed and gain 12 Stamina and Spirit for 15 min." },
+        [2002] = { "Flask of Stuff", "Use: Increases Strength by 75 for 2 hours." },
+        [2003] = { "Odd Rock", "A fine rock." },
+    }
+    local itemReads = 0
+    C_TooltipInfo = { GetItemByID = function(id)
+        itemReads = itemReads + 1
+        local out = {}
+        for _, text in ipairs(itemLines[id] or {}) do out[#out + 1] = { leftText = text } end
+        return { lines = out }
+    end }
+    hover({ kind = "item", name = "Hearty Stew", itemID = 2001 })
+    equal(has("Well fed: 12 Stamina and Spirit for 15 min."), true, toc .. ": food shows its Well Fed buff")
+    hover({ kind = "item", name = "Flask of Stuff", itemID = 2002 })
+    equal(has("Increases Strength by 75 for 2 hours."), true, toc .. ": other items show their Use line")
+    local reads = itemReads
+    hover({ kind = "item", name = "Flask of Stuff", itemID = 2002 })
+    equal(itemReads, reads, toc .. ": item effect is cached")
+    hover({ kind = "item", name = "Odd Rock", itemID = 2003 })
+    equal(#lines, 3, toc .. ": no effect line without a Use line")
+    ns.db.tooltipItemEffects = false
+    hover({ kind = "item", name = "Hearty Stew", itemID = 2001 })
+    equal(has("Well fed: 12 Stamina and Spirit for 15 min."), false, toc .. ": item effects can be turned off")
+    ns.db.tooltipItemEffects = true
     identities.party1 = "replacement"
     hover(thorns)
     equal(has("Recipient unavailable."), true, toc .. ": reused party slot cannot name a different recipient")

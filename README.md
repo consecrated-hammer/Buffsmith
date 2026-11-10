@@ -31,6 +31,8 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
   Hover an icon to see who it will be cast on. Under **Tooltips**, enable
   **Show spell descriptions** to include Blizzard's explanation of the spell.
   Descriptions start off; **Show bar tooltips** controls the whole tooltip.
+  Food and other bag items show what they give you, like the Well Fed buff;
+  **Show item effects** turns that off.
 - **Party coverage reminders.** When someone's missing a buff another class in the party could give, an icon says so. Clicking it reports it in chat; it never casts anything.
   On Forever, a party member is only listed after Buffsmith sees a buff
   attributed to them during the current group session. Untrained spells aren't
