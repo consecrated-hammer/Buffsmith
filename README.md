@@ -1,8 +1,6 @@
 # Buffsmith
 
-**Buffs and consumables, without the scavenger hunt.**
-
-_Sometimes the real raid mechanic is getting the Mage to press Arcane Intellect._
+**Buffs and consumables, without the scavenger hunt.**<br>_Sometimes the real raid mechanic is getting the Mage to press Arcane Intellect._
 
 [![Retail](https://img.shields.io/badge/retail-supported-4c9a7a?style=flat-square)](https://www.curseforge.com/wow/addons/buffsmith) [![WoW Forever](https://img.shields.io/badge/wow%20forever-supported-4c9a7a?style=flat-square)](https://www.curseforge.com/wow/addons/buffsmith) [![Release](https://img.shields.io/github/v/release/consecrated-hammer/Buffsmith?style=flat-square&color=4c9a7a&label=release)](https://github.com/consecrated-hammer/Buffsmith/releases) [![License](https://img.shields.io/badge/license-GPL--3.0-4c9a7a?style=flat-square)](https://github.com/consecrated-hammer/Buffsmith/blob/main/LICENSE.txt)
 
