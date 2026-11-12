@@ -194,4 +194,117 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     assert(ns.Readiness:LastCooldown(), toc .. ": a real item cooldown still shows")
 end
 
+-- End-to-end render transitions. Use scripted reminder eligibility here so
+-- the same renderer sequence can run on Retail, where Thorns is not in the
+-- catalogue, and Forever. The aura-backed tests above cover eligibility.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local clock, gcdStart, gcdDuration = 300, 0, 0
+    GetTime = function() return clock end
+    GetCVar = function() return "400" end
+    UnitCastingInfo, UnitChannelInfo = function() end, function() end
+    C_Spell.GetSpellCooldown = function()
+        return { startTime = gcdStart, duration = gcdDuration, isEnabled = true }
+    end
+    local pending = {}
+    C_Timer.After = function(delay, callback)
+        pending[#pending + 1] = { at = clock + delay, callback = callback }
+    end
+    local function flush()
+        local ready = pending
+        pending = {}
+        for _, timer in ipairs(ready) do
+            if timer.at <= clock then timer.callback() else pending[#pending + 1] = timer end
+        end
+    end
+    local mark = { kind = "spell", spellID = 1126, castID = 1126,
+        name = "Mark of the Wild", icon = 136078 }
+    local thorns = { kind = "spell", spellID = 467, castID = 467,
+        name = "Thorns", icon = 136104 }
+    local reminders = { mark, thorns }
+    ns.Actions.Entries = function() return reminders end
+    ns.Actions.MealEntries = function() return {} end
+    ns.Actions.VisibleChoices = function() return {} end
+    ns.Actions.UpdateTargetRangeChecks = function() end
+    ns.Actions.ArmReminder = function() end
+    ns.Palette:Refresh()
+    local originalFirst = ns.Palette.buttons.main1
+    local function visible(expected, label)
+        local seen, count = {}, 0
+        for _, frame in pairs(ns.Palette.buttons) do
+            if frame:IsShown() and frame.buffsmithEntry then
+                local entry = frame.buffsmithEntry
+                local key = entry.name .. (entry.cooldownOnly and ":cooldown" or ":action")
+                equal(seen[key], nil, label .. ": no duplicate " .. key)
+                equal(frame.icon.texture, entry.icon, label .. ": texture matches logical entry")
+                equal(frame.secretIcon:IsShown(), false, label .. ": no stale secondary texture")
+                if entry.cooldownOnly then equal(frame:GetAttribute("type1"), nil, label .. ": retained icon cannot cast") end
+                seen[key], count = frame, count + 1
+            end
+        end
+        equal(count, #expected, label .. ": visible count")
+        for _, key in ipairs(expected) do assert(seen[key], label .. ": missing " .. key) end
+        return seen
+    end
+    visible({ "Mark of the Wild:action", "Thorns:action" }, "initial reminders")
+    -- Mark succeeds and its aura removes the reminder; it may display its
+    -- own GCD beside the still-actionable Thorns reminder.
+    local pressed = ns.Readiness:Press(originalFirst, mark)
+    equal(pressed.allow, true, "first buff press allowed")
+    gcdStart, gcdDuration = clock, 1.5
+    ns.Readiness:NoteSpellCast(mark.castID)
+    reminders = { thorns }
+    ns.Palette:Refresh()
+    visible({ "Thorns:action", "Mark of the Wild:cooldown" }, "own first GCD")
+    equal(ns.Palette.buttons.main1, originalFirst, "first frame is recycled")
+    equal(originalFirst.icon.texture, thorns.icon, "recycled frame replaces Mark texture")
+    -- A too-early Thorns press is blocked without adopting the running GCD.
+    clock = 300.5
+    pressed = ns.Readiness:Press(originalFirst, thorns)
+    equal(pressed.allow, false, "early second press blocked")
+    equal(ns.Readiness.lastEntry.spellID, mark.spellID, "blocked input preserves confirmed Mark")
+    -- One native-queue attempt is accepted, but a failed queued cast cannot
+    -- retain Thorns or leave Mark's informational frame on the bar.
+    clock = 301.2
+    pressed = ns.Readiness:Press(originalFirst, thorns)
+    equal(pressed.allow, true, "second buff enters native queue")
+    equal(ns.Readiness.lastEntryAt, nil, "queued second buff has no confirmed timestamp")
+    ns.Readiness:Feedback()
+    flush()
+    visible({ "Thorns:action" }, "pending second cast removes previous retained frame")
+    BuffsmithEventFrame.scripts.OnEvent(BuffsmithEventFrame, "UNIT_SPELLCAST_FAILED", "player", "failed", thorns.castID)
+    equal(ns.Readiness:LastCooldown(), nil, "failed queued cast does not claim old GCD")
+    -- Retrying once ready succeeds. Before the aura event, the normal Thorns
+    -- icon owns the sweep; after it, only its non-casting retained icon remains.
+    clock, gcdStart, gcdDuration = 302, 0, 0
+    ns.Readiness.queueUntil = nil
+    pressed = ns.Readiness:Press(originalFirst, thorns)
+    equal(pressed.allow, true, "second buff retry allowed")
+    gcdStart, gcdDuration = clock, 1.5
+    BuffsmithEventFrame.scripts.OnEvent(BuffsmithEventFrame, "UNIT_SPELLCAST_SUCCEEDED", "player", "thorns", thorns.castID)
+    ns.Palette:RefreshCooldowns()
+    local shown = visible({ "Thorns:action" }, "Thorns before aura refresh")
+    equal(shown["Thorns:action"].cooldown:IsShown(), true, "current Thorns GCD sweep remains")
+    reminders = {}
+    ns.Palette:Refresh()
+    shown = visible({ "Thorns:cooldown" }, "Thorns after aura refresh")
+    equal(shown["Thorns:cooldown"].cooldown:IsShown(), true, "retained Thorns owns current sweep")
+    -- Both buffs still have substantial aura durations; there are no reminder
+    -- entries. A later form GCD cannot resurrect either texture or entry.
+    clock, gcdStart, gcdDuration = 304, 0, 0
+    ns.Readiness:Feedback()
+    flush()
+    visible({}, "completed GCD clears all old frames")
+    clock, gcdStart, gcdDuration = 310, 310, 1.5
+    BuffsmithEventFrame.scripts.OnEvent(BuffsmithEventFrame, "UNIT_SPELLCAST_SUCCEEDED", "player", "form", 768)
+    ns.Palette:UpdateFeedback()
+    visible({}, "unrelated form GCD cannot resurrect old icons")
+    -- Native action-bar casts do not replace the tracked action. Their later
+    -- shared GCD must still be rejected by that old action's retention guard.
+    ns.Readiness.lastEntry, ns.Readiness.lastEntryAt = mark, 300
+    ns.Readiness:NoteSpellCast(thorns.castID)
+    ns.Palette:Refresh()
+    visible({}, "manual Thorns cannot resurrect previously tracked Mark")
+end
+
 io.write("Retained spell cooldown regression tests passed\n")

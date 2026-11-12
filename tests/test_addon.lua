@@ -90,7 +90,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     local names = {}
     for _, spec in ipairs(HC.Settings.order) do names[#names + 1] = spec.name end
     equal(table.concat(names, ","),
-        "Visibility,Appearance,Tooltips,Buffs,Consumables,Ignored,Key Bindings,Thank You,What's new,Commands,Troubleshooting,About",
+        "Appearance,Key Bindings,Buffs,Consumables,Tooltips,Thank You,Ignored,Visibility,What's new,Commands,Troubleshooting,About",
         toc .. ": rail order")
     local failures = {}
     for name, err in pairs(HC.Settings.errors) do failures[#failures + 1] = name .. ": " .. err end
@@ -102,11 +102,11 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
 
     -- Every page builds in the new shell, including What's new.
     for _, spec in ipairs(HC.Settings.order) do HC.Settings:Show(spec.name) end
-    HC.Settings:Show("Buffs")
+    HC.Settings:Show("Buffs", "Tracking")
     equal(wow.FindText("Find Minerals") ~= nil, true, toc .. ": the Buffs page lists tracking")
     HC.Settings:Show("Thank You")
-    equal(wow.FindText("WoW Forever may report a new buff without telling addons who cast it. Friendly player nameplates can help identify the caster. Whispers still need a known caster.") ~= nil,
-        true, toc .. ": Thank You explains unknown casters")
+    ns.Thanks:SetEnabled(true)
+    HC.Settings.pages["Thank You"].hcRefreshAll()
     local skipGroup = wow.FindText("Skip party and raid members").parent
     wow.Click(skipGroup)
     equal(ns.db.thanksSkipGroupMembers, true, toc .. ": Thank You group skip checkbox enables")

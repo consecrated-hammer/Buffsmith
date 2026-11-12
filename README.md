@@ -161,6 +161,22 @@ On the bar:
 
 Right-click the minimap button or the drag handle for a quick menu: settings, **Show bar**, **Show drag handle** and **Rescan bags**. If you'd rather it went straight to settings, change **Minimap right-click** on Visibility. The search box at the top of the settings window finds any setting by name.
 
+## Settings
+
+The core pages are **Appearance**, **Key Bindings**, **Buffs**, **Consumables**,
+**Tooltips**, **Thank You**, **Ignored** and **Visibility**. Buffs has three tabs:
+**Reminders** for self-buffs and thresholds, **Targets** for recipients and party
+coverage, and **Tracking** for your tracking spells. **Food after stopping** is
+on Consumables.
+
+Search finds dynamic buff and bag-item rows, reminder thresholds, ignored entries
+and the Buff trigger. Settings that depend on a disabled feature stay searchable;
+selecting one highlights its enabling switch. Thank You only shows controls for
+the selected delivery channel. Each reset names its scope. Appearance preserves
+bar position, Visibility preserves the shared window/minimap preferences, and
+Consumables preserves your preferred and ignored items. All existing saved keys
+and values remain compatible; no settings migration is needed.
+
 ## Commands
 
 | Command | What it does |
@@ -193,7 +209,7 @@ GPL v3, see [LICENSE.txt](https://github.com/consecrated-hammer/Buffsmith/blob/m
 
 ## Development
 
-Two TOCs ship in one addon folder: `Buffsmith.toc` for Retail (`120100`) and
+Two TOCs ship in one addon folder: `Buffsmith.toc` for Retail (`120105`) and
 `Buffsmith_Camelot.toc` for WoW Forever (`16001`).
 
 WoW runs Lua 5.1, so that is what the checks use:

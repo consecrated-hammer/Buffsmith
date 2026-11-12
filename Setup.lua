@@ -96,6 +96,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.13.0-dev1", date = "2026-11-13", items = {
+        { title = "Find your settings", text = "Buffs has Reminders, Targets and Tracking tabs. Search now finds buff and item thresholds, ignored entries and the Buff trigger.", kind = "improved", page = "Buffs", tab = "Reminders" },
+        { title = "Less clutter", text = "Dependent controls hide until enabled. Resets stay within their page or tab, and Food after stopping now lives on Consumables.", kind = "improved", page = "Consumables" },
+    } },
     { version = "1.12.0", date = "2026-11-11", items = {
         { title = "Food effects", text = "Hover food, a flask or any other bag item on the bar to see what it gives you, like the Well Fed buff.",
             kind = "new", page = "Tooltips" },
@@ -115,8 +119,8 @@ local WHATS_NEW = {
             kind = "new" },
     } },
     { version = "1.10.3", date = "2026-11-09", items = {
-        { title = "Food after stopping", text = "Food waits until you've stood still for 5 seconds, so a quick pause mid-run doesn't flash it up. Change the wait on Visibility.",
-            kind = "improved", page = "Visibility" },
+        { title = "Food after stopping", text = "Food waits until you've stood still for 5 seconds, so a quick pause mid-run doesn't flash it up. Change the wait on Consumables.",
+            kind = "improved", page = "Consumables" },
     } },
     { version = "1.10.2", date = "2026-11-09", items = {
         { title = "No snacking on the run", text = "Food hides while you're moving, since moving cancels the meal and still eats the food.",
@@ -182,6 +186,7 @@ HC:Init({
         icon = "Interface\\AddOns\\Buffsmith\\Textures\\BuffsmithMinimap",
         menu = minimapMenu,
     },
+    onSettingsShown = function() if ns.RefreshSettings then ns.RefreshSettings() end end,
     onSettingsHidden = function() ns.Preview:Hide() end,
     toggle = { help = "Show or hide the bar", run = toggleBar },
     lock = { help = "Hide the drag handle", run = function() setHandle(false) end },

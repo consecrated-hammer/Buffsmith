@@ -413,6 +413,7 @@ function Inventory:Refresh()
     self:PlanUsabilityWake()
     if ns.Actions then ns.Actions:Refresh() end
     if ns.Palette then ns.Palette:Refresh() end
+    if ns.RefreshSettings then ns.RefreshSettings() end
     return true
 end
 

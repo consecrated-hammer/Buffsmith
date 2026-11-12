@@ -32,6 +32,57 @@ local PREVIEW_ACTION = {
     onClick = function() ns.Preview:Toggle() end,
     hint = "Show the bar with sample icons where it sits on screen, so you can see size and direction.",
 }
+-- Sections share the body search index and refresh list. Hidden sections
+-- point search at the switch that enables them.
+local function section(panel, parentRow, columns)
+    local frame = CreateFrame("Frame", nil, panel)
+    frame:SetSize(UI.CONTENT_WIDTH + UI.PAD * 2, 1)
+    frame.hcColumns = columns or 2
+    frame.hcHeaderOwner = panel.hcHeaderOwner or panel
+    frame.hcRefresh, frame.hcRefreshAll = panel.hcRefresh, panel.hcRefreshAll
+    frame.hcParentRow = parentRow
+    return frame
+end
+
+local function copy(value)
+    if type(value) ~= "table" then return value end
+    local result = {}
+    for key, entry in pairs(value) do result[key] = copy(entry) end
+    return result
+end
+
+local function resetKeys(keys)
+    for _, key in ipairs(keys) do
+        ns.db[key] = copy(ns.defaults[key])
+    end
+    ns.RefreshAll()
+end
+
+local function flow(panel)
+    local entries = {}
+    local function add(fill, visible, parentRow, columns)
+        local frame = section(panel, parentRow, columns)
+        local bottom, result = fill(frame, -4)
+        entries[#entries + 1] = { frame = frame, height = -UI.Flush(frame, bottom) + 4, visible = visible }
+        return result
+    end
+    UI.OnRefresh(panel, function()
+        local y = -8
+        for _, entry in ipairs(entries) do
+            local shown = not entry.visible or entry.visible()
+            entry.frame:SetShown(shown)
+            if shown then
+                entry.frame:ClearAllPoints()
+                entry.frame:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, y)
+                entry.frame:SetHeight(entry.height)
+                y = y - entry.height
+            end
+        end
+        panel.hcSetBottom(y - 8)
+    end)
+    return add
+end
+
 local TEXT_WIDTH = 210
 local SLIDER_X = 330
 
@@ -134,11 +185,20 @@ local function reminderRow(panel, y, item)
         item.toggle()
         refresh()
         ns.RefreshAll()
-        if item.changed then item.changed() end
+        if panel.hcRefreshAll then panel.hcRefreshAll() end
     end)
     if item.hint then UI.AttachHint(row, item.label, item.hint) end
     refresh()
     row.refresh = refresh
+    UI.RegisterRow(panel, row, item.label)
+    row.hcHint = item.hint or "Enable missing buff reminder threshold priority"
+    if slider then
+        slider.hcParentRow = row
+        UI.RegisterRow(panel, slider, item.label .. " reminder threshold")
+        slider.hcHint = item.resourceRecovery and "Health or mana percent" or "Remaining duration percent"
+        UI.OnRefresh(panel, function() slider:SetShown(item.enabled()); percent:SetShown(item.enabled()) end)
+    end
+    UI.OnRefresh(panel, refresh)
     return row
 end
 
@@ -147,7 +207,7 @@ end
 local function rowPool(panel)
     local pool = { frames = {} }
     function pool:Begin()
-        for _, frame in pairs(self.frames) do frame:Hide() end
+        for _, frame in pairs(self.frames) do frame:Hide(); frame.hcParentRow = nil end
         self.count = 0
     end
     function pool:Place(key, y, build)
@@ -160,9 +220,11 @@ local function rowPool(panel)
         frame:SetPoint("TOPLEFT", UI.PAD + frame.indent, y)
         self.count = (self.count or 0) + 1
         T.Fill(frame.stripe, self.count % 2 == 1 and "stripe" or "content")
-        frame:Show()
+        frame.hcParentRow = self.parentRow
+        local shown = not self.visible or self.visible()
+        frame:SetShown(shown)
         frame.refresh()
-        return y - ROW_HEIGHT - 2
+        return shown and (y - ROW_HEIGHT - 2) or y
     end
     return pool
 end
@@ -186,7 +248,6 @@ end
 
 -- ── Visibility: HammerCore's standard page plus the bar's own rules ───────
 
-HC.Settings:AddVisibility()
 HC.spec.visibility = function(panel, y)
     _, y = UI.Header(panel, "Bar", y, ICONS.visibility)
     local function hasConditions()
@@ -230,11 +291,10 @@ HC.spec.visibility = function(panel, y)
         "Hide buff and consumable reminders while resting in a city or inn.", y,
         function() return ns.db.ignoreBuffsInRestedAreas end,
         function(value) ns.Set("ignoreBuffsInRestedAreas", value) end)
-    _, y = UI.Slider(panel, "Food after stopping",
-        "Food hides while you move, since moving wastes it. Seconds to stand still before it comes back.",
-        y, 0, 15, 1, function() return ns.db.foodStillSeconds end,
-        function(value) ns.Set("foodStillSeconds", value) end,
-        function(value) return value .. " s" end)
+    _, y = UI.PageReset(panel, y, function()
+        ns.db.legacyVisibility = nil
+        resetKeys({ "visibilityMode", "visibility", "ignoreBuffsInRestedAreas" })
+    end, "Reset bar visibility")
     return y
 end
 
@@ -274,8 +334,13 @@ HC.Settings:NewPage({ name = "Appearance", description = "Size, direction and th
             ns.db.showHandle = value
             ns.Handle:Update()
         end)
+    y = UI.Columns(panel, 1, y)
     _, y = UI.ActionButton(panel, y, "Reset bar position", function() HC.Commands:Dispatch("reset position") end,
         "Put the bar back in its starting place.")
+    _, y = UI.PageReset(panel, y, function()
+        resetKeys({ "orientation", "flyoutVerticalDirection", "flyoutHorizontalDirection", "iconSize", "maxAlternatives", "showHandle" })
+        ns.Handle:Update()
+    end, "Reset Appearance")
     return y
 end)
 
@@ -283,22 +348,39 @@ end)
 
 HC.Settings:NewPage({ name = "Tooltips", description = "Who a buff is for, and what it does." }, function(panel, y)
     _, y = UI.Header(panel, "Bar tooltip", y, ICONS.tooltips)
-    _, y = UI.Check(panel, "Show bar tooltips", "Show buff names, recipients and click instructions when hovering a bar icon.", y,
+    local master
+    master, y = UI.Check(panel, "Show bar tooltips", "Show buff names, recipients and click instructions when hovering a bar icon.", y,
         function() return ns.db.showTooltip end,
         function(value) ns.Set("showTooltip", value) end)
-    _, y = UI.Check(panel, "Show spell descriptions", "Add Blizzard's static description for the offered spell. This can make the tooltip taller.", y,
+    y = UI.Columns(panel, 1, y)
+    local top = y
+    local children = section(panel, master)
+    local childY = -4
+    _, childY = UI.Check(children, "Show spell descriptions", "Add Blizzard's static description for the offered spell. This can make the tooltip taller.", childY,
         function() return ns.db.tooltipSpellDescriptions end,
         function(value) ns.Set("tooltipSpellDescriptions", value) end)
-    _, y = UI.Check(panel, "Show item effects", "Show what food, flasks and other bag items give you, such as the Well Fed buff.", y,
+    _, childY = UI.Check(children, "Show item effects", "Show what food, flasks and other bag items give you, such as the Well Fed buff.", childY,
         function() return ns.db.tooltipItemEffects end,
         function(value) ns.Set("tooltipItemEffects", value) end)
+    local reset
+    reset, y = UI.PageReset(panel, top, function()
+        resetKeys({ "showTooltip", "tooltipSpellDescriptions", "tooltipItemEffects" })
+    end, "Reset Tooltips")
+    UI.OnRefresh(panel, function()
+        children:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, top)
+        children:SetHeight(-UI.Flush(children, childY) + 4)
+        children:SetShown(ns.db.showTooltip)
+        reset:ClearAllPoints()
+        local bottom = ns.db.showTooltip and (top + childY - 4) or top
+        reset:SetPoint("TOPLEFT", UI.PAD, bottom - 10)
+        panel.hcSetBottom(bottom - UI.CELL_H - 16)
+    end)
     return y
 end)
 
 -- ── Buffs ──────────────────────────────────────────────────────────────────
 
-HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and when each buff reminds you.",
-    headerAction = PREVIEW_ACTION }, function(panel, y)
+local function buildTargets(panel, y)
     _, y = UI.Header(panel, "Targets", y, ICONS.targets)
     _, y = UI.Check(panel, "Friendly target", "Show targetable buffs your selected friendly player is missing.", y,
         function() return ns.db.showTargetBuffs end, function(value) ns.Set("showTargetBuffs", value) end)
@@ -310,21 +392,25 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
         function() return ns.db.skipPvPWhileUnflagged end, function(value) ns.Set("skipPvPWhileUnflagged", value) end)
     _, y = UI.Check(panel, "Party coverage", "Show class buffs a party member may provide. These report to chat; they never cast.", y,
         function() return ns.db.showPartyCoverage end, function(value) ns.Set("showPartyCoverage", value) end)
+    _, y = UI.PageReset(panel, y, function()
+        resetKeys({ "showTargetBuffs", "showPartyBuffs", "showPetBuffs", "skipPvPWhileUnflagged", "showPartyCoverage" })
+    end, "Reset Targets")
+    return y
+end
+
+local function buildReminders(panel, y)
     _, y = UI.Header(panel, "Detected buffs", y, ICONS.detected)
     _, y = UI.Text(panel, "Short buffs are off by default.", y)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local none = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     none:SetText("No self-buffs found for your class and level yet.")
-    -- Placed by layout() as the list changes, so it can't be a UI.Header;
-    -- it copies that look.
-    local trackingHeader = UI.FontString(panel, "GameFontNormalSmall", "section")
-    trackingHeader:SetText("TRACKING")
-    local trackingRule = panel:CreateTexture(nil, "ARTWORK")
-    trackingRule:SetSize(18, 18)
-    if trackingRule.SetTexCoord then trackingRule:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
-    trackingRule:SetTexture(ICONS.tracking)
-    local trackingNote = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    trackingNote:SetText("Choose Herbs or Minerals. WoW Forever tracks one at a time.")
+    local reset = UI.PageReset(panel, y, function()
+        for _, entry in ipairs(ns.KnownSelfBuffCandidates()) do
+            ns.db.excludedBuffs[entry.spellID] = nil
+            ns.db.reminderPercent.buffBySpell[entry.spellID] = nil
+        end
+        ns.RefreshAll()
+    end, "Reset Reminders")
     local function layout()
         local y = link("spell", listTop)
         pool:Begin()
@@ -342,7 +428,6 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
                     get = function() return ns.Actions:Percent(entry) end,
                     set = function(value) ns.db.reminderPercent.buffBySpell[entry.spellID] = value end,
                     result = function() return ns.Actions:ReminderFor(entry) end,
-                    changed = function() panel.hcRefreshAll() end,
                 } end)
             end
         end
@@ -351,6 +436,36 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
         none:SetShown(shown == 0)
         if shown == 0 then y = y - 24 end
 
+        reset:ClearAllPoints()
+        reset:SetPoint("TOPLEFT", UI.PAD, y - 10)
+        y = y - 48
+        panel.hcSetBottom(y)
+        return y
+    end
+    UI.OnRefresh(panel, layout)
+    return layout()
+end
+
+local function buildTracking(panel, y)
+    local listTop, pool = y, rowPool(panel)
+    -- Placed by layout() as the list changes, so it can't be a UI.Header;
+    -- it copies that look.
+    local trackingHeader = UI.FontString(panel, "GameFontNormalSmall", "section")
+    trackingHeader:SetText("TRACKING")
+    local trackingRule = panel:CreateTexture(nil, "ARTWORK")
+    trackingRule:SetSize(18, 18)
+    if trackingRule.SetTexCoord then trackingRule:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    trackingRule:SetTexture(ICONS.tracking)
+    local trackingNote = UI.FontString(panel, "GameFontHighlightSmall", "muted")
+    trackingNote:SetText("Choose Herbs or Minerals. WoW Forever tracks one at a time.")
+    local reset = UI.PageReset(panel, y, function()
+        for _, entry in ipairs(ns.Tracking:Available()) do ns.db.excludedBuffs[entry.spellID] = nil end
+        ns.db.trackingChoice = nil
+        ns.RefreshAll()
+    end, "Reset Tracking")
+    local function layout()
+        local y = listTop
+        pool:Begin()
         -- Tracking this character has, from the minimap's own list.
         local tracking = {}
         for _, entry in ipairs(ns.Tracking:Available()) do
@@ -388,16 +503,26 @@ HC.Settings:NewPage({ name = "Buffs", description = "Who Buffsmith checks, and w
                             ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry)
                         end
                     end,
-                    changed = function() panel.hcRefreshAll() end,
                 } end)
             end
         end
+        reset:ClearAllPoints()
+        reset:SetPoint("TOPLEFT", UI.PAD, y - 10)
+        y = y - 48
         panel.hcSetBottom(y)
         return y
     end
     UI.OnRefresh(panel, layout)
     return layout()
-end)
+end
+
+HC.Settings:NewPage({ name = "Buffs", description = "Choose reminders, recipients and tracking.",
+    headerAction = PREVIEW_ACTION, columns = 1, tabs = {
+        { name = "Reminders", build = buildReminders },
+        { name = "Targets", columns = 2, build = buildTargets },
+        { name = "Tracking", build = buildTracking },
+    } })
+
 
 -- ── Consumables ────────────────────────────────────────────────────────────
 
@@ -405,8 +530,22 @@ local CATEGORIES = { { "food", "Food" }, { "scroll", "Scrolls" }, { "flask", "Fl
 
 HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items appear while they are in your bags.",
     headerAction = PREVIEW_ACTION }, function(panel, y)
+    _, y = UI.Slider(panel, "Food after stopping",
+        "Food hides while you move, since moving wastes it. Seconds to stand still before it comes back.",
+        y, 0, 15, 1, function() return ns.db.foodStillSeconds end,
+        function(value) ns.Set("foodStillSeconds", value) end,
+        function(value) return value .. " s" end)
     _, y = UI.Header(panel, "Categories and items", y, ICONS.consumables)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
+    local reset = UI.PageReset(panel, y, function()
+        resetKeys({ "categories", "foodStillSeconds" })
+        for _, key in ipairs({ "food", "scroll", "flask", "other", "weapon" }) do
+            ns.db.reminderPercent[key] = ns.defaults.reminderPercent[key]
+        end
+        -- Item choices and ignored items belong to the player, not this reset.
+        ns.db.reminderPercent.item = {}
+        ns.Inventory:Refresh()
+    end, "Reset Consumable reminders")
     local function layout()
         local y = link("item", listTop)
         pool:Begin()
@@ -423,6 +562,9 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
                 set = function(value) ns.db.reminderPercent[key] = value end,
                 result = function() return ns.Inventory:ReminderSummary(key) end,
             } end)
+            local categoryRow = pool.frames["category:" .. key]
+            pool.parentRow = categoryRow
+            pool.visible = function() return ns.db.categories[key] end
             for _, item in ipairs(ns.Inventory:OwnedChoices(key)) do
                 local entry = item
                 if not ns.db.excludedConsumables[entry.itemID] then
@@ -435,12 +577,15 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
                         get = function() return ns.Actions:Percent(entry) end,
                         set = function(value) ns.db.reminderPercent.item[entry.itemID] = value end,
                         result = function() return ns.Inventory:ReminderFor(entry) end,
-                        changed = function() panel.hcRefreshAll() end,
-                    } end)
+                        } end)
                 end
             end
+            pool.parentRow, pool.visible = nil, nil
             y = y - 10
         end
+        reset:ClearAllPoints()
+        reset:SetPoint("TOPLEFT", UI.PAD, y - 10)
+        y = y - 48
         panel.hcSetBottom(y)
         return y
     end
@@ -479,6 +624,10 @@ HC.Settings:NewPage({ name = "Ignored", columns = 1, description = "Shift-right-
         return frame
     end
     local function layout()
+        local owner = panel.hcHeaderOwner or panel
+        for _, frame in ipairs(rows) do
+            if frame.searchLabel then owner.hcRows[frame.searchLabel] = nil end
+        end
         local entries = ns.Actions:IgnoredEntries()
         local y = top
         for index, entry in ipairs(entries) do
@@ -487,6 +636,9 @@ HC.Settings:NewPage({ name = "Ignored", columns = 1, description = "Shift-right-
             frame:SetPoint("TOPLEFT", UI.PAD, y)
             T.Fill(frame.stripe, index % 2 == 1 and "stripe" or "content")
             frame.icon:SetTexture(entry.icon)
+            frame.searchLabel = "Restore " .. entry.name .. " (" .. entry.kind .. " " .. entry.id .. ")"
+            UI.RegisterRow(panel, frame, frame.searchLabel)
+            frame.hcHint = "Ignored excluded buff item restore"
             frame.name:SetText(entry.name)
             frame.kind:SetText(entry.kind == "spell" and "Buff" or "Item")
             frame.restore:SetScript("OnClick", function()
@@ -543,6 +695,9 @@ HC.Settings:NewPage({ name = "Key Bindings", columns = 1, description = "One key
             if not ok and message then HC.Print(message) end
         end,
     })
+    local owner = panel.hcHeaderOwner or panel
+    local available = owner.hcRows and owner.hcRows.Available
+    if available then available.hcHint = "Buff trigger key mouse wheel binding" end
     local zoomRow
     zoomRow, y = UI.Check(panel, "Also zoom in/out",
         "Keep this wheel key's previous camera action as well as triggering Buffsmith. Clearing the binding restores camera zoom.", y,
@@ -553,6 +708,7 @@ HC.Settings:NewPage({ name = "Key Bindings", columns = 1, description = "One key
         end)
     -- As wide as the Active bindings pane above it, not the whole page.
     local zoomWidth = math.floor(UI.CONTENT_WIDTH * 0.42)
+    zoomRow.hcParentRow = available
     zoomRow:SetWidth(zoomWidth)
     if zoomRow.hcStripe then zoomRow.hcStripe:SetWidth(zoomWidth) end
     UI.OnRefresh(panel, function()
@@ -572,69 +728,86 @@ end)
 
 local CHANNELS = { values = { "WHISPER", "SAY", "PARTY", "EMOTE" }, labels = { "Whisper", "Say chat", "Party chat", "Emote" } }
 
-HC.Settings:NewPage({ name = "Thank You", description = "Thank recognised buffs when the client can identify their caster." }, function(panel, y)
-    _, y = UI.Header(panel, "Thanks", y, ICONS.thanks)
-    _, y = UI.Check(panel, "Thank players for buffs",
-        "Caster details can be unavailable on WoW Forever, so a thank-you is not guaranteed. Buffs you already have never trigger one.", y,
-        function() return ns.db.thanksEnabled end, function(value) ns.Thanks:SetEnabled(value) end)
-    _, y = UI.Check(panel, "Skip party and raid members",
-        "Skip thanks when the identified caster is in your party or raid. Unknown-caster emotes still follow their own setting.", y,
-        function() return ns.db.thanksSkipGroupMembers end, function(value) ns.db.thanksSkipGroupMembers = value end)
-    _, y = UI.Dropdown(panel, "Send thanks as", nil, y, CHANNELS.values, CHANNELS.labels,
-        function() return ns.db.thanksChannel end, function(value) ns.db.thanksChannel = value end)
-    _, y = UI.Slider(panel, "Delay", "Wait before sending so it feels less robotic. Turning Thank You off cancels a pending one.",
-        y, 1, 5, 1, function() return ns.db.thanksDelay end, function(value) ns.db.thanksDelay = value end,
-        function(value) return value .. " s" end)
-
-    -- The emote picker and the message field share one row: only the one
-    -- matching the chosen channel is shown. One column, so they overlap
-    -- exactly instead of pairing up.
-    _, y = UI.Header(panel, "What to send", y, "Interface\\Icons\\Spell_Holy_Heal")
-    y = UI.Columns(panel, 1, y)
-    local emoteRow, messageRow, unknownEmoteRow, unknownEmoteNote
-    local emoteY, messageY
-    emoteRow, emoteY = UI.SearchPicker(panel, "Emote", "Random picks a different emote each time.", y, {
-        width = 220,
-        items = function()
-            local items = {}
-            for _, choice in ipairs(ns.Thanks:EmoteChoices()) do
-                items[#items + 1] = { value = choice.token, label = choice.label }
-            end
-            return items
-        end,
-        get = function() return ns.db.thanksEmote end,
-        set = function(token) ns.db.thanksEmote = token end,
-    })
-    unknownEmoteRow, emoteY = UI.Check(panel, "Emote when caster is unknown",
-        "Use the selected emote without a target when the caster cannot be identified.", emoteY,
-        function() return ns.db.thanksUnknownEmote end, function(value) ns.db.thanksUnknownEmote = value end)
-    -- This is intentionally the one wrapped explanation on the page: the
-    -- limitation needs plain language, not a clipped tooltip.
-    unknownEmoteNote = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    unknownEmoteNote:SetPoint("TOPLEFT", UI.PAD, emoteY)
-    unknownEmoteNote:SetWidth(UI.CONTENT_WIDTH)
-    unknownEmoteNote:SetJustifyH("LEFT")
-    if unknownEmoteNote.SetWordWrap then unknownEmoteNote:SetWordWrap(true) end
-    unknownEmoteNote:SetText("WoW Forever may report a new buff without telling addons who cast it. Friendly player nameplates can help identify the caster. Whispers still need a known caster.")
-    emoteY = emoteY - 36
-    messageRow, messageY = UI.TextInput(panel, "Message", "{buff} and {player} are filled in when it is sent.", y,
-        function() return ns.db.thanksMessage end,
-        function(text) ns.db.thanksMessage = text end, nil, 330)
-    y = math.min(emoteY, messageY)
-    local preview
-    preview, y = UI.ActionButton(panel, y, "Preview message", function()
-        local sample = (ns.db.thanksMessage or ""):gsub("{buff}", "Power Word: Fortitude")
-            :gsub("{player}", UnitName and UnitName("player") or "a friend")
-        HC.Print("preview: " .. sample)
-    end, "Print the message to your own chat with a sample buff.")
-    UI.OnRefresh(panel, function()
-        local emote = ns.db.thanksChannel == "EMOTE"
-        local unknownFallback = emote and ns.TARGET == "Camelot"
-        emoteRow:SetShown(emote)
-        unknownEmoteRow:SetShown(unknownFallback)
-        unknownEmoteNote:SetShown(unknownFallback)
-        messageRow:SetShown(not emote)
-        preview:SetShown(not emote)
+HC.Settings:NewPage({ name = "Thank You", description = "Optional replies when someone buffs you." }, function(panel)
+    local add = flow(panel)
+    local master = add(function(frame, y)
+        local row
+        row, y = UI.Check(frame, "Thank players for buffs",
+            "Off by default. Caster details can be unavailable, especially on WoW Forever. Existing buffs never trigger thanks.", y,
+            function() return ns.db.thanksEnabled end, function(value) ns.Thanks:SetEnabled(value) end)
+        return y, row
     end)
-    return y
+    local function enabled() return ns.db.thanksEnabled end
+    local channel = add(function(frame, y)
+        _, y = UI.Header(frame, "Delivery", y, ICONS.thanks)
+        local row
+        row, y = UI.Dropdown(frame, "Send thanks as", "Choose a private reply, chat message or emote.", y, CHANNELS.values, CHANNELS.labels,
+            function() return ns.db.thanksChannel end, function(value) ns.db.thanksChannel = value end)
+        _, y = UI.Check(frame, "Skip party and raid members",
+            "Skip identified group casters. Unknown-caster emotes follow their own setting.", y,
+            function() return ns.db.thanksSkipGroupMembers end, function(value) ns.db.thanksSkipGroupMembers = value end)
+        _, y = UI.Slider(frame, "Thank-you delay", "Wait before sending. Turning Thank You off cancels pending replies.", y, 1, 5, 1,
+            function() return ns.db.thanksDelay end, function(value) ns.db.thanksDelay = value end,
+            function(value) return value .. " s" end)
+        return y, row
+    end, enabled, master)
+    local emote = add(function(frame, y)
+        local row
+        row, y = UI.SearchPicker(frame, "Emote", "Random picks a different emote each time.", y, {
+            width = 220,
+            items = function()
+                local items = {}
+                for _, choice in ipairs(ns.Thanks:EmoteChoices()) do
+                    items[#items + 1] = { value = choice.token, label = choice.label }
+                end
+                return items
+            end,
+            get = function() return ns.db.thanksEmote end,
+            set = function(token) ns.db.thanksEmote = token end,
+        })
+        return y, row
+    end, function() return enabled() and ns.db.thanksChannel == "EMOTE" end, channel, 1)
+    add(function(frame, y)
+        _, y = UI.Check(frame, "Emote when caster is unknown",
+            "WoW Forever may report a new buff without telling addons who cast it. Friendly player nameplates can help identify the caster. Whispers still need a known caster.", y,
+            function() return ns.db.thanksUnknownEmote end, function(value) ns.db.thanksUnknownEmote = value end)
+        return y
+    end, function() return enabled() and ns.db.thanksChannel == "EMOTE" and ns.TARGET == "Camelot" end, emote, 1)
+    add(function(frame, y)
+        _, y = UI.TextInput(frame, "Message", "{buff} and {player} are filled in when sent.", y,
+            function() return ns.db.thanksMessage end, function(text) ns.db.thanksMessage = text end, nil, 330)
+        y = UI.Columns(frame, 1, y)
+        _, y = UI.ActionButton(frame, y, "Preview message", function()
+            local sample = (ns.db.thanksMessage or ""):gsub("{buff}", "Power Word: Fortitude")
+                :gsub("{player}", UnitName and UnitName("player") or "a friend")
+            HC.Print("preview: " .. sample)
+        end, "Print a sample to your own chat without sending a reply.")
+        return y
+    end, function() return enabled() and ns.db.thanksChannel ~= "EMOTE" end, channel, 1)
+    add(function(frame, y)
+        _, y = UI.PageReset(frame, y, function()
+            ns.Thanks:SetEnabled(false)
+            resetKeys({ "thanksEnabled", "thanksChannel", "thanksEmote", "thanksUnknownEmote", "thanksSkipGroupMembers", "thanksDelay", "thanksMessage" })
+        end, "Reset Thank You")
+        return y
+    end)
+    return -8
 end)
+
+-- Put the setup path first; reference pages retain HammerCore's ordering.
+HC.Settings:AddVisibility()
+local order = { Appearance = 1, ["Key Bindings"] = 2, Buffs = 3, Consumables = 4,
+    Tooltips = 5, ["Thank You"] = 6, Ignored = 7, Visibility = 8 }
+table.sort(HC.Settings.queue, function(a, b)
+    return (order[a.name] or 100) < (order[b.name] or 100)
+end)
+
+-- Keep the dynamic lists and their search registrations current even while
+-- another page is selected. Inventory refresh also covers spell/tracking events.
+function ns.RefreshSettings()
+    if not HC.Settings:IsShown() then return end
+    for _, name in ipairs({ "Buffs", "Consumables", "Ignored" }) do
+        local page = HC.Settings.pages[name]
+        if page and page.hcRefreshAll then page.hcRefreshAll() end
+    end
+end

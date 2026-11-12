@@ -5,6 +5,27 @@ All notable changes to Buffsmith are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.13.0-dev1] - 2026-11-13
+
+### Changed
+
+- Settings now follow the setup path, with the Buff trigger near the top and
+  Buffs split into Reminders, Targets and Tracking tabs.
+- Search finds buff and item thresholds, ignored entries and Buff trigger
+  bindings. Disabled features hide their dependent controls; search takes you
+  to the switch that enables them.
+- Food after stopping moved to Consumables. Page and tab resets preserve
+  unrelated preferences, bar position and shared window settings.
+- Updated the vendored HammerCore for hidden-setting search and binding search.
+
+### Development checks
+
+- Added both-client renderer regressions for Mark of the Wild followed by
+  Thorns, failed/queued input, frame reuse and unrelated form cooldowns.
+  The reported live flash is not reproduced; no speculative rendering fix.
+
 ## [1.12.0] - 2026-11-11
 
 ### Added
