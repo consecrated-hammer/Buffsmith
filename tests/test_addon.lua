@@ -211,7 +211,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
 
     -- The header preview button and the preview command agree.
     HC.Settings:Show("Appearance")
-    equal(HC.Settings.headerAction:GetText(), "Preview on screen", toc .. ": Appearance offers the preview")
+    equal(HC.Settings.headerAction:GetText(), "Show live preview", toc .. ": Appearance offers the preview")
     SlashCmdList.BUFFSMITH("preview")
     equal(HC.Settings.headerAction:GetText(), "Hide preview", toc .. ": preview command updates the header")
 
@@ -364,7 +364,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
 end
 
 -- Death and ghost state suppress the whole live reminder surface, including
--- consumable flyouts and the buff trigger, then resurrection restores it.
+-- consumable flyouts and the next buff key, then resurrection restores it.
 for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     local ns = loadAddon(toc)
     local events, life = _G.BuffsmithEventFrame, "alive"

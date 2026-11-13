@@ -107,7 +107,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(icons[1].buffsmithFlyout, nil, "progress has no alternatives")
     equal(icons[1].check, nil, "no success tick widget")
     for _, entry in ipairs(ns.Actions:BindingEntries()) do
-        equal(entry.displayOnly, nil, "progress never enters buff trigger")
+        equal(entry.displayOnly, nil, "progress never enters next buff key")
     end
     icons[1].scripts.PreClick(icons[1], "LeftButton")
     icons[1].scripts.PostClick(icons[1], "LeftButton")

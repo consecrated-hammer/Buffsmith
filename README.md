@@ -40,10 +40,10 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
   If the client omits the caster, that buff cannot establish availability.
 - **Read Leyline.** On Forever, characters who know the racial see it when health
   or mana is below 50% and it is off cooldown. Change its threshold on the Buffs
-  page. The reminder uses the normal bar and Buff trigger, with the same combat,
+  page. The reminder uses the normal bar and Next buff key, with the same combat,
   death, flight-path, rested-area and meal rules.
 - **Tracking.** Find Herbs, Find Minerals and other tracking spells can sit on the bar until you turn them on. Gathering tracking starts ticked, class and racial tracking start off.
-- **One key for the lot.** Bind **Buff trigger** in the game's key bindings and press it to work down the bar one missing buff at a time.
+- **One key for the lot.** Bind **Next buff key** in the game's key bindings and press it to work down the bar one missing buff at a time.
 - **Optional thank-you.** Buffsmith can whisper, say, post in party or emote a thanks when someone buffs you. It's off by default.
   **Skip party and raid members** in Thank You settings only skips identified
   group casters. It starts off. Unknown-caster emotes keep following their own
@@ -57,7 +57,7 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
   emotes depend on the client resolving the player and can become general
   emotes if that player is no longer available.
 
-When you bind the Buff trigger through `/buffsmith` → **Key Bindings**, a
+When you bind the Next buff key through `/buffsmith` → **Key Bindings**, a
 mouse-wheel key that already controls camera zoom reveals **Also zoom in** or
 **Also zoom out**. Tick it to keep that camera action as well as using the buff
 trigger. The option starts off and appears only for a detected camera binding;
@@ -68,7 +68,7 @@ character-specific bindings.
 Existing Buffsmith wheel bindings whose original action was already replaced
 need to be bound to camera zoom first, then selected again in Buffsmith.
 
-Buff trigger keys, the shared wheel and left-clicked icons recheck readiness
+Next buff key keys, the shared wheel and left-clicked icons recheck readiness
 before casting. Readable cooldowns and normal casts outside WoW's current
 `SpellQueueWindow` suppress the press without advancing the trigger; channels
 and eating/drinking also pause casts. One attempted spell is held through the
@@ -82,7 +82,7 @@ Icons show native cooldown sweeps when timing is readable. If the last used
 action leaves the reminder list while cooling down, its icon stays as a
 non-casting cooldown display until the cooldown ends. Later unrelated global
 cooldowns, including druid form changes, do not bring that old spell icon back. This also applies to
-Read Leyline; it does not put a cooling ability into the Buff trigger. Cooldowns
+Read Leyline; it does not put a cooling ability into the Next buff key. Cooldowns
 use the icon sweep without a separate cooldown text row. There's no casting
 or channeling line. Native queue timing stays internal and has no text row.
 While eating or drinking, one informational aura icon replaces the food
@@ -118,7 +118,7 @@ live bar or preview saves the same fixed corner. The changing-size grid no
 longer clamps itself back onto the screen, since that would move the handle;
 use `reset position` if you need to bring it back into view.
 
-**Skip PvP-flagged players while I'm unflagged** is on by default under
+**Skip PvP-flagged players** is on by default under
 **Buffs → Targets**. It filters explicit target, party and pet recipients while
 you're unflagged, checks flags again on input, and skips recipients whose flags
 can't be read. Self buffs still work. Turning the option off restores previous
@@ -151,7 +151,7 @@ logout. An accepted emote API call still needs an in-game delivery check.
 
 ## Getting started
 
-Install, then type `/buffsmith` (or `/bs`) for settings. **Preview on screen**, at the top of Appearance, Buffs and Consumables, draws a test bar where yours will sit, so you can place and size it without deliberately removing half your buffs first.
+Install, then type `/buffsmith` (or `/bs`) for settings. **Show live preview**, at the top of Appearance, Buffs and Consumables, draws a test bar where yours will sit, so you can place and size it without deliberately removing half your buffs first.
 
 On the bar:
 
@@ -166,11 +166,11 @@ Right-click the minimap button or the drag handle for a quick menu: settings, **
 The core pages are **Appearance**, **Key Bindings**, **Buffs**, **Consumables**,
 **Tooltips**, **Thank You**, **Ignored** and **Visibility**. Buffs has three tabs:
 **Reminders** for self-buffs and thresholds, **Targets** for recipients and party
-coverage, and **Tracking** for your tracking spells. **Food after stopping** is
+coverage, and **Tracking** for your tracking spells. **Show food after standing still** is
 on Consumables.
 
 Search finds dynamic buff and bag-item rows, reminder thresholds, ignored entries
-and the Buff trigger. Settings that depend on a disabled feature stay searchable;
+and the Next buff key. Settings that depend on a disabled feature stay searchable;
 selecting one highlights its enabling switch. Thank You only shows controls for
 the selected delivery channel. Each reset names its scope. Appearance preserves
 bar position, Visibility preserves the shared window/minimap preferences, and

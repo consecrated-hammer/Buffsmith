@@ -16,7 +16,7 @@ native frame rendering or reproduce the live client's event timing.
 
 After reloading the staged build, check `/buffsmith version`. Record a short
 video of Mark → Thorns and say whether Thorns was cast using a bar icon, the
-Buff trigger or an ordinary action-bar key. Capture `/buffsmith debug` too.
+Next buff key or an ordinary action-bar key. Capture `/buffsmith debug` too.
 
 Prepare this macro before reproducing; press it while the wrong icon is visible:
 

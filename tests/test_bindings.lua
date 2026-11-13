@@ -60,7 +60,7 @@ for _, key in ipairs({ "MOUSEWHEELUP", "MOUSEWHEELDOWN", "SHIFT-MOUSEWHEELDOWN" 
         s:press(key)
         equal(s.zoomIn, action == "CAMERAZOOMIN" and 1 or 0, "original zoom-in behaviour preserved")
         equal(s.zoomOut, action == "CAMERAZOOMOUT" and 1 or 0, "original zoom-out behaviour preserved")
-        equal(s.buffs, 3, "shared wheel also performs ordinary buff trigger")
+        equal(s.buffs, 3, "shared wheel also performs ordinary next buff key")
         ns.Actions.entries = {}
         ns.Bindings:Prepare()
         s:press(key)

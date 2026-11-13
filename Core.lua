@@ -17,7 +17,7 @@ ns.TARGET = ns.GetMetadata("X-Buffsmith-Target")
     or "Unknown"
 
 _G.BINDING_HEADER_BUFFSMITH = "Buffsmith"
-_G["BINDING_NAME_CLICK BuffsmithBindingButton:LeftButton"] = "Buff trigger — apply next missing buff"
+_G["BINDING_NAME_CLICK BuffsmithBindingButton:LeftButton"] = "Next buff key — apply next missing buff"
 
 -- Chat output, settings, commands, the minimap button and the standard
 -- reference pages come from HammerCore (Libs/HammerCore); see Setup.lua.

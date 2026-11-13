@@ -97,8 +97,8 @@ end
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
     { version = "1.13.0-dev1", date = "2026-11-13", items = {
-        { title = "Find your settings", text = "Buffs has Reminders, Targets and Tracking tabs. Search now finds buff and item thresholds, ignored entries and the Buff trigger.", kind = "improved", page = "Buffs", tab = "Reminders" },
-        { title = "Less clutter", text = "Dependent controls hide until enabled. Resets stay within their page or tab, and Food after stopping now lives on Consumables.", kind = "improved", page = "Consumables" },
+        { title = "Find your settings", text = "Buffs has Reminders, Targets and Tracking tabs. Search now finds buff and item thresholds, ignored entries and the Next buff key.", kind = "improved", page = "Buffs", tab = "Reminders" },
+        { title = "Less clutter", text = "Dependent controls hide until enabled. Resets stay within their page or tab, and Show food after standing still now lives on Consumables.", kind = "improved", page = "Consumables" },
     } },
     { version = "1.12.0", date = "2026-11-11", items = {
         { title = "Food effects", text = "Hover food, a flask or any other bag item on the bar to see what it gives you, like the Well Fed buff.",
@@ -119,7 +119,7 @@ local WHATS_NEW = {
             kind = "new" },
     } },
     { version = "1.10.3", date = "2026-11-09", items = {
-        { title = "Food after stopping", text = "Food waits until you've stood still for 5 seconds, so a quick pause mid-run doesn't flash it up. Change the wait on Consumables.",
+        { title = "Show food after standing still", text = "Food waits until you've stood still for 5 seconds, so a quick pause mid-run doesn't flash it up. Change the wait on Consumables.",
             kind = "improved", page = "Consumables" },
     } },
     { version = "1.10.2", date = "2026-11-09", items = {
@@ -133,9 +133,9 @@ local WHATS_NEW = {
     { version = "1.10.0", date = "2026-11-09", items = {
         { title = "A fresh coat of paint", text = "Settings got a new look: two columns, switches, icons on every heading, and this What's new page.",
             kind = "improved" },
-        { title = "Key bindings", text = "The Buff trigger sits on the same tidy bindings page as other Consecrated Hammer addons.",
+        { title = "Key bindings", text = "The Next buff key sits on the same tidy bindings page as other Consecrated Hammer addons.",
             kind = "improved", page = "Key Bindings" },
-        { title = "Preview on screen", text = "Moved to a button at the top of Appearance, Buffs and Consumables.",
+        { title = "Show live preview", text = "Moved to a button at the top of Appearance, Buffs and Consumables.",
             kind = "improved", page = "Appearance" },
         { title = "Support links", text = "CurseForge, Discord and Buy me a coffee sit at the bottom of the settings window. Hide them on Visibility.",
             kind = "improved", page = "Visibility" },
@@ -159,7 +159,7 @@ local WHATS_NEW = {
         { text = "Read Leyline reminds you when health or mana runs low.", page = "Buffs" },
     } },
     { version = "1.6.0", date = "2026-11-06", history = true, items = {
-        "A mouse-wheel Buff trigger can keep zooming the camera too.",
+        "A mouse-wheel Next buff key can keep zooming the camera too.",
         "Reminders pause on flight paths.",
     } },
     { version = "1.0.0", date = "2026-09-27", history = true, items = {

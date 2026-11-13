@@ -19,16 +19,16 @@ buff, available tracker, supported bag item or ignored entry on the character.
 | Buffs: every detected self-buff toggle | Buffs > Reminders | E |
 | Buffs: every buff's reminder percentage, Read Leyline health/mana threshold | Buffs > Reminders, alongside its toggle | A |
 | Buffs: Friendly target, Party members, Friendly pets | Buffs > Targets | S |
-| Buffs: Skip PvP-flagged players while I'm unflagged | Buffs > Targets | S |
+| Buffs: Skip PvP-flagged players | Buffs > Targets | S |
 | Buffs: Party coverage | Buffs > Targets | S |
 | Buffs: all tracking choices | Buffs > Tracking | S |
 | Consumables: Food, Scrolls, Flasks, Other buffs, Weapon enhancements | Consumables | E |
 | Consumables: each category's reminder percentage | Consumables | S |
 | Consumables: every owned item toggle and individual reminder percentage | Consumables, under its category | A |
-| Visibility: Food after stopping | Consumables, before categories | S |
+| Visibility: Show food after standing still | Consumables, before categories | S |
 | Ignored: each ignored buff/item and Restore | Ignored | A |
 | Buffs/Consumables: View ignored links | Same pages | S |
-| Key Bindings: Buff trigger, active/available bindings, clear/unbind actions | Key Bindings, second in the rail | E |
+| Key Bindings: Next buff key, active/available bindings, clear/unbind actions | Key Bindings, second in the rail | E |
 | Key Bindings: Also zoom in/out | Key Bindings, when a captured wheel binding exists | A |
 | Thank You: Thank players for buffs | Thank You | S |
 | Thank You: Skip party and raid members, Send thanks as, Delay | Thank You, Delivery (Delay renamed Thank-you delay) | A |

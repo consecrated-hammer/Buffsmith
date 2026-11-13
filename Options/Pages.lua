@@ -28,7 +28,7 @@ local ICONS = {
 
 -- The header button on pages that change how the bar looks.
 local PREVIEW_ACTION = {
-    text = function() return ns.Preview:IsShown() and "Hide preview" or "Preview on screen" end,
+    text = function() return ns.Preview:IsShown() and "Hide preview" or "Show live preview" end,
     onClick = function() ns.Preview:Toggle() end,
     hint = "Show the bar with sample icons where it sits on screen, so you can see size and direction.",
 }
@@ -381,16 +381,16 @@ end)
 -- ── Buffs ──────────────────────────────────────────────────────────────────
 
 local function buildTargets(panel, y)
-    _, y = UI.Header(panel, "Targets", y, ICONS.targets)
-    _, y = UI.Check(panel, "Friendly target", "Show targetable buffs your selected friendly player is missing.", y,
+    _, y = UI.Header(panel, "Who to buff", y, ICONS.targets)
+    _, y = UI.Check(panel, "Your friendly target", "Show targetable buffs your selected friendly player is missing.", y,
         function() return ns.db.showTargetBuffs end, function(value) ns.Set("showTargetBuffs", value) end)
-    _, y = UI.Check(panel, "Party members", "Show targetable buffs party members are missing.", y,
+    _, y = UI.Check(panel, "Your party", "Show targetable buffs party members are missing.", y,
         function() return ns.db.showPartyBuffs end, function(value) ns.Set("showPartyBuffs", value) end)
-    _, y = UI.Check(panel, "Friendly pets", "Show targetable buffs for your pet and party pets.", y,
+    _, y = UI.Check(panel, "Pets", "Show targetable buffs for your pet and party pets.", y,
         function() return ns.db.showPetBuffs end, function(value) ns.Set("showPetBuffs", value) end)
-    _, y = UI.Check(panel, "Skip PvP-flagged players while I'm unflagged", "Skip flagged targets, party members and pets while you're unflagged. Unreadable PvP flags also skip that recipient. Self buffs still work.", y,
+    _, y = UI.Check(panel, "Skip PvP-flagged players", "While you're not flagged, don't offer buffs for flagged players or pets, so you don't flag yourself. Your own buffs still show.", y,
         function() return ns.db.skipPvPWhileUnflagged end, function(value) ns.Set("skipPvPWhileUnflagged", value) end)
-    _, y = UI.Check(panel, "Party coverage", "Show class buffs a party member may provide. These report to chat; they never cast.", y,
+    _, y = UI.Check(panel, "Buffs others could cast", "Shows party buffs someone else's class brings and nobody has cast. Clicking one mentions it in chat. It never casts.", y,
         function() return ns.db.showPartyCoverage end, function(value) ns.Set("showPartyCoverage", value) end)
     _, y = UI.PageReset(panel, y, function()
         resetKeys({ "showTargetBuffs", "showPartyBuffs", "showPetBuffs", "skipPvPWhileUnflagged", "showPartyCoverage" })
@@ -399,8 +399,8 @@ local function buildTargets(panel, y)
 end
 
 local function buildReminders(panel, y)
-    _, y = UI.Header(panel, "Detected buffs", y, ICONS.detected)
-    _, y = UI.Text(panel, "Short buffs are off by default.", y)
+    _, y = UI.Header(panel, "Your buffs", y, ICONS.detected)
+    _, y = UI.Text(panel, "Buffsmith found these on this character. Short ones start switched off.", y)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local none = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     none:SetText("No self-buffs found for your class and level yet.")
@@ -530,7 +530,7 @@ local CATEGORIES = { { "food", "Food" }, { "scroll", "Scrolls" }, { "flask", "Fl
 
 HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items appear while they are in your bags.",
     headerAction = PREVIEW_ACTION }, function(panel, y)
-    _, y = UI.Slider(panel, "Food after stopping",
+    _, y = UI.Slider(panel, "Show food after standing still",
         "Food hides while you move, since moving wastes it. Seconds to stand still before it comes back.",
         y, 0, 15, 1, function() return ns.db.foodStillSeconds end,
         function(value) ns.Set("foodStillSeconds", value) end,
@@ -662,10 +662,10 @@ end)
 
 -- ── Key Bindings ───────────────────────────────────────────────────────────
 
--- HammerCore's shared page: one item, the Buff trigger, plus the wheel-zoom
+-- HammerCore's shared page: one item, the Next buff key, plus the wheel-zoom
 -- option once it's bound to a mouse wheel that used to zoom the camera.
 local TRIGGER = {
-    id = "trigger", name = "Buff trigger", icon = "Interface\\AddOns\\Buffsmith\\Textures\\BuffsmithLogo",
+    id = "trigger", name = "Next buff key", icon = "Interface\\AddOns\\Buffsmith\\Textures\\BuffsmithLogo",
     detail = "Uses the next icon on the bar.",
 }
 
@@ -676,7 +676,7 @@ HC.Settings:NewPage({ name = "Key Bindings", columns = 1, description = "One key
     end
     y = HC.Bindings.Page(panel, y, {
         inputs = { keys = true, mouse = true, wheel = true },
-        empty = "Not bound yet. Pick the Buff trigger on the right.",
+        empty = "Not bound yet. Pick the Next buff key on the right.",
         poolHint = "Click it, then press a key, mouse button or wheel.",
         pool = function() return { { title = "Buffsmith", items = { TRIGGER } } } end,
         bound = function()
@@ -687,7 +687,7 @@ HC.Settings:NewPage({ name = "Key Bindings", columns = 1, description = "One key
         bind = function(_, pressed)
             local ok, result = ns.Bindings:Set("trigger", pressed)
             if not ok then return false, result end
-            HC.Print("Buff trigger bound to " .. HC.Bindings.Label(result) .. ".")
+            HC.Print("Next buff key bound to " .. HC.Bindings.Label(result) .. ".")
             return true
         end,
         unbind = function()
@@ -697,7 +697,7 @@ HC.Settings:NewPage({ name = "Key Bindings", columns = 1, description = "One key
     })
     local owner = panel.hcHeaderOwner or panel
     local available = owner.hcRows and owner.hcRows.Available
-    if available then available.hcHint = "Buff trigger key mouse wheel binding" end
+    if available then available.hcHint = "Next buff key key mouse wheel binding" end
     local zoomRow
     zoomRow, y = UI.Check(panel, "Also zoom in/out",
         "Keep this wheel key's previous camera action as well as triggering Buffsmith. Clearing the binding restores camera zoom.", y,
