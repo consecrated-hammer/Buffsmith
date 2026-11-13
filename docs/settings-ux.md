@@ -15,7 +15,7 @@ buff, available tracker, supported bag item or ignored entry on the character.
 | --- | --- | --- |
 | Appearance: Direction, Icon size | Appearance, Bar | E |
 | Appearance: Flyout direction, Flyout choices | Appearance, Bar | S |
-| Appearance: Show drag handle, Reset bar position | Appearance, position actions | E |
+| Appearance: Show drag handle, Re-centre bar | Appearance, position actions | E |
 | Buffs: every detected self-buff toggle | Buffs > Reminders | E |
 | Buffs: every buff's reminder percentage, Read Leyline health/mana threshold | Buffs > Reminders, alongside its toggle | A |
 | Buffs: Friendly target, Party members, Friendly pets | Buffs > Targets | S |
@@ -38,7 +38,7 @@ buff, available tracker, supported bag item or ignored entry on the character.
 | Tooltips: Show spell descriptions, Show item effects | Tooltips, when bar tooltips are enabled | A |
 | Visibility: Show the bar (Always/Never/composable conditions), Pause reminders in rested areas | Visibility, Bar | E/S |
 | Shared: Show minimap button, Minimap right-click | Visibility, Minimap | S |
-| Shared: Show startup message, Show what's new after updates, Mark unread What's new, Turn-in sound | Visibility, Updates | S |
+| Shared: Show startup message, Show what's new after updates, Show unread marker, What's new sound | Visibility, Updates | S |
 | Shared: Settings search, Show support links; header Window scale | Visibility, Settings window; header (unchanged) | S |
 | Reference: What's new, Commands, Troubleshooting reports and About/support links | Reference, unchanged | S/A |
 | Shared Theme page | Still withheld by HammerCore | A |
@@ -67,8 +67,8 @@ Threshold sliders hide when their reminder is disabled. Item rows hide when the
 category is off, yet remain searchable through that category. Entries no longer
 owned/known are removed from search. A disabled Thank You hides all delivery
 controls; hidden channel-specific settings focus the channel selector or master.
-All controls use the existing search API. Reset Reminders affects currently
-learned self-buff exclusions/thresholds; Reset Tracking affects available tracking
+All controls use the existing search API. Reset reminders affects currently
+learned self-buff exclusions/thresholds; Reset tracking affects available tracking
 preferences. Consumable reset restores category and item thresholds but keeps
 preferred and ignored items. Position reset is separate from appearance reset.
 No SavedVariables or WTF files are touched.

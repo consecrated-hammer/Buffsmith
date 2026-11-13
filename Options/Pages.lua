@@ -335,12 +335,12 @@ HC.Settings:NewPage({ name = "Appearance", description = "Size, direction and th
             ns.Handle:Update()
         end)
     y = UI.Columns(panel, 1, y)
-    _, y = UI.ActionButton(panel, y, "Reset bar position", function() HC.Commands:Dispatch("reset position") end,
+    _, y = UI.ActionButton(panel, y, "Re-centre bar", function() HC.Commands:Dispatch("reset position") end,
         "Put the bar back in its starting place.")
     _, y = UI.PageReset(panel, y, function()
         resetKeys({ "orientation", "flyoutVerticalDirection", "flyoutHorizontalDirection", "iconSize", "maxAlternatives", "showHandle" })
         ns.Handle:Update()
-    end, "Reset Appearance")
+    end, "Reset appearance")
     return y
 end)
 
@@ -365,7 +365,7 @@ HC.Settings:NewPage({ name = "Tooltips", description = "Who a buff is for, and w
     local reset
     reset, y = UI.PageReset(panel, top, function()
         resetKeys({ "showTooltip", "tooltipSpellDescriptions", "tooltipItemEffects" })
-    end, "Reset Tooltips")
+    end, "Reset tooltips")
     UI.OnRefresh(panel, function()
         children:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, top)
         children:SetHeight(-UI.Flush(children, childY) + 4)
@@ -394,7 +394,7 @@ local function buildTargets(panel, y)
         function() return ns.db.showPartyCoverage end, function(value) ns.Set("showPartyCoverage", value) end)
     _, y = UI.PageReset(panel, y, function()
         resetKeys({ "showTargetBuffs", "showPartyBuffs", "showPetBuffs", "skipPvPWhileUnflagged", "showPartyCoverage" })
-    end, "Reset Targets")
+    end, "Reset targets")
     return y
 end
 
@@ -410,7 +410,7 @@ local function buildReminders(panel, y)
             ns.db.reminderPercent.buffBySpell[entry.spellID] = nil
         end
         ns.RefreshAll()
-    end, "Reset Reminders")
+    end, "Reset reminders")
     local function layout()
         local y = link("spell", listTop)
         pool:Begin()
@@ -462,7 +462,7 @@ local function buildTracking(panel, y)
         for _, entry in ipairs(ns.Tracking:Available()) do ns.db.excludedBuffs[entry.spellID] = nil end
         ns.db.trackingChoice = nil
         ns.RefreshAll()
-    end, "Reset Tracking")
+    end, "Reset tracking")
     local function layout()
         local y = listTop
         pool:Begin()
@@ -545,7 +545,7 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         -- Item choices and ignored items belong to the player, not this reset.
         ns.db.reminderPercent.item = {}
         ns.Inventory:Refresh()
-    end, "Reset Consumable reminders")
+    end, "Reset consumable reminders")
     local function layout()
         local y = link("item", listTop)
         pool:Begin()
@@ -788,7 +788,7 @@ HC.Settings:NewPage({ name = "Thank You", description = "Optional replies when s
         _, y = UI.PageReset(frame, y, function()
             ns.Thanks:SetEnabled(false)
             resetKeys({ "thanksEnabled", "thanksChannel", "thanksEmote", "thanksUnknownEmote", "thanksSkipGroupMembers", "thanksDelay", "thanksMessage" })
-        end, "Reset Thank You")
+        end, "Reset thank you")
         return y
     end)
     return -8
