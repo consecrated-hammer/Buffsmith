@@ -169,6 +169,7 @@ local WHATS_NEW = {
 
 HC:Init({
     name = "Buffsmith",
+    previewDock = true,
     command = "buffsmith",
     aliases = { "bs", "bsmith" },
     savedVariable = "BuffsmithDB",
@@ -186,7 +187,10 @@ HC:Init({
         icon = "Interface\\AddOns\\Buffsmith\\Textures\\BuffsmithMinimap",
         menu = minimapMenu,
     },
-    onSettingsShown = function() if ns.RefreshSettings then ns.RefreshSettings() end end,
+    onSettingsShown = function()
+        if ns.RefreshSettings then ns.RefreshSettings() end
+        if ns.Preview:IsShown() then ns.Preview:Show() end
+    end,
     onSettingsHidden = function() ns.Preview:Hide() end,
     toggle = { help = "Show or hide the bar", run = toggleBar },
     lock = { help = "Hide the drag handle", run = function() setHandle(false) end },

@@ -125,11 +125,29 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     ns.Set("showTooltip", false)
     settings:Show("Tooltips")
     equal(settings:Focus("Tooltips", "Show item effects"), body("Tooltips").hcRows["Show bar tooltips"], "hidden tooltip child focuses master")
+    ns.Set("showTooltip", true)
+    settings:Show("Tooltips")
+    local tooltipRows = body("Tooltips").hcRows
+    local barTips, itemEffects = tooltipRows["Show bar tooltips"], tooltipRows["Show item effects"]
+    equal(itemEffects:GetParent(), barTips:GetParent(), "tooltip switches share their row section")
+    equal(itemEffects.points[1][3], barTips.points[1][3], "tooltip switches align vertically")
+    assert(itemEffects.points[1][2] > barTips.points[1][2], "item effects occupies the right column")
+    ns.Set("showTooltip", false)
     equal(settings:Focus("Thank You", "Message"), body("Thank You").hcRows["Thank players for buffs"], "disabled thanks focuses master")
     ns.Thanks:SetEnabled(true)
     ns.db.thanksChannel = "EMOTE"
     settings:Show("Thank You")
     equal(settings:Focus("Thank You", "Message"), body("Thank You").hcRows["Send thanks as"], "wrong channel focuses selector")
+    local emote = body("Thank You").hcRows.Emote
+    local unknown = body("Thank You").hcRows["Emote when caster is unknown"]
+    equal(emote:GetParent().hcColumns, 2, "emote controls use two columns")
+    if ns.TARGET == "Camelot" then
+        equal(unknown:GetParent(), emote:GetParent(), "emote controls share their row section")
+        equal(unknown.points[1][3], emote.points[1][3], "emote controls align vertically")
+        assert(unknown.points[1][2] > emote.points[1][2], "unknown-caster switch occupies the right column")
+    else
+        equal(unknown, nil, "unsupported unknown-caster switch stays absent on Retail")
+    end
     ns.db.thanksChannel = "WHISPER"
     settings:Show("Thank You")
     local preview = body("Thank You").content.thanksPreview
@@ -214,7 +232,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     clickReset("Buffs", "Reset targets", "Targets")
     equal(ns.db.showTargetBuffs, true, "target reset")
     equal(ns.db.iconSize, 56, "target reset preserves appearance")
-    clickReset("Consumables", "Reset consumable reminders")
+    clickReset("Consumables", "Reset this page")
     equal(ns.db.reminderPercent.food, 10, "category threshold reset")
     equal(ns.db.reminderPercent.item[9001], nil, "item threshold reset")
     equal(ns.db.excludedConsumables[9002], true, "consumable reset preserves ignored items")

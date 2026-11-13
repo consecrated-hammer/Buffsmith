@@ -9,6 +9,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Drag the settings preview near the window to snap it alongside, or away to detach. It uses a separate position and sample icons without moving the real bar.
+
 - Settings open on Buffs, reminder sliders have a column heading, and Thank You previews messages inline.
 
 - Buff targets, the next buff key, food timing and live preview use clearer, consistent names in settings and search.

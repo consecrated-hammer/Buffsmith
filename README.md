@@ -114,7 +114,7 @@ unrelated class buff arriving during eating cannot replace the food timer.
 
 The drag handle stays at a fixed top-left corner while icons, cooldowns and
 status rows come and go. The grid grows right and down from there. Dragging the
-live bar or preview saves the same fixed corner. The changing-size grid no
+live bar or on-screen preview saves the same fixed corner. The settings preview has its own position. The changing-size grid no
 longer clamps itself back onto the screen, since that would move the handle;
 use `reset position` if you need to bring it back into view.
 
@@ -151,7 +151,7 @@ logout. An accepted emote API call still needs an in-game delivery check.
 
 ## Getting started
 
-Install, then type `/buffsmith` (or `/bs`) for settings. **Show live preview**, at the top of Appearance, Buffs and Consumables, draws a test bar where yours will sit, so you can place and size it without deliberately removing half your buffs first.
+Install, then type `/buffsmith` (or `/bs`) for settings. **Show live preview**, at the top of Appearance, Buffs and Consumables, draws sample icons in a separate preview, so you can check the layout without removing your buffs. Drag it near a settings edge to snap it alongside, or drag away to detach. Visibility > Settings window has **Snap preview to settings**. The settings preview keeps its own position and closes with settings; `/buffsmith preview` with settings closed still lets you place the real bar.
 
 On the bar:
 

@@ -35,8 +35,8 @@ function Handle:Anchor(parent)
     return true
 end
 
--- Both the live bar and the settings preview carry a handle, and both write
--- ns.db.palettePoint, so dragging either one moves the other. The frames stay
+-- The live bar and on-screen preview save the same palette point. Settings
+-- previews override dragging to keep their own position. The frames stay
 -- separate: the preview must never share a frame with the bar, whose children
 -- are secure.
 function Handle.Attach(parent, name, opts)
@@ -76,7 +76,8 @@ function Handle.Attach(parent, name, opts)
         self:SetBackdropColor(unpack(HOVER))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(opts.title or "Buffsmith")
-        GameTooltip:AddLine(opts.dragHint or "Drag: move the bar", 0.85, 0.85, 0.85)
+        local hint = type(opts.dragHint) == "function" and opts.dragHint() or opts.dragHint
+        GameTooltip:AddLine(hint or "Drag: move the bar", 0.85, 0.85, 0.85)
         local menu = ns.HC.Minimap
         local label = menu and menu.RightClickMode and menu.RightClickMode() == "menu" and "menu" or "open settings"
         GameTooltip:AddLine("Right-click: " .. label, 0.85, 0.85, 0.85)

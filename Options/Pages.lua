@@ -371,6 +371,11 @@ HC.Settings:NewPage({ name = "Tooltips", description = "Who a buff is for, and w
     master, y = UI.Check(panel, "Show bar tooltips", "Show buff names, recipients and click instructions when hovering a bar icon.", y,
         function() return ns.db.showTooltip end,
         function(value) ns.Set("showTooltip", value) end)
+    local itemEffects
+    itemEffects, y = UI.Check(panel, "Show item effects", "Show what food, flasks and other bag items give you, such as the Well Fed buff.", y,
+        function() return ns.db.tooltipItemEffects end,
+        function(value) ns.Set("tooltipItemEffects", value) end)
+    itemEffects.hcParentRow = master
     y = UI.Columns(panel, 1, y)
     local top = y
     local children = section(panel, master)
@@ -378,16 +383,15 @@ HC.Settings:NewPage({ name = "Tooltips", description = "Who a buff is for, and w
     _, childY = UI.Check(children, "Show spell descriptions", "Add Blizzard's static description for the offered spell. This can make the tooltip taller.", childY,
         function() return ns.db.tooltipSpellDescriptions end,
         function(value) ns.Set("tooltipSpellDescriptions", value) end)
-    _, childY = UI.Check(children, "Show item effects", "Show what food, flasks and other bag items give you, such as the Well Fed buff.", childY,
-        function() return ns.db.tooltipItemEffects end,
-        function(value) ns.Set("tooltipItemEffects", value) end)
+    childY = UI.Flush(children, childY)
     local reset
     reset, y = UI.PageReset(panel, top, function()
         resetKeys({ "showTooltip", "tooltipSpellDescriptions", "tooltipItemEffects" })
     end, "Reset tooltips")
     UI.OnRefresh(panel, function()
+        itemEffects:SetShown(ns.db.showTooltip)
         children:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, top)
-        children:SetHeight(-UI.Flush(children, childY) + 4)
+        children:SetHeight(-childY + 4)
         children:SetShown(ns.db.showTooltip)
         reset:ClearAllPoints()
         local bottom = ns.db.showTooltip and (top + childY - 4) or top
@@ -572,7 +576,7 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         -- Item choices and ignored items belong to the player, not this reset.
         ns.db.reminderPercent.item = {}
         ns.Inventory:Refresh()
-    end, "Reset consumable reminders")
+    end, "Reset this page", "consumable reminders")
     local function layout()
         local sliders = false
         for _, category in ipairs(CATEGORIES) do
@@ -782,7 +786,7 @@ HC.Settings:NewPage({ name = "Thank You", description = "Optional replies when s
             function(value) return value .. " s" end)
         return y, row
     end, enabled, master)
-    local emote = add(function(frame, y)
+    add(function(frame, y)
         local row
         row, y = UI.SearchPicker(frame, "Emote", "Random picks a different emote each time.", y, {
             width = 220,
@@ -796,14 +800,13 @@ HC.Settings:NewPage({ name = "Thank You", description = "Optional replies when s
             get = function() return ns.db.thanksEmote end,
             set = function(token) ns.db.thanksEmote = token end,
         })
+        if ns.TARGET == "Camelot" then
+            _, y = UI.Check(frame, "Emote when caster is unknown",
+                "WoW Forever may report a new buff without telling addons who cast it. Friendly player nameplates can help identify the caster. Whispers still need a known caster.", y,
+                function() return ns.db.thanksUnknownEmote end, function(value) ns.db.thanksUnknownEmote = value end)
+        end
         return y, row
-    end, function() return enabled() and ns.db.thanksChannel == "EMOTE" end, channel, 1)
-    add(function(frame, y)
-        _, y = UI.Check(frame, "Emote when caster is unknown",
-            "WoW Forever may report a new buff without telling addons who cast it. Friendly player nameplates can help identify the caster. Whispers still need a known caster.", y,
-            function() return ns.db.thanksUnknownEmote end, function(value) ns.db.thanksUnknownEmote = value end)
-        return y
-    end, function() return enabled() and ns.db.thanksChannel == "EMOTE" and ns.TARGET == "Camelot" end, emote, 1)
+    end, function() return enabled() and ns.db.thanksChannel == "EMOTE" end, channel, 2)
     add(function(frame, y)
         local preview
         local function showSample()

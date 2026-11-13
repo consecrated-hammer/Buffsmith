@@ -215,6 +215,86 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     SlashCmdList.BUFFSMITH("preview")
     equal(HC.Settings.headerAction:GetText(), "Hide preview", toc .. ": preview command updates the header")
 
+    equal(ns.Preview.settingsMode, true, toc .. ": settings uses an independent preview")
+    local livePoint = ns.db.palettePoint
+    local liveFramePoint = { ns.Palette.frame:GetPoint() }
+    ns.Palette.frame:Show()
+    ns.Preview:Refresh()
+    equal(ns.Preview.icons[1]:IsShown(), true, toc .. ": settings draws samples while the live bar is visible")
+    local dock = ns.Preview.dock
+    local beginDrag, endDrag = dock.BeginDrag, dock.EndDrag
+    local starts, stops = 0, 0
+    dock.BeginDrag = function(self) starts = starts + 1 end
+    dock.EndDrag = function(self) stops = stops + 1 end
+    ns.Preview.handle.scripts.OnDragStart(ns.Preview.handle)
+    ns.Preview.handle.scripts.OnDragStop(ns.Preview.handle)
+    equal(starts, 1, toc .. ": settings handle begins shared preview dragging")
+    equal(stops, 1, toc .. ": settings handle ends shared preview dragging")
+    dock.BeginDrag, dock.EndDrag = beginDrag, endDrag
+    equal(ns.db.palettePoint, livePoint, toc .. ": settings preview preserves the saved live bar point")
+    local after = { ns.Palette.frame:GetPoint() }
+    for i = 1, 5 do equal(after[i], liveFramePoint[i], toc .. ": settings preview preserves live bar anchor " .. i) end
+    -- Feed known client bounds through the real docking controller.
+    local previewFrame, host = ns.Preview.frame, HC.Settings.window
+    local oldLeft, oldTop, hostLeft, hostTop = previewFrame.GetLeft, previewFrame.GetTop, host.GetLeft, host.GetTop
+    local screenWidth, screenHeight = UIParent:GetWidth(), UIParent:GetHeight()
+    UIParent:SetSize(2400, 1600)
+    host.GetLeft, host.GetTop = function() return 600 end, function() return 1400 end
+    local dragLeft = 600 + host:GetWidth() + 8
+    previewFrame.GetLeft, previewFrame.GetTop = function() return dragLeft end, function() return 1300 end
+    ns.Preview.dock:BeginDrag()
+    ns.Preview.dock:EndDrag()
+    equal(ns.Preview.dock:IsAttached(), true, toc .. ": dragging near settings attaches the preview")
+    equal(ns.db.palettePoint, livePoint, toc .. ": snapping preserves the saved live bar point")
+    local liveAfterSnap = { ns.Palette.frame:GetPoint() }
+    for i = 1, 5 do equal(liveAfterSnap[i], liveFramePoint[i], toc .. ": snapping preserves live bar anchor " .. i) end
+    equal(select(2, previewFrame:GetPoint()), host, toc .. ": attached preview anchors to settings")
+    ns.Preview.dock:BeginDrag()
+    dragLeft = -2000
+    ns.Preview.dock:EndDrag()
+    equal(ns.Preview.dock:IsAttached(), false, toc .. ": dragging away detaches the preview")
+    equal(select(2, previewFrame:GetPoint()), UIParent, toc .. ": detached preview returns to screen anchoring")
+    previewFrame.GetLeft, previewFrame.GetTop, host.GetLeft, host.GetTop = oldLeft, oldTop, hostLeft, hostTop
+    UIParent:SetSize(screenWidth, screenHeight)
+    local combatGuard = ns.IsCombatLocked
+    ns.IsCombatLocked = function() return true end
+    equal(ns.Preview.dock:BeginDrag(), false, toc .. ": combat blocks settings-preview dragging")
+    ns.IsCombatLocked = combatGuard
+    HC.Settings:Hide()
+    equal(ns.Preview:IsShown(), false, toc .. ": settings close hides the preview")
+    ns.Preview:Show()
+    equal(ns.Preview.settingsMode, false, toc .. ": on-screen preview keeps its live-position mode")
+    local previewFrame = ns.Preview.frame
+    previewFrame:ClearAllPoints()
+    previewFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 123, -234)
+    ns.Preview.handle.scripts.OnDragStart(ns.Preview.handle)
+    ns.Preview.handle.scripts.OnDragStop(ns.Preview.handle)
+    equal(ns.db.palettePoint[3], 123, toc .. ": on-screen dragging still saves the live bar position")
+    equal(select(4, ns.Palette.frame:GetPoint()), 123, toc .. ": on-screen dragging still moves the live bar")
+    local stops, wasClamped = 0
+    local oldStop, oldClamp = previewFrame.StopMovingOrSizing, previewFrame.SetClampedToScreen
+    previewFrame.StopMovingOrSizing = function() stops = stops + 1 end
+    previewFrame.SetClampedToScreen = function(_, enabled) wasClamped = enabled end
+    local savedPalette = ns.db.palettePoint
+    ns.Preview.handle.scripts.OnDragStart(ns.Preview.handle)
+    HC.Settings:Show("Appearance")
+    equal(ns.Preview.settingsMode, true, toc .. ": opening settings converts a shown on-screen preview")
+    equal(stops, 1, toc .. ": changing from on-screen drag to settings stops movement")
+    equal(wasClamped, true, toc .. ": settings preview is screen-clamped")
+    ns.Preview.handle.scripts.OnDragStop(ns.Preview.handle)
+    equal(ns.db.palettePoint, savedPalette, toc .. ": stale screen drag-stop does not save the settings position")
+    ns.Preview.handle.scripts.OnDragStart(ns.Preview.handle)
+    HC.Settings:Hide()
+    local afterHide = stops
+    ns.Preview:Show()
+    equal(wasClamped, false, toc .. ": on-screen preview keeps the original unclamped model")
+    ns.Preview.handle.scripts.OnDragStop(ns.Preview.handle)
+    equal(stops, afterHide, toc .. ": stale settings drag-stop cannot act on the on-screen preview")
+    equal(ns.db.palettePoint, savedPalette, toc .. ": mode changes preserve the live bar position")
+    previewFrame.StopMovingOrSizing, previewFrame.SetClampedToScreen = oldStop, oldClamp
+    ns.Preview:Hide()
+    HC.Settings:Hide()
+
     wow.printed = {}
     SlashCmdList.BUFFSMITH("help")
     local sawAction = false

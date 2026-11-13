@@ -1,6 +1,6 @@
 local addonName, ns = ...
 
--- A non-secure stand-in for the bar, so the player can see where it sits while
+-- A non-secure stand-in for the bar, so the player can see its layout while
 -- nothing is actually missing. It shares ns.Layout with the live bar but never
 -- touches Actions:Configure, Visibility:Apply or a secure template: a preview
 -- that armed real actions could cast something on click, and would leave those
@@ -74,11 +74,31 @@ function Preview:Create()
 
     self.handle = ns.Handle.Attach(frame, "BuffsmithPreviewHandle", {
         title = "Buffsmith preview",
-        dragHint = "Drag: move the bar",
+        dragHint = function() return Preview.settingsMode and "Drag: move the preview; near settings to snap" or "Drag: move the bar" end,
         onMoved = function() Preview:ApplyLivePosition() end,
     })
 
     self.frame = frame
+    self.dock = ns.HC.Settings:PreviewDock(frame, {
+        getPoint = function() return ns.db.previewSettingsPoint or { "TOPLEFT", "TOPLEFT", 40, -120 } end,
+        setPoint = function(point) ns.db.previewSettingsPoint = point end,
+        canDrag = function() return self.settingsMode and not ns.IsCombatLocked() end,
+        isActive = function() return self.settingsMode == true end,
+    })
+    local startDrag, stopDrag = self.handle:GetScript("OnDragStart"), self.handle:GetScript("OnDragStop")
+    self.handle:SetScript("OnDragStart", function(...)
+        if ns.IsCombatLocked() then return end
+        self.dragMode = self.settingsMode and "settings" or "screen"
+        if self.dragMode == "settings" then
+            if self.dock:BeginDrag() == false then self.dragMode = nil end
+        else startDrag(...) end
+    end)
+    self.handle:SetScript("OnDragStop", function(...)
+        local mode = self.dragMode
+        self.dragMode = nil
+        if mode == "settings" then self.dock:EndDrag()
+        elseif mode == "screen" then stopDrag(...) end
+    end)
     self:ApplyPosition()
     frame:Hide()
     return frame
@@ -91,6 +111,10 @@ end
 
 function Preview:ApplyPosition()
     if not self.frame then return end
+    if self.settingsMode then
+        self.dock:Refresh()
+        return
+    end
     local point = ns.db.palettePoint
     self.frame:ClearAllPoints()
     self.frame:SetPoint(point[1], UIParent, point[2], point[3], point[4])
@@ -112,11 +136,11 @@ function Preview:Refresh()
     self:ApplyPosition()
     for _, icon in ipairs(self.icons) do icon:Hide() end
 
-    -- While the live bar is on screen the two would sit at the same point and
+    -- Outside settings, the preview shares the live bar position and would
     -- draw two sets of icons, so the preview keeps only its outline and lets
     -- the real bar show through.
     local bar = ns.Palette and ns.Palette.frame
-    local bare = bar and bar:IsShown()
+    local bare = not self.settingsMode and bar and bar:IsShown()
     if bare then
         self.frame:SetSize(math.max(bar:GetWidth(), 8), math.max(bar:GetHeight(), 8))
         self.label:SetText("PREVIEW — live bar shown")
@@ -153,11 +177,25 @@ function Preview:Refresh()
         icon:Show()
     end
     self.frame:SetSize(layout.width, layout.height)
+    if self.settingsMode then self.dock:Refresh() end
+end
+
+function Preview:CancelDrag()
+    if self.dragMode then self.frame:StopMovingOrSizing() end
+    self.dragMode = nil
 end
 
 function Preview:Show()
     if ns.IsCombatLocked() then return end
     self:Create()
+    local settingsMode = ns.HC.Settings:IsShown()
+    if self.settingsMode ~= settingsMode then
+        self:CancelDrag()
+        self.frame:Hide()
+    end
+    self.settingsMode = settingsMode
+    self.frame:SetClampedToScreen(settingsMode)
+    if self.settingsMode then self.dock:Restore() else self:ApplyPosition() end
     self.frame:Show()
     self.handle:Show()
     self:Refresh()
@@ -165,7 +203,9 @@ end
 
 function Preview:Hide()
     if not self.frame then return end
+    self:CancelDrag()
     self.frame:Hide()
+    self.settingsMode = false
 end
 
 function Preview:Toggle()
