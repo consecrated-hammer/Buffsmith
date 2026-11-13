@@ -7,17 +7,17 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-11-13
+
 ### Changed
+
+- Keep Thank You emote controls side by side, pair item effects with bar tooltips, and shorten the consumables reset to Reset this page.
 
 - Drag the settings preview near the window to snap it alongside, or away to detach. It uses a separate position and sample icons without moving the real bar.
 
 - Settings open on Buffs, reminder sliders have a column heading, and Thank You previews messages inline.
 
 - Buff targets, the next buff key, food timing and live preview use clearer, consistent names in settings and search.
-
-## [1.13.0-dev1] - 2026-11-13
-
-### Changed
 
 - Settings now follow the setup path, with the Buff trigger near the top and
   Buffs split into Reminders, Targets and Tracking tabs.

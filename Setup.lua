@@ -96,8 +96,9 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
-    { version = "1.13.0-dev1", date = "2026-11-13", items = {
+    { version = "1.13.0", date = "2026-11-13", items = {
         { title = "Find your settings", text = "Buffs has Reminders, Targets and Tracking tabs. Search now finds buff and item thresholds, ignored entries and the Next buff key.", kind = "improved", page = "Buffs", tab = "Reminders" },
+        { title = "Preview docking", text = "Drag the settings preview near an edge to attach it, or away to let it float. Moving the sample keeps the real bar in place.", kind = "improved", page = "Visibility" },
         { title = "Less clutter", text = "Dependent controls hide until enabled. Resets stay within their page or tab, and Show food after standing still now lives on Consumables.", kind = "improved", page = "Consumables" },
     } },
     { version = "1.12.0", date = "2026-11-11", items = {
