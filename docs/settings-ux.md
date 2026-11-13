@@ -28,12 +28,12 @@ buff, available tracker, supported bag item or ignored entry on the character.
 | Visibility: Show food after standing still | Consumables, before categories | S |
 | Ignored: each ignored buff/item and Restore | Ignored | A |
 | Buffs/Consumables: View ignored links | Same pages | S |
-| Key Bindings: Next buff key, active/available bindings, clear/unbind actions | Key Bindings, second in the rail | E |
+| Key Bindings: Next buff key, active/available bindings, clear/unbind actions | Key Bindings, third in the rail | E |
 | Key Bindings: Also zoom in/out | Key Bindings, when a captured wheel binding exists | A |
 | Thank You: Thank players for buffs | Thank You | S |
 | Thank You: Skip party and raid members, Send thanks as, Delay | Thank You, Delivery (Delay renamed Thank-you delay) | A |
 | Thank You: Emote, Emote when caster is unknown | Thank You, only for Emote; unknown caster only on Forever | A |
-| Thank You: Message, Preview message | Thank You, only for chat channels | A |
+| Thank You: Message, inline sample | Thank You, only for chat channels | A |
 | Tooltips: Show bar tooltips | Tooltips | S |
 | Tooltips: Show spell descriptions, Show item effects | Tooltips, when bar tooltips are enabled | A |
 | Visibility: Show the bar (Always/Never/composable conditions), Pause reminders in rested areas | Visibility, Bar | E/S |
@@ -44,8 +44,8 @@ buff, available tracker, supported bag item or ignored entry on the character.
 | Shared Theme page | Still withheld by HammerCore | A |
 
 Old rail: Visibility, Appearance, Tooltips, Buffs, Consumables, Ignored,
-Key Bindings, Thank You. New rail: Appearance, Key Bindings, Buffs,
-Consumables, Tooltips, Thank You, Ignored, Visibility. Reference order is unchanged.
+Key Bindings, Thank You. New rail: Buffs, Consumables, Key Bindings,
+Appearance, Tooltips, Thank You, Ignored, Visibility. Reference order is unchanged.
 
 ## Decisions and coverage
 
@@ -58,7 +58,7 @@ current What's new destinations. These are implemented.
 No global Advanced mode, extra top-level Tracking page, welcome wizard or
 priority editor. The existing priority/targeting model is unchanged. Tooltips,
 Ignored and Appearance are already small, coherent pages; their structure stays.
-The three user scenarios follow Appearance/Bindings, then reminder selection;
+The setup path starts with detected buffs and consumables, then bindings;
 regular players use Buffs/Consumables; advanced controls remain adjacent to the
 feature they customise. The complete lists remain one column for readable names
 and aligned thresholds; ordinary controls retain HammerCore's two-column layout.
@@ -78,3 +78,9 @@ registered control, exercise dynamic bag removal, parent routing, compatibility
 and reset isolation. The separate renderer regressions cover the GCD report.
 Actual layout at window scales 0.7/1.3 and native secure rendering need client
 acceptance. See the wiki handoff for the tested commit and staged versions.
+
+## Polish follow-ups
+
+Reminder lists label the duration slider column. Thank You shows a local sample
+under Message without posting to chat. Row click targets are unchanged pending
+in-game evidence of accidental toggles.

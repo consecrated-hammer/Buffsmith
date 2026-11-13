@@ -90,7 +90,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     local names = {}
     for _, spec in ipairs(HC.Settings.order) do names[#names + 1] = spec.name end
     equal(table.concat(names, ","),
-        "Appearance,Key Bindings,Buffs,Consumables,Tooltips,Thank You,Ignored,Visibility,What's new,Commands,Troubleshooting,About",
+        "Buffs,Consumables,Key Bindings,Appearance,Tooltips,Thank You,Ignored,Visibility,What's new,Commands,Troubleshooting,About",
         toc .. ": rail order")
     local failures = {}
     for name, err in pairs(HC.Settings.errors) do failures[#failures + 1] = name .. ": " .. err end

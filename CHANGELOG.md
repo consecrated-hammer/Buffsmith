@@ -9,6 +9,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Settings open on Buffs, reminder sliders have a column heading, and Thank You previews messages inline.
+
 - Buff targets, the next buff key, food timing and live preview use clearer, consistent names in settings and search.
 
 ## [1.13.0-dev1] - 2026-11-13

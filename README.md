@@ -163,7 +163,7 @@ Right-click the minimap button or the drag handle for a quick menu: settings, **
 
 ## Settings
 
-The core pages are **Appearance**, **Key Bindings**, **Buffs**, **Consumables**,
+The core pages are **Buffs**, **Consumables**, **Key Bindings**, **Appearance**,
 **Tooltips**, **Thank You**, **Ignored** and **Visibility**. Buffs has three tabs:
 **Reminders** for self-buffs and thresholds, **Targets** for recipients and party
 coverage, and **Tracking** for your tracking spells. **Show food after standing still** is
@@ -172,7 +172,8 @@ on Consumables.
 Search finds dynamic buff and bag-item rows, reminder thresholds, ignored entries
 and the Next buff key. Settings that depend on a disabled feature stay searchable;
 selecting one highlights its enabling switch. Thank You only shows controls for
-the selected delivery channel. Each reset names its scope. Appearance preserves
+the selected delivery channel, with a local sample under Message. Reminder lists
+label their time-left sliders. Each reset names its scope. Appearance preserves
 bar position, Visibility preserves the shared window/minimap preferences, and
 Consumables preserves your preferred and ignored items. All existing saved keys
 and values remain compatible; no settings migration is needed.

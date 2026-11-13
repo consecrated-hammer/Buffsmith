@@ -86,6 +86,20 @@ end
 local TEXT_WIDTH = 210
 local SLIDER_X = 330
 
+-- A single label explains the aligned duration sliders on each reminder list.
+local function reminderHeading(panel, y)
+    local heading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
+    heading:SetPoint("TOPLEFT", UI.PAD + SLIDER_X, y - 4)
+    heading:SetWidth(UI.CONTENT_WIDTH - SLIDER_X)
+    heading:SetJustifyH("LEFT")
+    if heading.SetWordWrap then heading:SetWordWrap(false) end
+    heading:SetText("Remind when this much time is left")
+    UI.AttachTitleHint(panel, heading, "Reminder thresholds",
+        "Most sliders use remaining buff time. Permanent buffs have no slider; Read Leyline uses health or mana instead.")
+    panel.reminderHeading = heading
+    return y - 24
+end
+
 local function reminderRow(panel, y, item)
     local row = CreateFrame("Button", nil, panel, "BackdropTemplate")
     row:SetPoint("TOPLEFT", UI.PAD, y)
@@ -401,6 +415,7 @@ end
 local function buildReminders(panel, y)
     _, y = UI.Header(panel, "Your buffs", y, ICONS.detected)
     _, y = UI.Text(panel, "Buffsmith found these on this character. Short ones start switched off.", y)
+    y = reminderHeading(panel, y)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local none = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     none:SetText("No self-buffs found for your class and level yet.")
@@ -536,6 +551,7 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         function(value) ns.Set("foodStillSeconds", value) end,
         function(value) return value .. " s" end)
     _, y = UI.Header(panel, "Categories and items", y, ICONS.consumables)
+    y = reminderHeading(panel, y)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local reset = UI.PageReset(panel, y, function()
         resetKeys({ "categories", "foodStillSeconds" })
@@ -774,14 +790,20 @@ HC.Settings:NewPage({ name = "Thank You", description = "Optional replies when s
         return y
     end, function() return enabled() and ns.db.thanksChannel == "EMOTE" and ns.TARGET == "Camelot" end, emote, 1)
     add(function(frame, y)
-        _, y = UI.TextInput(frame, "Message", "{buff} and {player} are filled in when sent.", y,
-            function() return ns.db.thanksMessage end, function(text) ns.db.thanksMessage = text end, nil, 330)
-        y = UI.Columns(frame, 1, y)
-        _, y = UI.ActionButton(frame, y, "Preview message", function()
+        local preview
+        local function showSample()
             local sample = (ns.db.thanksMessage or ""):gsub("{buff}", "Power Word: Fortitude")
-                :gsub("{player}", UnitName and UnitName("player") or "a friend")
-            HC.Print("preview: " .. sample)
-        end, "Print a sample to your own chat without sending a reply.")
+                :gsub("{player}", function() return UnitName and UnitName("player") or "a friend" end)
+            if preview then preview:SetText("Sample: " .. sample) end
+        end
+        _, y = UI.TextInput(frame, "Message", "{buff} and {player} are filled in when sent.", y,
+            function() return ns.db.thanksMessage end,
+            function(text) ns.db.thanksMessage = text; showSample() end, nil, 330)
+        y = UI.Columns(frame, 1, y)
+        preview, y = UI.Text(frame, "", y)
+        panel.thanksPreview = preview
+        UI.OnRefresh(frame, showSample)
+        showSample()
         return y
     end, function() return enabled() and ns.db.thanksChannel ~= "EMOTE" end, channel, 1)
     add(function(frame, y)
@@ -796,7 +818,7 @@ end)
 
 -- Put the setup path first; reference pages retain HammerCore's ordering.
 HC.Settings:AddVisibility()
-local order = { Appearance = 1, ["Key Bindings"] = 2, Buffs = 3, Consumables = 4,
+local order = { Buffs = 1, Consumables = 2, ["Key Bindings"] = 3, Appearance = 4,
     Tooltips = 5, ["Thank You"] = 6, Ignored = 7, Visibility = 8 }
 table.sort(HC.Settings.queue, function(a, b)
     return (order[a.name] or 100) < (order[b.name] or 100)

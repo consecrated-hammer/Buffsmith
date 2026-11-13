@@ -130,7 +130,26 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     ns.db.thanksChannel = "EMOTE"
     settings:Show("Thank You")
     equal(settings:Focus("Thank You", "Message"), body("Thank You").hcRows["Send thanks as"], "wrong channel focuses selector")
+    ns.db.thanksChannel = "WHISPER"
+    settings:Show("Thank You")
+    local preview = body("Thank You").content.thanksPreview
+    local lastPrint = wow.LastPrint()
+    local message = body("Thank You").hcRows.Message
+    local editor
+    for _, frame in ipairs(wow.frames) do
+        if frame.kind == "EditBox" and frame:GetParent() == message then editor = frame end
+    end
+    assert(editor, "message editor exists")
+    editor:SetText("Thanks {player} for {buff}!")
+    editor.scripts.OnEnterPressed(editor)
+    equal(preview:GetText(), "Sample: Thanks Tester for Power Word: Fortitude!", "inline sample updates after editing")
+    equal(wow.LastPrint(), lastPrint, "preview posts nothing to chat")
+    settings:Show("Buffs", "Reminders")
+    equal(body("Buffs", "Reminders").content.reminderHeading:GetText(),
+        "Remind when this much time is left", "buff duration column is labelled")
     settings:Show("Consumables")
+    equal(body("Consumables").content.reminderHeading:GetText(),
+        "Remind when this much time is left", "consumable duration column is labelled")
     equal(settings:Focus("Consumables", "Test Food"), body("Consumables").hcRows.Food, "disabled category focuses category")
     equal(settings:Focus("Consumables", "Test Food reminder threshold"), body("Consumables").hcRows.Food, "nested disabled item threshold focuses category")
     ns.db.categories.food = true
