@@ -7,6 +7,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- The minimap icon has been asked to stay in its seat. Collected buttons no longer wander out of their tray after combat, minimap resizing or a settings refresh.
+
 ## [1.13.0] - 2026-11-13
 
 ### Changed
