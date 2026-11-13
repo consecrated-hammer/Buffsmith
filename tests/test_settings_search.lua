@@ -142,14 +142,44 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     assert(editor, "message editor exists")
     editor:SetText("Thanks {player} for {buff}!")
     editor.scripts.OnEnterPressed(editor)
-    equal(preview:GetText(), "Sample: Thanks Tester for Power Word: Fortitude!", "inline sample updates after editing")
+    equal(preview:GetText(), "Sample: Thanks a friendly mage for Power Word: Fortitude!", "inline sample updates after editing")
     equal(wow.LastPrint(), lastPrint, "preview posts nothing to chat")
     settings:Show("Buffs", "Reminders")
     equal(body("Buffs", "Reminders").content.reminderHeading:GetText(),
         "Remind when this much time is left", "buff duration column is labelled")
+    local candidates, excluded = ns.KnownSelfBuffCandidates, ns.IsBuffExcluded
+    local temporary = { spellID = 7777, castID = 7777, name = "A timed buff", duration = 3600 }
+    ns.KnownSelfBuffCandidates = function() return { temporary } end
+    local disabled = false
+    ns.IsBuffExcluded = function() return disabled end
+    settings:Show("Buffs", "Reminders")
+    equal(body("Buffs", "Reminders").content.reminderHeading:IsShown(), true, "heading shows with an enabled timed slider")
+    disabled = true
+    settings:Show("Buffs", "Reminders")
+    equal(body("Buffs", "Reminders").content.reminderHeading:IsShown(), false, "heading hides when timed sliders are disabled")
+    temporary.permanent = true; disabled = false
+    settings:Show("Buffs", "Reminders")
+    equal(body("Buffs", "Reminders").content.reminderHeading:IsShown(), false, "permanent effects need no duration heading")
+    ns.KnownSelfBuffCandidates = function() return {} end
+    settings:Show("Buffs", "Reminders")
+    equal(body("Buffs", "Reminders").content.reminderHeading:IsShown(), false, "empty buff list needs no duration heading")
+    ns.KnownSelfBuffCandidates, ns.IsBuffExcluded = candidates, excluded
+    settings:Show("Buffs", "Reminders")
+
     settings:Show("Consumables")
     equal(body("Consumables").content.reminderHeading:GetText(),
         "Remind when this much time is left", "consumable duration column is labelled")
+    local categories = ns.db.categories
+    ns.db.categories = {}
+    settings:Show("Consumables")
+    equal(body("Consumables").content.reminderHeading:IsShown(), false, "all-off categories hide the duration heading")
+    ns.db.categories = { food = true }
+    owned = false
+    settings:Show("Consumables")
+    equal(body("Consumables").content.reminderHeading:IsShown(), true, "enabled category still has a slider without owned items")
+    ns.db.categories, owned = categories, true
+    settings:Show("Consumables")
+
     equal(settings:Focus("Consumables", "Test Food"), body("Consumables").hcRows.Food, "disabled category focuses category")
     equal(settings:Focus("Consumables", "Test Food reminder threshold"), body("Consumables").hcRows.Food, "nested disabled item threshold focuses category")
     ns.db.categories.food = true

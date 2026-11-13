@@ -87,17 +87,22 @@ local TEXT_WIDTH = 210
 local SLIDER_X = 330
 
 -- A single label explains the aligned duration sliders on each reminder list.
-local function reminderHeading(panel, y)
+local function reminderHeading(panel, y, buffs)
     local heading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     heading:SetPoint("TOPLEFT", UI.PAD + SLIDER_X, y - 4)
     heading:SetWidth(UI.CONTENT_WIDTH - SLIDER_X)
     heading:SetJustifyH("LEFT")
     if heading.SetWordWrap then heading:SetWordWrap(false) end
     heading:SetText("Remind when this much time is left")
-    UI.AttachTitleHint(panel, heading, "Reminder thresholds",
-        "Most sliders use remaining buff time. Permanent buffs have no slider; Read Leyline uses health or mana instead.")
+    local hint = UI.AttachTitleHint(panel, heading, "Reminder thresholds", buffs
+        and "Most sliders use remaining buff time. Permanent buffs have no slider; Read Leyline uses health or mana instead."
+        or "Category and item sliders use the percentage of the effect's duration that is left.")
     panel.reminderHeading = heading
-    return y - 24
+    return function(visible)
+        heading:SetShown(visible)
+        hint:SetShown(visible)
+        return y - (visible and 24 or 0)
+    end
 end
 
 local function reminderRow(panel, y, item)
@@ -415,7 +420,7 @@ end
 local function buildReminders(panel, y)
     _, y = UI.Header(panel, "Your buffs", y, ICONS.detected)
     _, y = UI.Text(panel, "Buffsmith found these on this character. Short ones start switched off.", y)
-    y = reminderHeading(panel, y)
+    local heading = reminderHeading(panel, y, true)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local none = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     none:SetText("No self-buffs found for your class and level yet.")
@@ -427,7 +432,13 @@ local function buildReminders(panel, y)
         ns.RefreshAll()
     end, "Reset reminders")
     local function layout()
-        local y = link("spell", listTop)
+        local sliders = false
+        for _, entry in ipairs(ns.KnownSelfBuffCandidates()) do
+            if ns.db.excludedBuffs[entry.spellID] ~= true and not entry.permanent and not ns.IsBuffExcluded(entry) then
+                sliders = true; break
+            end
+        end
+        local y = link("spell", heading(sliders))
         pool:Begin()
         local shown = 0
         for _, buff in ipairs(ns.KnownSelfBuffCandidates()) do
@@ -551,7 +562,7 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         function(value) ns.Set("foodStillSeconds", value) end,
         function(value) return value .. " s" end)
     _, y = UI.Header(panel, "Categories and items", y, ICONS.consumables)
-    y = reminderHeading(panel, y)
+    local heading = reminderHeading(panel, y, false)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local reset = UI.PageReset(panel, y, function()
         resetKeys({ "categories", "foodStillSeconds" })
@@ -563,7 +574,11 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         ns.Inventory:Refresh()
     end, "Reset consumable reminders")
     local function layout()
-        local y = link("item", listTop)
+        local sliders = false
+        for _, category in ipairs(CATEGORIES) do
+            if ns.db.categories[category[1]] then sliders = true; break end
+        end
+        local y = link("item", heading(sliders))
         pool:Begin()
         for _, category in ipairs(CATEGORIES) do
             local key, label = category[1], category[2]
@@ -713,7 +728,7 @@ HC.Settings:NewPage({ name = "Key Bindings", columns = 1, description = "One key
     })
     local owner = panel.hcHeaderOwner or panel
     local available = owner.hcRows and owner.hcRows.Available
-    if available then available.hcHint = "Next buff key key mouse wheel binding" end
+    if available then available.hcHint = "Next buff key mouse wheel binding" end
     local zoomRow
     zoomRow, y = UI.Check(panel, "Also zoom in/out",
         "Keep this wheel key's previous camera action as well as triggering Buffsmith. Clearing the binding restores camera zoom.", y,
@@ -793,7 +808,7 @@ HC.Settings:NewPage({ name = "Thank You", description = "Optional replies when s
         local preview
         local function showSample()
             local sample = (ns.db.thanksMessage or ""):gsub("{buff}", "Power Word: Fortitude")
-                :gsub("{player}", function() return UnitName and UnitName("player") or "a friend" end)
+                :gsub("{player}", "a friendly mage")
             if preview then preview:SetText("Sample: " .. sample) end
         end
         _, y = UI.TextInput(frame, "Message", "{buff} and {player} are filled in when sent.", y,

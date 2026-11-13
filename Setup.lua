@@ -119,7 +119,7 @@ local WHATS_NEW = {
             kind = "new" },
     } },
     { version = "1.10.3", date = "2026-11-09", items = {
-        { title = "Show food after standing still", text = "Food waits until you've stood still for 5 seconds, so a quick pause mid-run doesn't flash it up. Change the wait on Consumables.",
+        { title = "Food after stopping", text = "Food waits until you've stood still for 5 seconds, so a quick pause mid-run doesn't flash it up. Change the wait on Consumables.",
             kind = "improved", page = "Consumables" },
     } },
     { version = "1.10.2", date = "2026-11-09", items = {
@@ -133,9 +133,9 @@ local WHATS_NEW = {
     { version = "1.10.0", date = "2026-11-09", items = {
         { title = "A fresh coat of paint", text = "Settings got a new look: two columns, switches, icons on every heading, and this What's new page.",
             kind = "improved" },
-        { title = "Key bindings", text = "The Next buff key sits on the same tidy bindings page as other Consecrated Hammer addons.",
+        { title = "Key bindings", text = "The Buff trigger sits on the same tidy bindings page as other Consecrated Hammer addons.",
             kind = "improved", page = "Key Bindings" },
-        { title = "Show live preview", text = "Moved to a button at the top of Appearance, Buffs and Consumables.",
+        { title = "Preview on screen", text = "Moved to a button at the top of Appearance, Buffs and Consumables.",
             kind = "improved", page = "Appearance" },
         { title = "Support links", text = "CurseForge, Discord and Buy me a coffee sit at the bottom of the settings window. Hide them on Visibility.",
             kind = "improved", page = "Visibility" },
@@ -159,7 +159,7 @@ local WHATS_NEW = {
         { text = "Read Leyline reminds you when health or mana runs low.", page = "Buffs" },
     } },
     { version = "1.6.0", date = "2026-11-06", history = true, items = {
-        "A mouse-wheel Next buff key can keep zooming the camera too.",
+        "A mouse-wheel Buff trigger can keep zooming the camera too.",
         "Reminders pause on flight paths.",
     } },
     { version = "1.0.0", date = "2026-09-27", history = true, items = {

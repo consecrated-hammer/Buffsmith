@@ -59,8 +59,8 @@ Buffsmith shows the self-buffs, party buffs and consumables you're missing as a 
 
 When you bind the Next buff key through `/buffsmith` → **Key Bindings**, a
 mouse-wheel key that already controls camera zoom reveals **Also zoom in** or
-**Also zoom out**. Tick it to keep that camera action as well as using the buff
-trigger. The option starts off and appears only for a detected camera binding;
+**Also zoom out**. Tick it to keep that camera action as well as using the next buff
+key. The option starts off and appears only for a detected camera binding;
 Buffsmith checks the chosen key's camera command instead of assuming wheel direction.
 Clearing or replacing the wheel binding restores the captured camera command.
 Camera choices are saved separately for account bindings and each character's
@@ -68,9 +68,9 @@ character-specific bindings.
 Existing Buffsmith wheel bindings whose original action was already replaced
 need to be bound to camera zoom first, then selected again in Buffsmith.
 
-Next buff key keys, the shared wheel and left-clicked icons recheck readiness
+The next buff key, the shared wheel and left-clicked icons recheck readiness
 before casting. Readable cooldowns and normal casts outside WoW's current
-`SpellQueueWindow` suppress the press without advancing the trigger; channels
+`SpellQueueWindow` suppress the press without moving to the next buff; channels
 and eating/drinking also pause casts. One attempted spell is held through the
 short native queue window so repeated input doesn't replace it. This doesn't
 create an addon cast queue: timers never cast, and a later key press is still
@@ -133,7 +133,7 @@ eligible names and uncertainty about current availability. A clicked report
 uses that hint and retains its existing three-second rate limit. Reports still
 require a click; very long reports are shortened to fit the chat byte limit.
 
-Reminders and buff-trigger actions pause on flight paths and refresh when you
+Reminders and bound buff actions pause on flight paths and refresh when you
 land. Shared wheel zoom still works while there are no usable buff actions.
 
 Thank You cancels pending replies when combat starts or the feature is turned
