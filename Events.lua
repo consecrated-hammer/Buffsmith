@@ -94,6 +94,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         ns.Palette:Create()
         ns.Bindings:Create()
         ns.HC:Start()
+        if ns.Offscreen then ns.Offscreen:Init() end
         frame:UnregisterEvent("ADDON_LOADED")
     elseif event == "UPDATE_BINDINGS" then
         ns.Bindings:SyncZoom()

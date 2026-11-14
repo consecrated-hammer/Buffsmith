@@ -4,6 +4,7 @@ ns.defaults = {
     visibilityMode = "ALWAYS",
     visibility = {},
     showHandle = true,
+    warnOffscreen = true,
     showTargetBuffs = true,
     showPartyBuffs = true,
     skipPvPWhileUnflagged = true,
@@ -108,6 +109,7 @@ function ns.InitConfig()
     end
     BuffsmithDB.showInCombat = nil
     if BuffsmithDB.legacyVisibility ~= nil and type(BuffsmithDB.legacyVisibility) ~= "table" then BuffsmithDB.legacyVisibility = nil end
+    if type(BuffsmithDB.warnOffscreen) ~= "boolean" then BuffsmithDB.warnOffscreen = true end
     if type(BuffsmithDB.showHandle) ~= "boolean" then BuffsmithDB.showHandle = true end
     if type(BuffsmithDB.showTargetBuffs) ~= "boolean" then BuffsmithDB.showTargetBuffs = true end
     if type(BuffsmithDB.showPartyBuffs) ~= "boolean" then BuffsmithDB.showPartyBuffs = true end

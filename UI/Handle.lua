@@ -62,6 +62,7 @@ function Handle.Attach(parent, name, opts)
         if parent.SetUserPlaced then parent:SetUserPlaced(false) end
         Handle.SavePosition(parent, false)
         if opts.onMoved then opts.onMoved() end
+        if ns.Offscreen then ns.Offscreen:Queue("bar dragged") end
     end)
     frame:SetScript("OnClick", function(_, mouseButton)
         if mouseButton ~= "RightButton" then return end

@@ -16,6 +16,7 @@ buff, available tracker, supported bag item or ignored entry on the character.
 | Appearance: Direction, Icon size | Appearance, Bar | E |
 | Appearance: Flyout direction, Flyout choices | Appearance, Bar | S |
 | Appearance: Show drag handle, Re-centre bar | Appearance, position actions | E |
+| Appearance: Warn when bar is off-screen | Appearance, recovery warning (default on) | E |
 | Buffs: every detected self-buff toggle | Buffs > Reminders | E |
 | Buffs: every buff's reminder percentage, Read Leyline health/mana threshold | Buffs > Reminders, alongside its toggle | A |
 | Buffs: Friendly target, Party members, Friendly pets | Buffs > Targets | S |
@@ -84,3 +85,13 @@ acceptance. See the wiki handoff for the tested commit and staged versions.
 Reminder lists label the duration slider column. Thank You shows a local sample
 under Message without posting to chat. Row click targets are unchanged pending
 in-game evidence of accidental toggles.
+
+## Off-screen recovery prompt
+
+A fully off-screen live bar or detached on-screen preview can offer Reset
+position after combat. The check uses effective-scale-normalized bounds and
+requires the grip to be unreachable. The prompt does not move the bar without
+acceptance. Not now snoozes that location and viewport for the session; Don't
+show again persists through the account-wide warning preference. The searchable
+Appearance setting restores warnings without resetting other settings. Attached
+settings previews, partial overhangs and unmeasurable geometry do not trigger it.

@@ -7,6 +7,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- A bar that wanders completely off-screen now offers a lift home. Reset its position, choose Not now, or tick Don't show again. Warnings can be restored in Appearance.
+
 ## [1.13.1] - 2026-11-14
 
 - The minimap icon has been asked to stay in its seat. Collected buttons no longer wander out of their tray after combat, minimap resizing or a settings refresh.

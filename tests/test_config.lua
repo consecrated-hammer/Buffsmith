@@ -113,3 +113,11 @@ equal(ns.db.skipPvPWhileUnflagged, false, "PvP protection opt-out persists")
 BuffsmithDB = { skipPvPWhileUnflagged = "bad" }
 ns.InitConfig()
 equal(ns.db.skipPvPWhileUnflagged, true, "malformed PvP preference repairs to safe default")
+
+-- The off-screen opt-out must survive config initialization and reject bad types.
+BuffsmithDB = { warnOffscreen = false }
+ns.InitConfig()
+assert(ns.db.warnOffscreen == false, "off-screen opt-out survives reload")
+BuffsmithDB = { warnOffscreen = "false" }
+ns.InitConfig()
+assert(ns.db.warnOffscreen == true, "malformed off-screen preference defaults on")

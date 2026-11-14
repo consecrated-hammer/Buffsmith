@@ -353,12 +353,23 @@ HC.Settings:NewPage({ name = "Appearance", description = "Size, direction and th
             ns.db.showHandle = value
             ns.Handle:Update()
         end)
+    _, y = UI.Check(panel, "Warn when bar is off-screen",
+        "Offer to reset a fully off-screen bar when its grip is unreachable. Re-enable this after choosing Don't show again.", y,
+        function() return ns.db.warnOffscreen end,
+        function(value)
+            ns.db.warnOffscreen = value
+            if ns.Offscreen then
+                if value then ns.Offscreen.snoozedSignature=nil; ns.Offscreen:Queue("warnings enabled")
+                else ns.Offscreen:Hide(true) end
+            end
+        end)
     y = UI.Columns(panel, 1, y)
     _, y = UI.ActionButton(panel, y, "Re-centre bar", function() HC.Commands:Dispatch("reset position") end,
         "Put the bar back in its starting place.")
     _, y = UI.PageReset(panel, y, function()
-        resetKeys({ "orientation", "flyoutVerticalDirection", "flyoutHorizontalDirection", "iconSize", "maxAlternatives", "showHandle" })
+        resetKeys({ "orientation", "flyoutVerticalDirection", "flyoutHorizontalDirection", "iconSize", "maxAlternatives", "showHandle", "warnOffscreen" })
         ns.Handle:Update()
+        if ns.Offscreen then ns.Offscreen.snoozedSignature=nil; ns.Offscreen:Queue("appearance reset") end
     end, "Reset appearance")
     return y
 end)

@@ -116,7 +116,11 @@ The drag handle stays at a fixed top-left corner while icons, cooldowns and
 status rows come and go. The grid grows right and down from there. Dragging the
 live bar or on-screen preview saves the same fixed corner. The settings preview has its own position. The changing-size grid no
 longer clamps itself back onto the screen, since that would move the handle;
-use `reset position` if you need to bring it back into view.
+a bar that is clearly off-screen offers a Reset position prompt once its grip
+is unreachable. Nothing moves without confirmation. Not now silences that
+position for this session; Don't show again disables the warning until you
+re-enable Warn when bar is off-screen under Appearance. Checks wait until
+combat ends. Use `reset position` at any time outside combat to bring it back.
 
 **Skip PvP-flagged players** is on by default under
 **Buffs → Targets**. It filters explicit target, party and pet recipients while

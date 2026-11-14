@@ -174,6 +174,7 @@ function Palette:Create()
     local point = ns.db.palettePoint
     frame:SetPoint(point[1], UIParent, point[2], point[3], point[4])
     self.frame = frame
+    if ns.Offscreen then ns.Offscreen:Watch(frame) end
     if ns.Handle then ns.Handle:Create(frame) end
     return frame
 end

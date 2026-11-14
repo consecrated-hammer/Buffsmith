@@ -89,6 +89,7 @@ local function resetBarPosition()
         ns.Palette.frame:SetPoint("TOPLEFT", UIParent, "CENTER", 0, -120)
     end
     ns.Preview:ApplyPosition()
+    if ns.Offscreen then ns.Offscreen.snoozedSignature=nil; ns.Offscreen:Hide(true) end
 end
 
 -- Highlights for HammerCore's What's new page, newest first. Every

@@ -79,6 +79,7 @@ function Preview:Create()
     })
 
     self.frame = frame
+    if ns.Offscreen then ns.Offscreen:Watch(frame) end
     self.dock = ns.HC.Settings:PreviewDock(frame, {
         getPoint = function() return ns.db.previewSettingsPoint or { "TOPLEFT", "TOPLEFT", 40, -120 } end,
         setPoint = function(point) ns.db.previewSettingsPoint = point end,
@@ -199,6 +200,7 @@ function Preview:Show()
     self.frame:Show()
     self.handle:Show()
     self:Refresh()
+    if ns.Offscreen then ns.Offscreen:Queue("preview shown") end
 end
 
 function Preview:Hide()

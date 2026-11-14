@@ -79,6 +79,11 @@ function Diagnostics:Report()
         "Layout: " .. tostring(ns.Palette.lastLayout),
         "Preview: " .. (ns.Preview:IsShown() and "on screen" or "closed"),
         "Position: " .. position,
+        "Off-screen warning: " .. (ns.db.warnOffscreen and "on" or "off")
+            .. "; last check " .. tostring(ns.Offscreen and ns.Offscreen.lastCheck or "not checked")
+            .. "; last trigger " .. tostring(ns.Offscreen and ns.Offscreen.lastReason or "none")
+            .. "; last recovery " .. tostring(ns.Offscreen and ns.Offscreen.lastRecovery or "none"),
+        "Last position bounds (UI units): " .. tostring(ns.Offscreen and ns.Offscreen.lastBounds or "not measured"),
         "Secure buttons prepared: " .. tostring(ns.lastSecureButtonCount or 0),
         "Key binding actions prepared: " .. tostring(ns.Bindings and ns.Bindings.lastCount or 0),
         "",
