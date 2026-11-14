@@ -7,6 +7,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Type values directly beside settings sliders; half-width controls leave more room for their labels.
+
 - A bar that wanders completely off-screen now offers a lift home. Reset its position, choose Not now, or tick Don't show again. Warnings can be restored in Appearance.
 
 ## [1.13.1] - 2026-11-14

@@ -58,7 +58,7 @@ function Guard:BuildPrompt()
     self.prompt = prompt
     prompt:SetSize(380,168); prompt:SetPoint("CENTER"); prompt:SetFrameStrata("DIALOG")
     prompt:SetClampedToScreen(true); prompt:EnableMouse(true)
-    HC.Theme.Surface(prompt,"panel","edge")
+    HC.Theme.Surface(prompt,"outer","edge")
     local title=UI.FontString(prompt,"GameFontNormal","accent")
     title:SetPoint("TOPLEFT",16,-14); title:SetText("Buffsmith is off-screen")
     local text=UI.FontString(prompt,"GameFontHighlight","text")
