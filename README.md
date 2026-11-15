@@ -245,7 +245,8 @@ other characters keep their own choices. Older account choices are retained
 and used when you enable sharing. Other Buffsmith settings keep their existing
 scope.
 
-A new miner with only Find Minerals available is offered it automatically.
+A character with only one tracking type is offered it automatically, including
+Find Minerals for a new miner. Explicit Off preferences still take priority.
 On Forever, several eligible trackers require an explicit choice; the latest
 choice wins when shared and character preferences overlap. Choosing a local
 tracker does not disable another shared tracker for your alts. An active

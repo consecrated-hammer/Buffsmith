@@ -65,6 +65,9 @@ function Tracking:Available()
             }
         end
     end
+    -- With no competing spell-based tracker, this is a useful default even
+    -- for a racial/class sense. Explicit scoped Off choices still win.
+    if #list == 1 then list[1].defaultOff = false end
     self.lastStatus = #list .. " tracking types"
     observeConcurrency(list)
     return list

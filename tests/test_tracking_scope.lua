@@ -143,6 +143,17 @@ do
     eq(T:IsShared(2580),false,"replaced nested storage is repaired after a cache hit")
     eq(type(db.trackingPreferences.account),"table","account store repaired")
 end
+-- The single-type default applies to class/racial senses too, without erasing Off.
+for _,target in ipairs({"Camelot","Mainline"})do
+    local ns=load(target);local T=ns.Tracking
+    list={{name="Find Treasure",texture=1,active=false,type="spell",spellID=2481}}
+    local entry=T:Available()[1]
+    eq(#T:Entries(),1,target.." lone non-gathering tracker defaults on")
+    T:SetEnabled(entry,false)
+    eq(#T:Entries(),0,target.." explicit off overrides single-tracker default")
+    T:Reset()
+    eq(#T:Entries(),1,target.." reset restores the single-tracker default")
+end
 -- A missing identity cannot leak preferences into another character's saved record.
 do
     local ns,db=load("Mainline");local T=ns.Tracking;local entry=T:Available()[1]

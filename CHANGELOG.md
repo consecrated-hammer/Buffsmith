@@ -7,7 +7,7 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-- Your miner minds their own business: tracking preferences are per character, with a Shared checkbox for each type. A new miner’s lone Find Minerals tracker is offered automatically.
+- Your miner minds their own business: tracking preferences are per character, with a Shared checkbox for each type. A character’s lone tracking type, including Find Minerals, is offered automatically unless explicitly disabled.
 
 ## [1.13.2] - 2026-11-15
 
