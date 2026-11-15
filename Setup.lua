@@ -97,6 +97,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.13.2", date = "2026-11-15", items = {
+        { title = "A lift home", text = "A completely off-screen bar now offers Reset position, Not now or Don't show again. Restore warnings in Appearance.", page = "Appearance", kind = "improved" },
+        { text = "“Why is this settings input box not inputtable?” Excellent question. You can now type values beside settings sliders.", kind = "improved" },
+    } },
     { version = "1.13.1", date = "2026-11-14", items = {
         { title = "Stay in your seat", text = "The minimap icon has retired its disappearing act: collected buttons stay in their tray after combat, minimap resizing and settings refreshes.", kind = "fix", page = "Visibility" },
     } },

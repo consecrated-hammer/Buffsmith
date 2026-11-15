@@ -7,6 +7,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.13.2] - 2026-11-15
+
 - “Why is this settings input box not inputtable?” Excellent question. You can now type values beside settings sliders.
 
 - A bar that wanders completely off-screen now offers a lift home. Reset its position, choose Not now, or tick Don't show again. Warnings can be restored in Appearance.
