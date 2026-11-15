@@ -498,12 +498,12 @@ local function buildTracking(panel, y)
     if trackingRule.SetTexCoord then trackingRule:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
     trackingRule:SetTexture(ICONS.tracking)
     local trackingNote = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    trackingNote:SetText("Choose Herbs or Minerals. WoW Forever tracks one at a time.")
+    trackingNote:SetWidth(UI.CONTENT_WIDTH - 4)
+    trackingNote:SetWordWrap(true)
     local reset = UI.PageReset(panel, y, function()
-        for _, entry in ipairs(ns.Tracking:Available()) do ns.db.excludedBuffs[entry.spellID] = nil end
-        ns.db.trackingChoice = nil
+        ns.Tracking:Reset()
         ns.RefreshAll()
-    end, "Reset tracking")
+    end, "Reset character tracking")
     local function layout()
         local y = listTop
         pool:Begin()
@@ -513,9 +513,7 @@ local function buildTracking(panel, y)
             -- On Forever this is a picker, not the old independent set of
             -- ticks.  Retained pre-picker exclusions must not hide Minerals
             -- and make it impossible to choose it again.
-            if ns.Tracking.Exclusive() or ns.db.excludedBuffs[entry.spellID] ~= true then
-                tracking[#tracking + 1] = entry
-            end
+            tracking[#tracking + 1] = entry
         end
         trackingRule:ClearAllPoints()
         trackingRule:SetPoint("TOPLEFT", UI.PAD + 2, y - 10 + 3)
@@ -526,9 +524,11 @@ local function buildTracking(panel, y)
         trackingRule:SetShown(#tracking > 0)
         trackingNote:ClearAllPoints()
         trackingNote:SetPoint("TOPLEFT", UI.PAD + 2, y - 34)
-        trackingNote:SetShown(#tracking > 0 and ns.Tracking.Exclusive())
+        trackingNote:SetText((ns.Tracking.Exclusive() and "WoW Forever tracks one at a time. " or "")
+            .. "Shared saves that type for all characters; otherwise it is per character.")
+        trackingNote:SetShown(#tracking > 0)
         if #tracking > 0 then
-            y = y - 32 - (ns.Tracking.Exclusive() and 22 or 0)
+            y = y - 32 - (trackingNote:GetStringHeight() or 12) - 8
             for _, found in ipairs(tracking) do
                 local entry = found
                 y = pool:Place("tracking:" .. entry.spellID, y, function() return {
@@ -541,10 +541,28 @@ local function buildTracking(panel, y)
                         if ns.Tracking.Exclusive() then
                             ns.Tracking:Select(entry.spellID)
                         else
-                            ns.db.excludedBuffs[entry.spellID] = not ns.IsBuffExcluded(entry)
+                            ns.Tracking:SetEnabled(entry, ns.IsBuffExcluded(entry))
                         end
                     end,
                 } end)
+                local row = pool.frames["tracking:" .. entry.spellID]
+                row.trackingEntry = entry
+                if not row.shared then
+                    local shared = UI.CheckButton(row)
+                    shared:SetPoint("RIGHT", -64, 0)
+                    shared.Text:SetText("Shared")
+                    shared:SetScript("OnClick", function()
+                        local current = row.trackingEntry
+                        ns.Tracking:SetShared(current, not ns.Tracking:IsShared(current.spellID))
+                        ns.RefreshAll()
+                        panel.hcRefreshAll()
+                    end)
+                    UI.AttachHint(shared, "Share " .. entry.name,
+                        "Share this tracking type’s preference across your characters. Off keeps separate character preferences. Existing account choices are used when sharing is enabled.")
+                    UI.RegisterRow(panel, shared, "Share " .. entry.name .. " across characters")
+                    row.shared = shared
+                end
+                row.shared:SetChecked(ns.Tracking:IsShared(entry.spellID))
             end
         end
         reset:ClearAllPoints()

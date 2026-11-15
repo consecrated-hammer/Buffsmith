@@ -7,6 +7,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Your miner minds their own business: tracking preferences are per character, with a Shared checkbox for each type. A new miner’s lone Find Minerals tracker is offered automatically.
+
 ## [1.13.2] - 2026-11-15
 
 - “Why is this settings input box not inputtable?” Excellent question. You can now type values beside settings sliders.

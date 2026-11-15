@@ -97,6 +97,9 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.13.3", date = "2026-11-16", items = {
+        { title = "Your miner minds their own business", text = "Tracking choices are per character by default. Tick Shared beside a tracking type to use an account preference. A new miner with only Find Minerals gets its reminder automatically.", kind = "improved", page = "Buffs", tab = "Tracking" },
+    } },
     { version = "1.13.2", date = "2026-11-15", items = {
         { title = "A lift home", text = "A completely off-screen bar now offers Reset position, Not now or Don't show again. Restore warnings in Appearance.", page = "Appearance", kind = "improved" },
         { text = "“Why is this settings input box not inputtable?” Excellent question. You can now type values beside settings sliders.", kind = "improved" },

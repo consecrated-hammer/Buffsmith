@@ -235,3 +235,22 @@ active, Hawk has priority if learned and enabled; otherwise Monkey is next.
 Exclude unwanted choices under Buffs to change which aspect is offered. Missing
 aspects are checked again after resurrection; Buffsmith never switches them
 automatically.
+
+## Tracking preferences
+
+Buffs > Tracking saves each tracking type for this character by default. Tick
+**Shared** beside a tracker to use its account preference across characters.
+Changing that type back to character scope preserves your current preference;
+other characters keep their own choices. Older account choices are retained
+and used when you enable sharing. Other Buffsmith settings keep their existing
+scope.
+
+A new miner with only Find Minerals available is offered it automatically.
+On Forever, several eligible trackers require an explicit choice; the latest
+choice wins when shared and character preferences overlap. Choosing a local
+tracker does not disable another shared tracker for your alts. An active
+selected tracker needs no reminder.
+
+**Reset character tracking** clears only this character's tracking choices,
+including types it no longer knows. Shared preferences and scope settings stay
+intact. Ignoring/restoring a tracker uses its chosen scope.

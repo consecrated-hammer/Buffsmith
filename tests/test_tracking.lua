@@ -25,6 +25,7 @@ local function load(target)
     install()
     local db = { excludedBuffs = {}, buffDurations = {} }
     local ns = { TARGET = target, db = db, Plain = function(value) return value end }
+    UnitGUID = function() return "Player-test" end
     UnitClass = function() return "Dwarf", "WARRIOR" end
     assert(loadfile("Data/SelfBuffs.lua"))("Buffsmith", ns)
     assert(loadfile("Features/Tracking.lua"))("Buffsmith", ns)
@@ -57,7 +58,8 @@ do
     db.excludedBuffs[2580] = true
     ns.Tracking:Select(2580)
     equal(names(ns.Tracking:Entries()), "Find Minerals", "the selected tracking is offered")
-    equal(db.excludedBuffs[2580], false, "selecting a tracker restores an old off choice")
+    equal(db.excludedBuffs[2580], true, "character selection preserves the legacy account choice")
+    equal(ns.IsBuffExcluded(ns.Tracking:Available()[2]), false, "character selection clears the local off choice")
     tracking[1].active = true
     equal(names(ns.Tracking:Entries()), "Find Minerals", "the selected tracker replaces a different active tracker")
     tracking[1].active = false
@@ -121,7 +123,7 @@ do
     UnitIsUnit, UnitGUID = function(a, b) return a == b end, function(unit) return "guid-" .. unit end
     assert(loadfile("Features/Actions.lua"))("Buffsmith", ns)
     local entries = ns.Actions:Entries()
-    db.trackingChoice = 2383
+    ns.Tracking:Select(2383)
     entries = ns.Actions:Entries()
     equal(#entries, 1, "one bar entry")
     equal(entries[1].name, "Find Herbs", "the bar offers the selected tracking")

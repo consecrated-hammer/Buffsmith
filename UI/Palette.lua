@@ -336,7 +336,8 @@ function Palette:CooldownEntry()
     if not ns.Readiness or not ns.Readiness:DisplayAllowed() then return nil end
     local entry = ns.Readiness.lastEntry
     if not entry or (entry.kind ~= "spell" and entry.kind ~= "item") then return nil end
-    if ns.Actions:IsSuppressed(entry) or (entry.kind == "spell" and ns.db.excludedBuffs[entry.spellID])
+    if ns.Actions:IsSuppressed(entry) or (entry.kind == "spell" and (entry.tracking and ns.IsBuffExcluded(entry)
+        or not entry.tracking and ns.db.excludedBuffs[entry.spellID]))
         or (entry.kind == "item" and ns.db.excludedConsumables[entry.itemID]) then return nil end
     if entry.kind == "spell" and not ns.Actions:CanBuffUnit(entry.unit) then return nil end
     local key = ns.Readiness:Key(entry)

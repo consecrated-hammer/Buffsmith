@@ -225,9 +225,9 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(ns.db.excludedBuffs[2383], true, "reminder reset preserves tracking exclusion")
     equal(ns.db.reminderPercent.buffBySpell[465], nil, "reminder reset clears buff threshold")
     equal(ns.db.reminderPercent.food, 23, "reminder reset preserves food threshold")
-    clickReset("Buffs", "Reset tracking", "Tracking")
-    equal(ns.db.trackingChoice, nil, "tracking reset clears choice")
-    equal(ns.db.excludedBuffs[2383], nil, "tracking reset clears tracking exclusion")
+    clickReset("Buffs", "Reset character tracking", "Tracking")
+    equal(ns.db.trackingChoice, 2383, "character tracking reset preserves legacy account choice")
+    equal(ns.db.excludedBuffs[2383], true, "character tracking reset preserves legacy account exclusion")
     ns.db.showTargetBuffs = false
     clickReset("Buffs", "Reset targets", "Targets")
     equal(ns.db.showTargetBuffs, true, "target reset")

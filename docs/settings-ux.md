@@ -95,3 +95,14 @@ acceptance. Not now snoozes that location and viewport for the session; Don't
 show again persists through the account-wide warning preference. The searchable
 Appearance setting restores warnings without resetting other settings. Attached
 settings previews, partial overhangs and unmeasurable geometry do not trigger it.
+
+## Tracking scope update, 2026-11-16
+
+Buffs > Tracking lists every learned tracker, including disabled ones, with a
+small **Shared** checkbox beside each. Unchecked uses character preferences;
+checked uses that type's account preference. Scope changes apply to that type
+across characters, while separate character preferences are retained. Controls
+are searchable by tracker name. Reset character tracking affects only the
+current character, including unavailable trackers; shared choices stay intact.
+Other settings and legacy account tracking data are preserved. Diagnostics
+label each tracking type as shared or character.

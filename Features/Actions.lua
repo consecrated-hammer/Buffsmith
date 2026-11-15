@@ -702,7 +702,8 @@ function Actions:Ignore(entry)
     if entry.kind == "item" then
         ns.db.excludedConsumables[entry.itemID] = true
     elseif entry.kind == "spell" then
-        ns.db.excludedBuffs[entry.spellID] = true
+        if entry.tracking and ns.Tracking and ns.Tracking.SetEnabled then ns.Tracking:SetEnabled(entry, false, true)
+        else ns.db.excludedBuffs[entry.spellID] = true end
     else
         self:Dismiss(entry)
     end
@@ -715,7 +716,10 @@ function Actions:IgnoredEntries()
     -- Exclusions are retained so changing characters does not destroy a
     -- player's choices, but the Ignored page is character-specific.  A Druid
     -- must not be offered an old Paladin exclusion to restore.
-    local currentBuffs
+    local currentBuffs, trackingByID = nil, {}
+    if ns.Tracking and ns.Tracking.Available then
+        for _, entry in ipairs(ns.Tracking:Available()) do trackingByID[entry.spellID] = entry end
+    end
     if type(ns.KnownSelfBuffCandidates) == "function" then
         currentBuffs = {}
         for _, entry in ipairs(ns.KnownSelfBuffCandidates()) do currentBuffs[entry.spellID] = entry end
@@ -727,7 +731,9 @@ function Actions:IgnoredEntries()
         end
     end
     for spellID, ignored in pairs(ns.db.excludedBuffs) do
-        if ignored == true and (not currentBuffs or currentBuffs[spellID]) then
+        if ignored == true and (not currentBuffs or currentBuffs[spellID])
+            and not (ns.Tracking and ns.Tracking.IsIgnored
+                and (trackingByID[spellID] or ns.Tracking.DEFAULT_ON and ns.Tracking.DEFAULT_ON[spellID])) then
             local name, icon
             local entry = currentBuffs and currentBuffs[spellID]
             if entry then name, icon = entry.name, entry.icon end
@@ -737,6 +743,13 @@ function Actions:IgnoredEntries()
             end
             entries[#entries + 1] = { kind = "spell", id = spellID,
                 name = name or ("Spell " .. spellID), icon = icon or 134400 }
+        end
+    end
+    if ns.Tracking and ns.Tracking.IsIgnored then
+        for _, entry in ipairs(ns.Tracking:Available()) do
+            if ns.Tracking:IsIgnored(entry) then
+                entries[#entries + 1] = { kind = "spell", id = entry.spellID, name = entry.name, icon = entry.icon }
+            end
         end
     end
     for itemID, ignored in pairs(ns.db.excludedConsumables) do
@@ -760,6 +773,14 @@ end
 -- chose to ignore comes back rather than returning to its unticked default.
 function Actions:Restore(kind, id)
     if kind == "spell" then
+        if ns.Tracking and ns.Tracking.SetEnabled then
+            for _, entry in ipairs(ns.Tracking:Available()) do
+                if entry.spellID == id then
+                    ns.Tracking:Restore(entry)
+                    return
+                end
+            end
+        end
         ns.db.excludedBuffs[id] = false
     else
         ns.db.excludedConsumables[id] = nil

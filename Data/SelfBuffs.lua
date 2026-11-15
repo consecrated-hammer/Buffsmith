@@ -216,6 +216,7 @@ end
 -- With no choice recorded, a short buff or an entry marked defaultOff (such as
 -- non-gathering tracking) is off, and anything else is on.
 function ns.IsBuffExcluded(entry)
+    if entry.tracking and ns.Tracking and ns.Tracking.IsExcluded then return ns.Tracking:IsExcluded(entry) end
     local choice = ns.db and ns.db.excludedBuffs and ns.db.excludedBuffs[entry.spellID]
     if choice ~= nil then return choice == true end
     return entry.defaultOff == true or ns.IsShortBuff(entry)
