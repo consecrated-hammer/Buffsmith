@@ -255,3 +255,12 @@ selected tracker needs no reminder.
 **Reset character tracking** clears only this character's tracking choices,
 including types it no longer knows. Shared preferences and scope settings stay
 intact. Ignoring/restoring a tracker uses its chosen scope.
+
+### Update reminders
+
+Visibility > Updates > **Update reminders** tells you when another party, raid
+or guild member has a newer stable release. One chat reminder per login names
+the newer version and yours, with a pointer to CurseForge. Recent newer versions
+are remembered for up to 72 hours. This uses hidden addon messages, not a direct
+CurseForge check. Turning it off stops version sharing and reminders. Development,
+alpha, beta and test builds neither announce themselves nor show reminders.

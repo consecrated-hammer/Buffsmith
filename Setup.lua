@@ -99,6 +99,7 @@ end
 local WHATS_NEW = {
     { version = "1.13.3", date = "2026-11-16", items = {
         { title = "Your miner minds their own business", text = "Tracking choices are per character by default. Tick Shared beside a tracking type to use an account preference. A character with only one tracking type gets its reminder automatically, unless explicitly disabled.", kind = "improved", page = "Buffs", tab = "Tracking" },
+        { title = "Keeping up with the guild", text = "A chat reminder flags newer stable releases seen in your party, raid or guild. Configure Update reminders on Visibility. Development and test builds stay quiet.", kind = "improved", page = "Visibility" },
     } },
     { version = "1.13.2", date = "2026-11-15", items = {
         { title = "A lift home", text = "A completely off-screen bar now offers Reset position, Not now or Don't show again. Restore warnings in Appearance.", page = "Appearance", kind = "improved" },
