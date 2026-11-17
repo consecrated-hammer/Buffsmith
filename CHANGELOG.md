@@ -7,6 +7,12 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Forever paladins can reorder learned blessings for themselves and each class,
+  fill missing blessings alongside another paladin, and keep their own buff until
+  renewal. Wisdom is excluded for warriors and rogues.
+- Optional Righteous Fury reminders for tanking, off by default.
+
 - Keeping up with the guild: a chat reminder flags newer stable releases seen in your group or guild. Configure Update reminders on Visibility; development and test builds stay quiet.
 
 - Your miner minds their own business: tracking preferences are per character, with a Shared checkbox for each type. A character’s lone tracking type, including Find Minerals, is offered automatically unless explicitly disabled.

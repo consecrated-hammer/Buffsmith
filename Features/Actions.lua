@@ -52,7 +52,16 @@ local function auraStatus(unit, auraID, auraIDs, auraName, withSource)
         local remaining = duration > 0 and expiration > 0 and math.max(0, expiration - GetTime()) or nil
         local source = withSource and ns.Plain(aura.sourceUnit)
         local sourceGUID = type(source) == "string" and UnitGUID and ns.Plain(UnitGUID(source)) or nil
-        return { state = "active", duration = duration, remaining = remaining, sourceGUID = sourceGUID }
+        if withSource and not sourceGUID and C_UnitAuras and C_UnitAuras.GetAuraCasterGUID then
+            local instanceID = ns.Plain(aura.auraInstanceID)
+            if type(instanceID) == "number" then
+                local ok, guid = pcall(C_UnitAuras.GetAuraCasterGUID, unit, instanceID)
+                if ok then sourceGUID = ns.Plain(guid) end
+            end
+        end
+        if type(sourceGUID) ~= "string" or sourceGUID == "" then sourceGUID = nil end
+        return { state = "active", duration = duration, remaining = remaining, sourceGUID = sourceGUID,
+            own = source == "player" or (sourceGUID ~= nil and UnitGUID and sourceGUID == ns.Plain(UnitGUID("player"))) }
     end
     local getter = C_UnitAuras and C_UnitAuras.GetUnitAuraBySpellID
     if getter then
@@ -88,6 +97,9 @@ end
 
 -- A grouped entry is satisfied by any known member of its group.
 local function entryStatus(unit, entry)
+    if ns.Blessings and ns.Blessings:Handles(entry) then
+        return ns.Blessings:Status(unit, entry, auraStatus)
+    end
     local status = auraStatus(unit, entry.auraID, entry.auraIDs, entry.name)
     learnDuration(unit, entry, status)
     if status.state == "active" or not entry.members then return status end
@@ -543,6 +555,7 @@ function Actions:Entries()
             status = {}
         else
             status = entryStatus("player", entry)
+            entry = status.entry or entry
             self:ConsiderReminder(entry, status)
             display, state = shouldShow(entry, status)
         end
@@ -565,6 +578,7 @@ function Actions:Entries()
         for _, entry in ipairs(known) do
             if entry.target then
                 local status = entryStatus("target", entry)
+                entry = status.entry or entry
                 self:ConsiderReminder(entry, status)
                 local display, state = shouldShow(entry, status)
                 ns.lastTargetProbe[#ns.lastTargetProbe + 1] = entry.name .. "=" .. state
@@ -581,18 +595,21 @@ function Actions:Entries()
     ns.lastPartyProbe = {}
     if ns.db.showPartyBuffs and IsInGroup and IsInGroup() then
         for _, entry in ipairs(known) do
-            if entry.target and not self:IsSuppressed(entry) then
+            if entry.target and (ns.Blessings and ns.Blessings:Handles(entry) or not self:IsSuppressed(entry)) then
                 for _, unit in ipairs({ "party1", "party2", "party3", "party4" }) do
                     if visiblePartyPlayer(unit) and self:CanBuffUnit(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
                         local status = entryStatus(unit, entry)
-                        self:ConsiderReminder(entry, status)
-                        local display, state = shouldShow(entry, status)
+                        local offered = status.entry or entry
+                        self:ConsiderReminder(offered, status)
+                        local display, state = shouldShow(offered, status)
                         if display then
-                            local copy = cloneForUnit(entry, unit, "party")
+                            local copy = cloneForUnit(offered, unit, "party")
                             copy.state, copy.auraDuration, copy.auraRemaining = state, status.duration, status.remaining
-                            entries[#entries + 1] = copy
-                            ns.lastPartyProbe[#ns.lastPartyProbe + 1] = entry.name .. "=" .. state
-                            break
+                            if not self:IsSuppressed(copy) then
+                                entries[#entries + 1] = copy
+                                ns.lastPartyProbe[#ns.lastPartyProbe + 1] = offered.name .. "=" .. state
+                                break
+                            end
                         end
                     end
                 end
@@ -602,18 +619,21 @@ function Actions:Entries()
     ns.lastPetProbe = {}
     if ns.db.showPetBuffs then
         for _, entry in ipairs(known) do
-            if entry.target and not self:IsSuppressed(entry) then
+            if entry.target and (ns.Blessings and ns.Blessings:Handles(entry) or not self:IsSuppressed(entry)) then
                 for _, unit in ipairs(PET_UNITS) do
                     if friendlyPet(unit) and self:CanBuffUnit(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
                         local status = entryStatus(unit, entry)
-                        self:ConsiderReminder(entry, status)
-                        local display, state = shouldShow(entry, status)
+                        local offered = status.entry or entry
+                        self:ConsiderReminder(offered, status)
+                        local display, state = shouldShow(offered, status)
                         if display then
-                            local copy = cloneForUnit(entry, unit, "pet")
+                            local copy = cloneForUnit(offered, unit, "pet")
                             copy.state, copy.auraDuration, copy.auraRemaining = state, status.duration, status.remaining
-                            entries[#entries + 1] = copy
-                            ns.lastPetProbe[#ns.lastPetProbe + 1] = entry.name .. "=" .. state
-                            break
+                            if not self:IsSuppressed(copy) then
+                                entries[#entries + 1] = copy
+                                ns.lastPetProbe[#ns.lastPetProbe + 1] = offered.name .. "=" .. state
+                                break
+                            end
                         end
                     end
                 end

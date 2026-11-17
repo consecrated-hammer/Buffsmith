@@ -102,6 +102,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         local page = settings and settings.pages and settings.pages["Key Bindings"]
         if page and page.hcRefreshAll then page.hcRefreshAll() end
     elseif event == "PLAYER_LOGIN" then
+        if ns.Blessings then ns.Blessings:LearnedSpellsChanged() end
         ns.Thanks:Observe(true)
         refresh()
     elseif event == "PLAYER_LEVEL_UP" then
@@ -180,6 +181,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
         if event == "SPELLS_CHANGED" then
             ns.ResetSpellbook()
+            if ns.Blessings then ns.Blessings:LearnedSpellsChanged() end
             ns.Inventory.nonFoodCatalogue = nil
             ns.Thanks.tracked, ns.Thanks.trackedNames = nil, nil
         end

@@ -35,6 +35,7 @@ ns.defaults = {
     categories = { food = true, scroll = true, flask = true, other = true, weapon = true },
     maxAlternatives = 3,
     preferred = {},
+    blessings = { automatic = true, keepActive = true, orders = {} },
 }
 
 local function copyDefaults(destination, source)

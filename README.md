@@ -264,3 +264,25 @@ the newer version and yours, with a pointer to CurseForge. Recent newer versions
 are remembered for up to 72 hours. This uses hidden addon messages, not a direct
 CurseForge check. Turning it off stops version sharing and reminders. Development,
 alpha, beta and test builds neither announce themselves nor show reminders.
+
+### Forever paladin blessings
+
+Buffs > Paladin Blessings has separate priority lists for yourself and each
+recipient class. Expand a class and use Up/Down to reorder learned blessings.
+BS works down the list and offers the first missing blessing you know, accounting
+for blessings from other paladins. Wisdom is never offered to warriors or rogues.
+Default orders favour Might for melee, Wisdom for casters and hunters, and Kings
+for druids. Newly learned spells appear automatically; custom orders are retained
+and new spells append to them. Default orders adapt as spells are learned.
+
+Keep my active blessing starts on: your own blessing is renewed instead of
+replaced. Turn it off to allow a higher-priority replacement. If caster attribution
+is unavailable, BS waits rather than risk replacing an existing blessing.
+Automatic selection can be turned off to choose one learned blessing manually.
+Existing ignored spells stay ignored; restore them on Ignored or use Reset blessing
+priorities to re-enable blessings. Resetting does not change your other settings.
+
+Righteous Fury has a separate reminder checkbox on this tab once learned. It starts
+off because it increases threat; enable it when tanking. Neither these settings
+nor the reminder casts automatically. Retail and other classes retain their existing
+buff behaviour.

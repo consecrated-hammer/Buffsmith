@@ -40,6 +40,7 @@ ns.SELF_BUFFS = {
         { spellID = 19740, auraID = 19740, label = "Blessing of Might", target = true, group = "paladin-blessing" },
         { spellID = 20217, auraID = 20217, label = "Blessing of Kings", target = true, group = "paladin-blessing" },
         { spellID = 19742, auraID = 19742, label = "Blessing of Wisdom", target = true, group = "paladin-blessing" },
+        { spellID = 25780, auraID = 25780, label = "Righteous Fury", defaultOff = true },
     },
     PRIEST = {
         { spellID = 1243, auraID = 1243, label = "Power Word: Fortitude", target = true },

@@ -272,4 +272,36 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(HC.State().minimap, false, "visibility reset preserves shared minimap setting")
     equal(HC.State().settingsSearch, false, "visibility reset preserves settings search")
 end
+-- Learned blessing controls, collapsed search, reordering and Fury.
+do
+    local ns = loadAddon("Buffsmith_Camelot.toc", {})
+    local known = { [19740] = true }
+    local names = { [19740] = "Blessing of Might", [19742] = "Blessing of Wisdom", [20217] = "Blessing of Kings", [25780] = "Righteous Fury" }
+    C_SpellBook.IsSpellKnown = function(id) return known[id] == true end
+    C_Spell.GetSpellInfo = function(id) return { name = names[id] or ("Spell " .. id), iconID = id } end
+    ns.ResetSpellbook()
+    local settings = ns.HammerCore.Settings
+    assert(settings:Show("Buffs", "Paladin Blessings"))
+    for name, err in pairs(settings.errors) do error(name .. ": " .. err) end
+    assert(settings:Focus("Buffs", "My blessing Might priority", "Paladin Blessings"))
+    equal(#settings:Search("Mage Wisdom priority", 1000), 0, "unlearned Wisdom absent")
+    known[19742], known[20217], known[25780] = true, true, true
+    ns.ResetSpellbook()
+    settings:Show("Buffs", "Paladin Blessings")
+    assert(settings:Focus("Buffs", "Mage Wisdom priority", "Paladin Blessings"), "collapsed Mage order searchable")
+    assert(settings:Focus("Buffs", "Remind me to maintain Righteous Fury", "Paladin Blessings"))
+    equal(#settings:Search("Warrior Wisdom priority", 1000), 0, "warrior Wisdom absent")
+    local body = settings.pages.Buffs.bodies["Paladin Blessings"]
+    local mage = body.hcRows["Mage Wisdom priority"]
+    mage.down.scripts.OnClick(mage.down)
+    equal(ns.Blessings:Order("MAGE", ns.Blessings:Known())[1], 20217, "down button reorders")
+    known[19742] = nil
+    ns.ResetSpellbook()
+    settings:Show("Buffs", "Paladin Blessings")
+    equal(#settings:Search("Mage Wisdom priority", 1000), 0, "lost spell leaves search")
+    ns.db.blessings.automatic = false
+    settings:Show("Buffs", "Paladin Blessings")
+    assert(settings:Focus("Buffs", "Blessing to offer", "Paladin Blessings"))
+    for name, err in pairs(settings.errors) do error(name .. ": " .. err) end
+end
 io.write("settings search: " .. checked .. " registrations checked on both clients; compatibility and scoped resets passed\n")

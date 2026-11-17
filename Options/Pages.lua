@@ -458,7 +458,8 @@ local function buildReminders(panel, y)
         local shown = 0
         for _, buff in ipairs(ns.KnownSelfBuffCandidates()) do
             local entry = buff
-            if ns.db.excludedBuffs[entry.spellID] ~= true then
+            if ns.db.excludedBuffs[entry.spellID] ~= true
+                and not (ns.Blessings and ns.Blessings:Enabled() and (entry.group == "paladin-blessing" or entry.spellID == 25780)) then
                 shown = shown + 1
                 y = pool:Place(entry.spellID .. ":" .. entry.castID, y, function() return {
                     label = entry.name,
@@ -575,12 +576,17 @@ local function buildTracking(panel, y)
     return layout()
 end
 
+local buffTabs = {
+    { name = "Reminders", build = buildReminders },
+    { name = "Targets", columns = 2, build = buildTargets },
+    { name = "Tracking", build = buildTracking },
+}
+if ns.Blessings and ns.Blessings:Enabled() then
+    table.insert(buffTabs, 2, { name = "Paladin Blessings", build = function(panel, y) return ns.Blessings:BuildOptions(panel, y) end })
+end
+
 HC.Settings:NewPage({ name = "Buffs", description = "Choose reminders, recipients and tracking.",
-    headerAction = PREVIEW_ACTION, columns = 1, tabs = {
-        { name = "Reminders", build = buildReminders },
-        { name = "Targets", columns = 2, build = buildTargets },
-        { name = "Tracking", build = buildTracking },
-    } })
+    headerAction = PREVIEW_ACTION, columns = 1, tabs = buffTabs })
 
 
 -- ── Consumables ────────────────────────────────────────────────────────────
