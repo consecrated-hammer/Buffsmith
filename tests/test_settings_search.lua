@@ -8,12 +8,12 @@ local function equal(actual, expected, label)
 end
 
 -- Client APIs Buffsmith uses beyond the HammerCore harness, as plain stubs.
-local function installClient()
+local function installClient(class, learned)
     RegisterStateDriver, UnregisterStateDriver = function() end, function() end
     RegisterAttributeDriver = function() end
     SecureHandlerWrapScript = function() end
     GetSpecialization = function() return 1 end
-    UnitClass = function() return "Paladin", "PALADIN" end
+    UnitClass = function() return class or "Paladin", class or "PALADIN" end
     UnitName = function() return "Tester" end
     UnitGUID = function(unit) return "guid-" .. tostring(unit) end
     UnitExists = function(unit) return unit == "player" end
@@ -36,7 +36,7 @@ local function installClient()
     C_Container = { GetContainerNumSlots = function() return 0 end, GetContainerItemInfo = function() return nil end }
     C_UnitAuras = { GetAuraDataByIndex = function() return nil end, GetUnitAuraBySpellID = function() return nil end }
     C_Spell = { GetSpellInfo = function(id) return { name = "Spell " .. id, iconID = 1 } end }
-    C_SpellBook = { IsSpellKnown = function(id) return id == 465 or id == 465 end }
+    C_SpellBook = { IsSpellKnown = function(id) return learned and learned[id] == true or not learned and id == 465 end }
     Enum = { SpellBookSpellBank = { Player = 0 } }
     C_ChatInfo = {}
     EmoteList, TextEmoteSpeechList = {}, {}
@@ -45,9 +45,9 @@ local function installClient()
 end
 
 -- Load Buffsmith exactly as a TOC lists it.
-local function loadAddon(tocName, saved)
+local function loadAddon(tocName, saved, class, learned)
     wow.Install({ Buffsmith = { Version = "0.1.4-dev1", ["X-Buffsmith-Target"] = tocName:find("Camelot") and "Camelot" or nil } })
-    installClient()
+    installClient(class, learned)
     BuffsmithDB = saved
     local ns = {}
     local registrations = {}
@@ -303,5 +303,62 @@ do
     settings:Show("Buffs", "Paladin Blessings")
     assert(settings:Focus("Buffs", "Blessing to offer", "Paladin Blessings"))
     for name, err in pairs(settings.errors) do error(name .. ": " .. err) end
+end
+-- Class-only controls use the actual TOC load path on both clients.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    for _, class in ipairs({ "DRUID", "ROGUE", "SHAMAN" }) do
+        local learned = { [1126] = true, [467] = true, [324] = true, [52127] = true }
+        local ns = loadAddon(toc, {}, class, learned)
+        local settings = ns.HammerCore.Settings
+        local forever = toc:find("Camelot") ~= nil
+        local tab = ({ DRUID = "Druid Buffs", ROGUE = "Poisons", SHAMAN = "Shields" })[class]
+        settings:Show("Buffs", forever and tab or "Reminders")
+        for name, err in pairs(settings.errors) do error(class .. " " .. name .. ": " .. err) end
+        if forever then
+            local label = ({ DRUID = "Thorns: Party recipients", ROGUE = "Main-hand poison", SHAMAN = "Preferred shield" })[class]
+            assert(settings:Focus("Buffs", label, tab), class .. " control searchable")
+            if class == "DRUID" then
+                learned[467] = nil
+                ns.ResetSpellbook()
+                settings:Show("Buffs", tab)
+                equal(#settings:Search("Thorns: Party recipients", 1000), 0, "unlearned druid section leaves search")
+                learned[467] = true
+                ns.ResetSpellbook()
+                settings:Show("Buffs", tab)
+                assert(settings:Focus("Buffs", "Thorns: Party recipients", tab), "relearned section searchable")
+                ns.db.excludedBuffs[467] = true
+                ns.db.reminderPercent.buffBySpell[467] = 37
+                ns.db.showPartyBuffs = false
+            elseif class == "ROGUE" then
+                ns.db.preferred["1"] = { ["poison:16"] = 9001, ["poison:17"] = 9002, weapon = 9003 }
+                ns.db.excludedConsumables[9001] = true
+                ns.ClassBuffs:Config().poisons = false
+            else
+                ns.db.preferred["1"] = { ["shaman-shield"] = 52127, food = 9001 }
+                ns.ClassBuffs:Config().keepShield = false
+            end
+            local reset = ({ DRUID = "Reset druid recipients", ROGUE = "Reset poison choices", SHAMAN = "Reset shield choices" })[class]
+            local body = settings.pages.Buffs.bodies[tab]
+            wow.Click(assert(body.hcRows[reset]))
+            assert(ns.HammerCore.Dialog:IsShown())
+            wow.Click(ns.HammerCore.Dialog.frame.accept)
+            if class == "DRUID" then
+                equal(ns.ClassBuffs:Druid({ spellID = 467 }).party, "NONE", "druid reset inherits global party ceiling")
+                equal(ns.db.excludedBuffs[467], true, "druid reset preserves ignored Thorns")
+                equal(ns.db.reminderPercent.buffBySpell[467], 37, "druid reset preserves renewal threshold")
+            elseif class == "ROGUE" then
+                equal(ns.db.preferred["1"]["poison:16"], nil, "poison reset clears main hand")
+                equal(ns.db.preferred["1"].weapon, 9003, "poison reset preserves other weapon preference")
+                equal(ns.db.excludedConsumables[9001], true, "poison reset preserves ignored items")
+                equal(ns.ClassBuffs:Config().poisons, false, "poison reset preserves reminder switch")
+            else
+                equal(ns.db.preferred["1"]["shaman-shield"], nil, "shield reset clears preference")
+                equal(ns.db.preferred["1"].food, 9001, "shield reset preserves other preferences")
+                equal(ns.ClassBuffs:Config().keepShield, nil, "shield reset restores keep default")
+            end
+        else
+            equal(settings.pages.Buffs.bodies[tab], nil, "Forever-only class tab absent on Retail")
+        end
+    end
 end
 io.write("settings search: " .. checked .. " registrations checked on both clients; compatibility and scoped resets passed\n")

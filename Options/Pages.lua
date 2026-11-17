@@ -585,6 +585,16 @@ if ns.Blessings and ns.Blessings:Enabled() then
     table.insert(buffTabs, 2, { name = "Paladin Blessings", build = function(panel, y) return ns.Blessings:BuildOptions(panel, y) end })
 end
 
+if ns.ClassBuffs then
+    if ns.ClassBuffs:IsClass("ROGUE") then
+        table.insert(buffTabs, 2, { name = "Poisons", build = function(panel, y) return ns.ClassBuffs:BuildPoisons(panel, y) end })
+    elseif ns.ClassBuffs:IsClass("DRUID") then
+        table.insert(buffTabs, 2, { name = "Druid Buffs", build = function(panel, y) return ns.ClassBuffs:BuildDruid(panel, y) end })
+    elseif ns.ClassBuffs:IsClass("SHAMAN") then
+        table.insert(buffTabs, 2, { name = "Shields", build = function(panel, y) return ns.ClassBuffs:BuildShield(panel, y) end })
+    end
+end
+
 HC.Settings:NewPage({ name = "Buffs", description = "Choose reminders, recipients and tracking.",
     headerAction = PREVIEW_ACTION, columns = 1, tabs = buffTabs })
 
@@ -651,6 +661,15 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
                 end
             end
             pool.parentRow, pool.visible = nil, nil
+            if key == "weapon" and ns.ClassBuffs and ns.ClassBuffs:IsClass("ROGUE") then
+                if not panel.poisonLink then
+                    panel.poisonLink = UI.Link(panel, "Poison choices", function() HC.Settings:Show("Buffs", "Poisons") end)
+                    UI.RegisterRow(panel, panel.poisonLink, "Poison choices")
+                end
+                panel.poisonLink:ClearAllPoints()
+                panel.poisonLink:SetPoint("TOPLEFT", UI.PAD + CHILD_INDENT, y - 4)
+                y = y - 26
+            end
             y = y - 10
         end
         reset:ClearAllPoints()

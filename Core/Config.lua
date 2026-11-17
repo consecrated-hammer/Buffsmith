@@ -36,6 +36,7 @@ ns.defaults = {
     maxAlternatives = 3,
     preferred = {},
     blessings = { automatic = true, keepActive = true, orders = {} },
+    classBuffs = {},
 }
 
 local function copyDefaults(destination, source)

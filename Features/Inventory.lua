@@ -227,7 +227,16 @@ local function weaponEnchantStatus()
 end
 
 -- Poison items coat one weapon at a time without replacing existing coatings.
+function Inventory:IsPoisonItem(itemID)
+    local name, _, _, subtype = self.ItemInfo(itemID)
+    return name and isPoison(subtype, name) or false
+end
+
 function Inventory:PoisonTargetSlot()
+    if ns.ClassBuffs and ns.ClassBuffs:IsClass("ROGUE") then
+        local slot = ns.ClassBuffs:PoisonSelection()
+        return slot
+    end
     if type(GetWeaponEnchantInfo) ~= "function" or type(GetInventoryItemID) ~= "function" then return nil end
     local ok, mainHand, _, _, _, offHand = pcall(GetWeaponEnchantInfo)
     if not ok then return nil end
@@ -585,10 +594,14 @@ function Inventory:CampingStatus(item)
     return { state = "unknown" }
 end
 
-function Inventory:CategoryStatus(category)
+function Inventory:CategoryStatus(category, poisonSlot, poisonChecked)
     if category == "weapon" then
-        for _, item in ipairs(self:Choices(category)) do
-            if item.poison and self:PoisonTargetSlot() then return nil end
+        if poisonChecked then
+            if poisonSlot then return nil end
+        else
+            for _, item in ipairs(self:Choices(category)) do
+                if item.poison and self:PoisonTargetSlot() then return nil end
+            end
         end
         return weaponEnchantStatus()
     end

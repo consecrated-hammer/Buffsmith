@@ -100,6 +100,11 @@ local function entryStatus(unit, entry)
     if ns.Blessings and ns.Blessings:Handles(entry) then
         return ns.Blessings:Status(unit, entry, auraStatus)
     end
+    if ns.ClassBuffs and ns.ClassBuffs:IsClass("SHAMAN") and entry.group == "shaman-shield" then
+        local status = ns.ClassBuffs:ShieldStatus(unit, entry, auraStatus)
+        learnDuration(unit, status.entry or entry, status)
+        return status
+    end
     local status = auraStatus(unit, entry.auraID, entry.auraIDs, entry.name)
     learnDuration(unit, entry, status)
     if status.state == "active" or not entry.members then return status end
@@ -544,24 +549,26 @@ function Actions:Entries()
         return entries
     end
     for _, entry in ipairs(ns.KnownSelfBuffs()) do
-        local status, display, state
-        if entry.resourceRecovery then
-            local remaining
-            display, state, remaining = self:RecoveryStatus(entry)
-            entry.secretRecovery = display and state == "hidden resources" or nil
-            if remaining and not self:IsSuppressed(entry) then
-                self.nextReminderDelay = math.min(self.nextReminderDelay or remaining, remaining)
+        if not ns.ClassBuffs or ns.ClassBuffs:Allows(entry, "self", "player") then
+            local status, display, state
+            if entry.resourceRecovery then
+                local remaining
+                display, state, remaining = self:RecoveryStatus(entry)
+                entry.secretRecovery = display and state == "hidden resources" or nil
+                if remaining and not self:IsSuppressed(entry) then
+                    self.nextReminderDelay = math.min(self.nextReminderDelay or remaining, remaining)
+                end
+                status = {}
+            else
+                status = entryStatus("player", entry)
+                entry = status.entry or entry
+                self:ConsiderReminder(entry, status)
+                display, state = shouldShow(entry, status)
             end
-            status = {}
-        else
-            status = entryStatus("player", entry)
-            entry = status.entry or entry
-            self:ConsiderReminder(entry, status)
-            display, state = shouldShow(entry, status)
+            entry.state, entry.auraDuration, entry.auraRemaining = state, status.duration, status.remaining
+            ns.lastAuraProbe[#ns.lastAuraProbe + 1] = entry.name .. "=" .. entry.state
+            if display and not self:IsSuppressed(entry) then entries[#entries + 1] = entry end
         end
-        entry.state, entry.auraDuration, entry.auraRemaining = state, status.duration, status.remaining
-        ns.lastAuraProbe[#ns.lastAuraProbe + 1] = entry.name .. "=" .. entry.state
-        if display and not self:IsSuppressed(entry) then entries[#entries + 1] = entry end
     end
     -- Tracking that is off; Tracking:Entries applies ticks and dismissals.
     ns.lastTrackingProbe = {}
@@ -576,7 +583,7 @@ function Actions:Entries()
     if ns.db.showTargetBuffs and selectedTarget and not UnitIsUnit("player", "target") then
         ns.lastTargetProbe = {}
         for _, entry in ipairs(known) do
-            if entry.target then
+            if entry.target and (not ns.ClassBuffs or ns.ClassBuffs:Allows(entry, "target", "target")) then
                 local status = entryStatus("target", entry)
                 entry = status.entry or entry
                 self:ConsiderReminder(entry, status)
@@ -597,7 +604,10 @@ function Actions:Entries()
         for _, entry in ipairs(known) do
             if entry.target and (ns.Blessings and ns.Blessings:Handles(entry) or not self:IsSuppressed(entry)) then
                 for _, unit in ipairs({ "party1", "party2", "party3", "party4" }) do
-                    if visiblePartyPlayer(unit) and self:CanBuffUnit(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
+                    if visiblePartyPlayer(unit) and self:CanBuffUnit(unit)
+                        and (not ns.ClassBuffs or ns.ClassBuffs:Allows(entry, "party", unit))
+                        and not (selectedTarget and UnitIsUnit("target", unit)
+                            and (not ns.ClassBuffs or ns.ClassBuffs:Allows(entry, "target", "target"))) then
                         local status = entryStatus(unit, entry)
                         local offered = status.entry or entry
                         self:ConsiderReminder(offered, status)
@@ -621,7 +631,10 @@ function Actions:Entries()
         for _, entry in ipairs(known) do
             if entry.target and (ns.Blessings and ns.Blessings:Handles(entry) or not self:IsSuppressed(entry)) then
                 for _, unit in ipairs(PET_UNITS) do
-                    if friendlyPet(unit) and self:CanBuffUnit(unit) and not (selectedTarget and UnitIsUnit("target", unit)) then
+                    if friendlyPet(unit) and self:CanBuffUnit(unit)
+                        and (not ns.ClassBuffs or ns.ClassBuffs:Allows(entry, "pet", unit))
+                        and not (selectedTarget and UnitIsUnit("target", unit)
+                            and (not ns.ClassBuffs or ns.ClassBuffs:Allows(entry, "target", "target"))) then
                         local status = entryStatus(unit, entry)
                         local offered = status.entry or entry
                         self:ConsiderReminder(offered, status)
@@ -914,6 +927,11 @@ function Actions:ResetDismissals()
 end
 
 function Actions:Preferred(category, choices)
+    if category == "weapon" and ns.ClassBuffs and ns.ClassBuffs:IsClass("ROGUE") then
+        for index, choice in ipairs(choices) do
+            if choice.poisonPrimary and not self:IsSuppressed(choice) then return index end
+        end
+    end
     local saved = ns.db.preferred[currentSpecKey()]
     saved = type(saved) == "table" and saved or {}
     local preferred = saved[category]
@@ -932,9 +950,14 @@ function Actions:VisibleChoices(category)
     local choices = {}
     if playerIsDead() or playerOnTaxi() or not ns.db.categories[category] or self:IsRestedPaused() then return choices end
     if category == "food" and self:FoodWaiting() then return choices end
+    local poisonSlot, poisonChosen, poisonFallback, poisonChecked
+    if category == "weapon" and ns.ClassBuffs and ns.ClassBuffs:IsClass("ROGUE") then
+        poisonSlot, poisonChosen, poisonFallback = ns.ClassBuffs:PoisonSelection()
+        poisonChecked = true
+    end
     -- A category-level active effect suppresses alternatives of the same kind.
     -- This prevents a second food or weapon oil appearing while one is active.
-    local categoryStatus = ns.Inventory:CategoryStatus(category)
+    local categoryStatus = ns.Inventory:CategoryStatus(category, poisonSlot, poisonChecked)
     if categoryStatus then
         local display = shouldShow({ kind = "item", category = category }, categoryStatus)
         if not display then return choices end
@@ -946,7 +969,11 @@ function Actions:VisibleChoices(category)
             -- bar or keybinding query resolves the next bare hand.
             choice = {}
             for key, value in pairs(item) do choice[key] = value end
-            choice.targetSlot = ns.Inventory:PoisonTargetSlot()
+            if ns.ClassBuffs and ns.ClassBuffs:IsClass("ROGUE") then
+                choice.targetSlot, choice.poisonFallback = poisonSlot, poisonFallback
+                choice.poisonPrimary = poisonChosen and poisonChosen.itemID == choice.itemID or false
+                choice.poisonAutomatic = poisonSlot and ns.ClassBuffs:PoisonPreference(poisonSlot) == nil
+            else choice.targetSlot = ns.Inventory:PoisonTargetSlot() end
         end
         if ns.db.excludedConsumables[choice.itemID] then
             choice.state = "excluded"
@@ -1029,6 +1056,10 @@ function Actions:ReminderFor(entry)
 end
 
 function Actions:RememberItem(entry)
+    if entry.poison and ns.ClassBuffs and ns.ClassBuffs:IsClass("ROGUE") then
+        if entry.targetSlot and not entry.poisonFallback and not entry.poisonAutomatic then self:Remember("poison:" .. entry.targetSlot, entry.itemID) end
+        return
+    end
     self:Remember(entry.category, entry.itemID)
     if entry.poison and entry.targetSlot then
         self:Remember("poison:" .. entry.targetSlot, entry.itemID)

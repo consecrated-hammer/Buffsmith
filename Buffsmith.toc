@@ -23,6 +23,7 @@ Data\Consumables.lua
 Features\Inventory.lua
 Features\Actions.lua
 Features\Blessings.lua
+Features\ClassBuffs.lua
 Features\Readiness.lua
 Features\Tracking.lua
 Features\Thanks.lua

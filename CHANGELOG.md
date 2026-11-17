@@ -7,6 +7,12 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Forever rogues can choose poisons per hand, wait for missing stock or use a
+  fallback without losing their preference, and keep existing weapon coatings.
+- Forever druids can set Mark and Thorns recipients separately, including an
+  optional assigned-tanks-only party filter for Thorns.
+- Forever shamans can select a preferred shield while keeping their active one.
+
 ### Added
 - Forever paladins can reorder learned blessings for themselves and each class,
   fill missing blessings alongside another paladin, and keep their own buff until

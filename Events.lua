@@ -25,6 +25,8 @@ for _, event in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SP
     "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_CHANNEL_UPDATE",
     "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED" }) do frame:RegisterUnitEvent(event, "player") end
 frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+pcall(frame.RegisterEvent, frame, "PLAYER_ROLES_ASSIGNED")
+pcall(frame.RegisterEvent, frame, "ROLE_CHANGED_INFORM")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -176,7 +178,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         -- Unit state can settle after the event; retry on the next frame.
         C_Timer.After(0, refresh)
     elseif event == "BAG_UPDATE_DELAYED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
-        or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_UPDATE_RESTING"
+        or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" or event == "ROLE_CHANGED_INFORM" or event == "PLAYER_UPDATE_RESTING"
         or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "UNIT_PET" or event == "MINIMAP_UPDATE_TRACKING"
         or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
         if event == "SPELLS_CHANGED" then

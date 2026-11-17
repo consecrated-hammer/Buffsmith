@@ -286,3 +286,34 @@ Righteous Fury has a separate reminder checkbox on this tab once learned. It sta
 off because it increases threat; enable it when tanking. Neither these settings
 nor the reminder casts automatically. Retail and other classes retain their existing
 buff behaviour.
+
+### Forever rogue, druid and shaman controls
+
+Forever rogues get Buffs > Poisons, also linked from Weapon enhancements.
+Choose Automatic, Off or an owned usable poison for each hand. Existing per-hand
+preferences carry forward. Unavailable choices stay visible with a reason;
+Wait for it is the default. Use another available poison allows a ready fallback
+without replacing your saved preference. A blocked main hand never blocks a
+ready off hand. Existing coatings, including oils and stones, are kept until
+they expire. Each click targets one weapon, and the weapon category remains the
+master switch. Reset poison choices preserves other weapon preferences, ignored
+items and the poison reminder switch.
+
+Forever druids get Buffs > Druid Buffs with independent Mark and Thorns recipient
+settings, shown only when learned. They inherit existing Targets settings and
+remain limited by those global switches. Reminder enable flags and thresholds
+stay shared with Reminders, so changing one page updates the same saved setting.
+Thorns can cover Everyone, Assigned tanks or Nobody in the party. Assigned tanks
+uses explicit group roles/main-tank assignments only; without one, select a
+friendly target deliberately. Pets and yourself have separate choices. Reset
+restores recipient defaults from current Targets settings while preserving
+ignored spells and renewal thresholds.
+
+Forever shamans get Buffs > Shields. Preferred shield lists learned shields;
+Keep my active shield starts on and renews your current shield. Turn it off to
+allow replacement with the preferred shield. Existing group preferences and
+ignored shields are preserved. Reset shield choices affects only shield choice
+and the keep-active preference. Weapon imbues are outside this change.
+
+Retail retains its existing buff and poison models. Native role availability,
+layout and secure casts still require in-game acceptance after staging.
