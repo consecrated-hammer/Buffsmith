@@ -199,7 +199,7 @@ end
 
 function C:BuildDruid(panel, y)
     local UI = ns.HammerCore.UI
-    _, y = UI.Text(panel, "These recipient choices follow your Targets settings. Renewal thresholds stay in Reminders.", y)
+    _, y = UI.Text(panel, "These recipient choices follow your Targets settings. Renewal thresholds and When to show stay in Reminders.", y)
     local top, frames = y, {}
     local owner = panel.hcHeaderOwner or panel
     local function make(entry)

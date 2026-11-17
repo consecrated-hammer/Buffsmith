@@ -142,7 +142,7 @@ function B:Status(unit, group, readAura)
     else
         for _, id in ipairs(order) do
             local status = statuses[id]
-            if not ns.IsBuffExcluded(known[id]) and (status.state ~= "active" or status.own) then return result(id) end
+            if not ns.IsBuffExcluded(known[id]) and (not ns.DisplayRules or ns.DisplayRules:Allows(known[id])) and (status.state ~= "active" or status.own) then return result(id) end
         end
     end
     return { state = "active", duration = 0 }
@@ -197,6 +197,7 @@ function B:BuildOptions(panel, y)
     layout = function()
         for _, frame in pairs(rows) do
             frame:Hide()
+            if frame.rules then frame.rules:Hide() end
             if frame.searchLabel and owner.hcRows then owner.hcRows[frame.searchLabel] = nil end
         end
         if owner.hcRows then
@@ -274,6 +275,19 @@ function B:BuildOptions(panel, y)
             end
             UI.RegisterRow(panel, rows.fury.check, "Remind me to maintain Righteous Fury")
             at = place(rows.fury, at - 10) - 30
+        end
+        if ns.DisplayRules then
+            for _, entry in ipairs(ns.KnownSelfBuffCandidates()) do
+                if entry.group == "paladin-blessing" or entry.spellID == 25780 then
+                    local heading = row("rules:" .. entry.spellID, entry.name .. " display rules")
+                    heading.label:SetText(entry.name)
+                    at = place(heading, at)
+                    if not heading.rules then heading.rules = ns.DisplayRules:CreateControl(panel, entry, entry.name, heading) end
+                    heading.rules:ClearAllPoints(); heading.rules:SetPoint("TOPLEFT", 0, at)
+                    heading.rules:Show()
+                    at = at - heading.rules:Layout()
+                end
+            end
         end
         local reset = row("reset", "Reset blessing priorities")
         if not reset.button then

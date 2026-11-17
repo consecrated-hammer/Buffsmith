@@ -9,6 +9,8 @@ end
 
 -- Client APIs Buffsmith uses beyond the HammerCore harness, as plain stubs.
 local function installClient()
+    -- Generic consumable tests run in an eligible dungeon; location rules have dedicated coverage.
+    IsInInstance = function() return true, "party" end
     RegisterStateDriver, UnregisterStateDriver = function() end, function() end
     RegisterAttributeDriver = function() end
     SecureHandlerWrapScript = function() end

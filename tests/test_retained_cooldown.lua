@@ -9,6 +9,8 @@ end
 
 -- Client APIs Buffsmith uses beyond the HammerCore harness, as plain stubs.
 local function installClient()
+    -- Keep these display regressions in an eligible location; rule boundaries are tested separately.
+    IsInInstance = function() return true, "party" end
     RegisterStateDriver, UnregisterStateDriver = function() end, function() end
     RegisterAttributeDriver = function() end
     SecureHandlerWrapScript = function() end

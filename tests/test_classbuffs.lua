@@ -84,4 +84,47 @@ learned[52127] = nil; ns.ResetSpellbook()
 eq(action(52127, 'player'), nil, 'unlearned shield never offered')
 ns.TARGET = 'Retail'
 eq(C:Allows(thorns, 'self', 'player'), true, 'Retail scope unchanged')
+-- Actual reminder and key/configure paths honour per-buff display rules.
+assert(loadfile('Features/DisplayRules.lua'))('Buffsmith', ns)
+local R = ns.DisplayRules
+R:Initialize(ns.db, true)
+local place = 'none'
+IsInInstance = function() return place ~= 'none', place end
+class, learned, auras, inGroup = 'DRUID', { [1126] = true, [467] = true }, {}, true
+ns.db.classBuffs, ns.db.excludedBuffs = nil, {}
+ns.db.showTargetBuffs, ns.db.showPartyBuffs, ns.db.showPetBuffs = true, true, true
+ns.ResetSpellbook()
+R:Set(thorns, 'INSTANCES')
+eq(action(467, 'player'), nil, 'outdoor Thorns self reminder hidden')
+eq(action(467, 'target'), nil, 'outdoor Thorns target reminder hidden')
+eq(action(467, 'party2'), nil, 'outdoor Thorns party reminder hidden')
+eq(action(467, 'pet'), nil, 'outdoor Thorns pet reminder hidden')
+eq(action(1126, 'player') ~= nil, true, 'independent Mark rule remains available')
+ns.CONSUMABLE_ORDER = {}
+for _, entry in ipairs(ns.Actions:BindingEntries()) do assert(entry.spellID ~= 467, 'key cannot select hidden Thorns') end
+local attrs = {}
+local button = { SetAttribute = function(_,key,value) attrs[key] = value end }
+ns.Actions:Configure(button, { kind = 'spell', spellID = 467, name = 'Thorns' })
+eq(attrs.type1, nil, 'stale prepared entry disarmed outside its display rule')
+place = 'party'
+eq(action(467, 'player') ~= nil, true, 'dungeon restores Thorns')
+ns.Actions:Configure(button, { kind = 'spell', spellID = 467, name = 'Thorns' })
+eq(attrs.type1, 'spell', 'allowed rule prepares secure action')
+C_Minimap = { GetNumTrackingTypes = function() return 1 end,
+    GetTrackingInfo = function() return { type = 'spell', spellID = 2383, name = 'Find Herbs', active = false } end }
+UnitGUID = function(unit) return unit == 'player' and 'Player-self' or unit end
+assert(loadfile('Features/Tracking.lua'))('Buffsmith', ns)
+R:Set({kind='spell',spellID=2383}, 'READY')
+local hasTracking = false
+for _, entry in ipairs(ns.Actions:Entries()) do if entry.tracking then hasTracking = true end end
+eq(hasTracking, false, 'tracking respects own rule')
+R:Set({kind='spell',spellID=2383}, 'ALWAYS')
+for _, entry in ipairs(ns.Actions:Entries()) do if entry.tracking then hasTracking = true end end
+eq(hasTracking, true, 'default tracking remains available')
+-- A hidden preferred shield is not permission to select a different shield.
+class, learned, auras, inGroup = 'SHAMAN', { [324] = true, [52127] = true }, {}, false
+ns.ResetSpellbook(); ns.db.preferred['1'] = { ['shaman-shield'] = 324 }
+R:Set({kind='spell',spellID=324}, 'READY')
+eq(action(324, 'player'), nil, 'hidden preferred shield not offered')
+eq(action(52127, 'player'), nil, 'display rule never chooses another shield implicitly')
 print('class buffs: ' .. count .. ' assertions passed')

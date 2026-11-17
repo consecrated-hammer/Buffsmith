@@ -7,6 +7,11 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Add When to show rules per category, consumable, buff and tracking spell,
+  including live category inheritance, custom locations and ready-check windows.
+- Preserve existing reminder availability; add recommended defaults for new
+  installs and an explicit action to apply them to existing settings.
+
 - Forever rogues can choose poisons per hand, wait for missing stock or use a
   fallback without losing their preference, and keep existing weapon coatings.
 - Forever druids can set Mark and Thorns recipients separately, including an

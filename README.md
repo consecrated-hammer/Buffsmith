@@ -317,3 +317,32 @@ and the keep-active preference. Weapon imbues are outside this change.
 
 Retail retains its existing buff and poison models. Native role availability,
 layout and secure casts still require in-game acceptance after staging.
+
+### When to show each reminder
+
+Each consumable category and owned item has a When to show selector directly
+below its reminder controls. Buffs and tracking have their own selectors under
+Buffs > Reminders / Tracking; paladin blessings and Righteous Fury use their
+existing Paladin Blessings tab. Choices are Always, Dungeons and raids, Ready
+checks only, and Custom. Individual items can Use category settings; the effective
+inherited rule is shown and follows later category edits. Item overrides may
+choose different locations, but cannot enable a disabled category or bypass
+recipient, death, travel, rested-area, cooldown or combat restrictions.
+
+Custom rules combine Open world, Dungeons, Raids and Battlegrounds / arenas with
+an optional ready-check requirement. Locations and the ready condition must both
+match. Ready checks allow reminders for 15 seconds from the check's start, then
+refresh the bar and next-buff key. Leaving the group clears the window. Unknown
+location information never satisfies a restricted location rule.
+
+Existing installations start with Always to preserve availability. New installs
+use dungeon/raid reminders for food, flasks, elixirs/other buffs and scrolls;
+class buffs, tracking and weapon enhancements remain Always. Known Forever camp
+chairs/tents get explicit Always overrides so camping remains available outdoors.
+Existing users can choose Apply recommended display rules in Reminders or
+Consumables. It resets display rules only, including individual overrides, while
+preserving enabled flags, preferences, recipients, layout, thresholds and ignored
+entries. Ordinary page resets do not reset these display rules.
+
+Rules filter reminder offers, next-buff candidates, retained cooldown icons and
+prepared actions. They do not introduce automatic casts or in-combat aura scans.

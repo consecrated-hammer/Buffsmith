@@ -178,4 +178,21 @@ equal(calls, 1, "one poison selection per category query")
 C.PoisonSelection = originalSelection
 ns.TARGET = "Mainline"
 equal(C:IsClass("ROGUE"), false, "Retail poison spell model unaffected")
+-- Per-item display overrides are independent of the category rule.
+assert(loadfile("Features/DisplayRules.lua"))("Buffsmith", ns)
+local R = ns.DisplayRules
+R:Initialize(ns.db, true)
+ns.TARGET = "Camelot"
+IsInInstance = function() return false, "none" end
+R:Set({ kind = "category", category = "weapon" }, "INSTANCES")
+equal(#ns.Actions:VisibleChoices("weapon"), 0, "category rule hides weapon consumables outdoors")
+R:Set({ kind = "item", itemID = 1, category = "weapon" }, "ALWAYS")
+found, choices = poisons()
+equal(#choices, 1, "individual override can show outside category locations")
+equal(choices[1].itemID, 1, "only overridden item offered")
+ns.db.categories.weapon = false
+equal(#ns.Actions:VisibleChoices("weapon"), 0, "item override cannot bypass disabled category")
+ns.db.categories.weapon = true
+R:Set({ kind = "item", itemID = 1, category = "weapon" }, "INHERIT")
+equal(#ns.Actions:VisibleChoices("weapon"), 0, "restoring inheritance follows category again")
 print("poison item tests passed")

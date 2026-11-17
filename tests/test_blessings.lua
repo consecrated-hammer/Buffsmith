@@ -128,4 +128,23 @@ for _, entry in ipairs(ns.Actions:Entries()) do if entry.spellID == F then found
 eq(found, false, 'active Fury suppresses reminder')
 ns.TARGET = 'Retail'
 eq(B:Enabled(), false, 'Retail untouched')
+-- Automatic blessing priorities skip a missing blessing outside its display rule.
+assert(loadfile('Features/DisplayRules.lua'))('Buffsmith', ns)
+local R = ns.DisplayRules
+R:Initialize(ns.db, true)
+ns.TARGET = 'Camelot'
+reset(); learned[F] = nil; ns.ResetSpellbook(); targetClass = 'MAGE'
+IsInInstance = function() return false, 'none' end
+R:Set({kind='spell',spellID=W}, 'INSTANCES')
+eq(action('target'), K, 'automatic priority skips currently hidden Wisdom')
+R:Set({kind='spell',spellID=K}, 'INSTANCES')
+eq(action('target'), M, 'falls through to next allowed blessing')
+R:Set({kind='spell',spellID=M}, 'INSTANCES')
+eq(action('target'), nil, 'all blessing rules hidden means no action')
+R:Set({kind='spell',spellID=K}, 'ALWAYS')
+B:Config().automatic = false; B:Config().manual = W
+eq(action('target'), nil, 'hidden manual blessing does not fall through')
+B:Config().automatic = true
+auras.target = { [M] = aura('player', 30) }
+eq(action('target'), nil, 'hidden own renewal does not replace protected blessing')
 print('blessings: ' .. count .. ' assertions passed')

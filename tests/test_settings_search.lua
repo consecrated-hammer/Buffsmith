@@ -210,7 +210,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(#settings:Search("Test Food", 1000), 0, "removed bag item disappears while another page is open")
     owned = true
     events.scripts.OnEvent(events, "BAG_UPDATE_DELAYED")
-    equal(#settings:Search("Test Food", 1000), 2, "new bag item is searchable without opening Consumables")
+    equal(#settings:Search("Test Food", 1000), 8, "item, threshold and six display-rule controls are searchable without opening Consumables")
     settings:Hide()
     owned = false
     events.scripts.OnEvent(events, "BAG_UPDATE_DELAYED")
@@ -311,6 +311,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
         local ns = loadAddon(toc, {}, class, learned)
         local settings = ns.HammerCore.Settings
         local forever = toc:find("Camelot") ~= nil
+        equal(ns.db.displayRules.categories.food, "INSTANCES", "fresh TOC load uses recommended defaults")
         local tab = ({ DRUID = "Druid Buffs", ROGUE = "Poisons", SHAMAN = "Shields" })[class]
         settings:Show("Buffs", forever and tab or "Reminders")
         for name, err in pairs(settings.errors) do error(class .. " " .. name .. ": " .. err) end
@@ -360,5 +361,75 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
             equal(settings.pages.Buffs.bodies[tab], nil, "Forever-only class tab absent on Retail")
         end
     end
+end
+-- Display-rule controls preserve inheritance, expand Custom and reset only rules.
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc, { iconSize = 44, reminderPercent = { food = 23 }, categories = { food = true } })
+    local settings, R = ns.HammerCore.Settings, ns.DisplayRules
+    ns.Inventory.OwnedChoices = function(_, category)
+        return category == "food" and { { kind = "item", itemID = 9001, name = "Test Food", category = "food", usable = true } } or {}
+    end
+    settings:Show("Consumables")
+    local body = settings.pages.Consumables.bodies.Consumables
+    local selector = assert(body.hcRows["Food: When to show"])
+    local frame = selector:GetParent()
+    local collapsed = frame:GetHeight()
+    R:Set({kind='category',category='food'}, 'CUSTOM')
+    settings:Show("Consumables")
+    assert(frame:GetHeight() > collapsed, "custom controls expand the list")
+    local world = assert(body.hcRows["Food: Open world"])
+    wow.Click(world.hcCheckbox)
+    equal(ns.db.displayRules.categories.food.world, false, "custom checkbox persists")
+    assert(settings:Focus("Consumables", "Test Food (item 9001): When to show"))
+    R:Set({kind='category',category='food'}, 'INSTANCES')
+    settings:Show("Consumables")
+    equal(frame:GetHeight(), collapsed, "preset collapses custom controls")
+    local stringHeight = frame.summary.GetStringHeight
+    frame.summary.GetStringHeight = function() return 80 end
+    settings:Show("Consumables")
+    assert(frame:GetHeight() > collapsed, "wrapped summary expands its available height")
+    frame.summary.GetStringHeight = stringHeight
+    settings:Show("Consumables")
+    equal(settings:Focus("Consumables", "Food: Open world"), selector, "hidden custom setting focuses its selector")
+    local item = {kind='item',itemID=9001,category='food'}
+    equal(R:Describe(item), 'Using Food settings: Dungeons and raids', "item displays effective inherited category")
+    R:Set(item, 'ALWAYS')
+    R:Set({kind='spell',spellID=465}, 'READY')
+    wow.Click(assert(body.hcRows["Apply recommended display rules"]))
+    assert(ns.HammerCore.Dialog:IsShown())
+    wow.Click(ns.HammerCore.Dialog.frame.accept)
+    equal(R:Own(item), nil, "apply clears explicit item overrides")
+    equal(R:Own({kind='spell',spellID=465}), nil, "apply clears buff overrides")
+    equal(ns.db.iconSize, 44, "apply preserves layout")
+    equal(ns.db.reminderPercent.food, 23, "apply preserves renewal threshold")
+    equal(ns.db.categories.food, true, "apply preserves enabled categories")
+    for name, err in pairs(settings.errors) do error(toc .. " " .. name .. ": " .. err) end
+end
+-- The actual READY_CHECK event and combat recovery refresh the next-buff key.
+do
+    local ns = loadAddon("Buffsmith_Camelot.toc", { iconSize = 40 })
+    local now, combat, expire = 100, false, nil
+    GetTime = function() return now end
+    IsInGroup = function() return true end
+    InCombatLockdown = function() return combat end
+    C_Timer.After = function(delay, fn) if delay == 15 then expire = fn end end
+    ns.DisplayRules:Set({kind='spell',spellID=465}, 'READY')
+    local function offered()
+        for _, entry in ipairs(ns.Actions:BindingEntries()) do if entry.spellID == 465 then return true end end
+        return false
+    end
+    assert(not offered(), "before ready check the key cannot offer the buff")
+    local frame = BuffsmithEventFrame
+    frame.scripts.OnEvent(frame, "READY_CHECK")
+    assert(offered() and expire, "actual ready-check event permits the key")
+    equal(ns.Bindings.trigger:GetAttribute("spell1"), "Spell 465", "ready event prepares the actual secure key")
+    combat, now = true, 115
+    expire()
+    equal(ns.DisplayRules.readyUntil, nil, "expiry clears even while combat prevents refresh")
+    assert(not offered(), "combat still suppresses key actions")
+    combat = false
+    frame.scripts.OnEvent(frame, "PLAYER_REGEN_ENABLED")
+    assert(not offered(), "combat recovery refreshes expired rules")
+    equal(ns.Bindings.trigger:GetAttribute("type1"), nil, "combat recovery disarms the actual expired key")
 end
 io.write("settings search: " .. checked .. " registrations checked on both clients; compatibility and scoped resets passed\n")

@@ -25,6 +25,7 @@ for _, event in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SP
     "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_CHANNEL_UPDATE",
     "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED" }) do frame:RegisterUnitEvent(event, "player") end
 frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+frame:RegisterEvent("READY_CHECK")
 pcall(frame.RegisterEvent, frame, "PLAYER_ROLES_ASSIGNED")
 pcall(frame.RegisterEvent, frame, "ROLE_CHANGED_INFORM")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -98,6 +99,8 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         ns.HC:Start()
         if ns.Offscreen then ns.Offscreen:Init() end
         frame:UnregisterEvent("ADDON_LOADED")
+    elseif event == "READY_CHECK" then
+        if ns.DisplayRules then ns.DisplayRules:ReadyCheck() end
     elseif event == "UPDATE_BINDINGS" then
         ns.Bindings:SyncZoom()
         local settings = ns.HC and ns.HC.Settings
@@ -191,6 +194,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
             ns.Thanks:CombatEnded()
             ns.Bindings:SyncZoom()
         end
+        if event == "GROUP_ROSTER_UPDATE" and ns.DisplayRules then ns.DisplayRules:GroupChanged() end
         local deferred = event == "PLAYER_REGEN_ENABLED" and ns.Inventory.usabilityDeferred
         refresh()
         if deferred then ns.Inventory:QueueUsabilityRefresh() end

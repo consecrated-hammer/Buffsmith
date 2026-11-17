@@ -226,13 +226,19 @@ end
 local function rowPool(panel)
     local pool = { frames = {} }
     function pool:Begin()
-        for _, frame in pairs(self.frames) do frame:Hide(); frame.hcParentRow = nil end
+        for _, frame in pairs(self.frames) do
+            frame:Hide(); frame.hcParentRow = nil
+            if frame.rules then frame.rules:Hide() end
+        end
         self.count = 0
     end
     function pool:Place(key, y, build)
         local frame = self.frames[key]
         if not frame then
-            frame = reminderRow(panel, y, build())
+            local definition = build()
+            frame = reminderRow(panel, y, definition)
+            frame.when = definition.when
+            frame.whenLabel = definition.label
             self.frames[key] = frame
         end
         frame:ClearAllPoints()
@@ -243,7 +249,14 @@ local function rowPool(panel)
         local shown = not self.visible or self.visible()
         frame:SetShown(shown)
         frame.refresh()
-        return shown and (y - ROW_HEIGHT - 2) or y
+        local ruleHeight = 0
+        if frame.when and ns.DisplayRules then
+            if not frame.rules then frame.rules = ns.DisplayRules:CreateControl(panel, frame.when, frame.whenLabel, frame, frame.indent) end
+            frame.rules:ClearAllPoints(); frame.rules:SetPoint("TOPLEFT", frame.indent, y - ROW_HEIGHT)
+            frame.rules:SetShown(shown)
+            ruleHeight = frame.rules:Layout()
+        end
+        return shown and (y - ROW_HEIGHT - ruleHeight - 2) or y
     end
     return pool
 end
@@ -435,6 +448,7 @@ end
 local function buildReminders(panel, y)
     _, y = UI.Header(panel, "Your buffs", y, ICONS.detected)
     _, y = UI.Text(panel, "Buffsmith found these on this character. Short ones start switched off.", y)
+    if ns.DisplayRules then _, y = ns.DisplayRules:RecommendedButton(panel, y) end
     local heading = reminderHeading(panel, y, true)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local none = UI.FontString(panel, "GameFontHighlightSmall", "muted")
@@ -462,7 +476,7 @@ local function buildReminders(panel, y)
                 and not (ns.Blessings and ns.Blessings:Enabled() and (entry.group == "paladin-blessing" or entry.spellID == 25780)) then
                 shown = shown + 1
                 y = pool:Place(entry.spellID .. ":" .. entry.castID, y, function() return {
-                    label = entry.name,
+                    label = entry.name, when = entry,
                     icon = entry.icon, permanent = entry.permanent, resourceRecovery = entry.resourceRecovery,
                     caveat = entry.resourceRecovery and "In a group: shows only, no click or key" or nil,
                     enabled = function() return not ns.IsBuffExcluded(entry) end,
@@ -533,7 +547,7 @@ local function buildTracking(panel, y)
             for _, found in ipairs(tracking) do
                 local entry = found
                 y = pool:Place("tracking:" .. entry.spellID, y, function() return {
-                    label = entry.name, icon = entry.icon, permanent = true, detail = "Tracking",
+                    label = entry.name, icon = entry.icon, permanent = true, detail = "Tracking", when = entry,
                     enabled = function()
                         return ns.Tracking.Exclusive() and ns.Tracking:SelectedID() == entry.spellID
                             or not ns.Tracking.Exclusive() and not ns.IsBuffExcluded(entry)
@@ -610,6 +624,7 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         y, 0, 15, 1, function() return ns.db.foodStillSeconds end,
         function(value) ns.Set("foodStillSeconds", value) end,
         function(value) return value .. " s" end)
+    if ns.DisplayRules then _, y = ns.DisplayRules:RecommendedButton(panel, y) end
     _, y = UI.Header(panel, "Categories and items", y, ICONS.consumables)
     local heading = reminderHeading(panel, y, false)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
@@ -632,7 +647,7 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         for _, category in ipairs(CATEGORIES) do
             local key, label = category[1], category[2]
             y = pool:Place("category:" .. key, y, function() return {
-                label = label,
+                label = label, when = { kind = "category", category = key },
                 enabled = function() return ns.db.categories[key] end,
                 toggle = function()
                     ns.db.categories[key] = not ns.db.categories[key]
@@ -649,7 +664,7 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
                 local entry = item
                 if not ns.db.excludedConsumables[entry.itemID] then
                     y = pool:Place("item:" .. entry.itemID, y, function() return {
-                        label = entry.name, icon = entry.icon, indent = CHILD_INDENT,
+                        label = entry.name, icon = entry.icon, indent = CHILD_INDENT, when = entry,
                         enabled = function() return not ns.db.excludedConsumables[entry.itemID] end,
                         toggle = function()
                             ns.db.excludedConsumables[entry.itemID] = (not ns.db.excludedConsumables[entry.itemID]) or nil

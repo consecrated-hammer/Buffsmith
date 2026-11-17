@@ -37,6 +37,7 @@ ns.defaults = {
     preferred = {},
     blessings = { automatic = true, keepActive = true, orders = {} },
     classBuffs = {},
+    displayRules = {},
 }
 
 local function copyDefaults(destination, source)
@@ -62,6 +63,7 @@ local function validPoint(point)
 end
 
 function ns.InitConfig()
+    local existing = type(BuffsmithDB) == "table" and next(BuffsmithDB) ~= nil
     BuffsmithDB = type(BuffsmithDB) == "table" and BuffsmithDB or {}
     BuffsmithDB = copyDefaults(BuffsmithDB, ns.defaults)
     if type(BuffsmithDB.bindingZooms) ~= "table" then BuffsmithDB.bindingZooms = {} end
@@ -154,6 +156,7 @@ function ns.InitConfig()
         BuffsmithDB.palettePoint = { "CENTER", "CENTER", 0, -120 }
         BuffsmithDB.paletteAnchorVersion = nil
     end
+    if ns.DisplayRules then ns.DisplayRules:Initialize(BuffsmithDB, existing) end
     ns.db = BuffsmithDB
     return ns.db
 end

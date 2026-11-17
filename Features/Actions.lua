@@ -719,6 +719,7 @@ function Actions:IsExcluded(entry)
 end
 
 function Actions:IsSuppressed(entry)
+    if ns.DisplayRules and not ns.DisplayRules:Allows(entry) then return true end
     if self:IsExcluded(entry) then return true end
     local key = self:Key(entry)
     return key and self.suppressed[key] == true or false
@@ -1111,7 +1112,7 @@ function Actions:Configure(button, entry)
     button:SetAttribute("type", nil); button:SetAttribute("spell", nil); button:SetAttribute("item", nil)
     button:SetAttribute("target-slot", nil)
     button:SetAttribute("unit", entry.unit or "player")
-    if entry.displayOnly or entry.cooldownOnly or (self.eatingPaused and entry.kind ~= "none") then
+    if (ns.DisplayRules and not ns.DisplayRules:Allows(entry)) or entry.displayOnly or entry.cooldownOnly or (self.eatingPaused and entry.kind ~= "none") then
         button.buffsmithEntry = entry
         return false
     elseif entry.kind == "spell" then
