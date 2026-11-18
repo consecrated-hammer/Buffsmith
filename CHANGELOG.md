@@ -7,6 +7,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Use compact arrow buttons beside each blessing to change its priority.
+
 - Add When to show rules per category, consumable, buff and tracking spell,
   including live category inheritance, custom locations and ready-check windows.
 - Preserve existing reminder availability; add recommended defaults for new

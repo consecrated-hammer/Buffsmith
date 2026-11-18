@@ -268,7 +268,7 @@ alpha, beta and test builds neither announce themselves nor show reminders.
 ### Forever paladin blessings
 
 Buffs > Paladin Blessings has separate priority lists for yourself and each
-recipient class. Expand a class and use Up/Down to reorder learned blessings.
+recipient class. Expand a class and use the arrows beside each buff to reorder learned blessings.
 BS works down the list and offers the first missing blessing you know, accounting
 for blessings from other paladins. Wisdom is never offered to warriors or rogues.
 Default orders favour Might for melee, Wisdom for casters and hunters, and Kings

@@ -171,6 +171,18 @@ function B:BuildOptions(panel, y)
         b:SetScript("OnClick", click)
         return b
     end
+    local function arrow(parent, direction, click, hint)
+        local b = CreateFrame("Button", nil, parent)
+        b:SetSize(22, 22)
+        local texture = "Interface\\Buttons\\UI-ScrollBar-Scroll" .. direction .. "Button-"
+        b:SetNormalTexture(texture .. "Up")
+        b:SetPushedTexture(texture .. "Down")
+        b:SetDisabledTexture(texture .. "Disabled")
+        b:SetHighlightTexture(texture .. "Highlight")
+        b:SetScript("OnClick", click)
+        UI.AttachHint(b, hint, "Change this blessing's priority.")
+        return b
+    end
     local layout
     local function changed()
         ns.RefreshAll()
@@ -224,11 +236,14 @@ function B:BuildOptions(panel, y)
                         for index, id in ipairs(order) do
                             local entry = row(key .. ":" .. id, name .. " " .. labels[id] .. " priority")
                             entry.label:SetText("    " .. index .. ". " .. known[id].name)
+                            local measuredWidth = entry.label:GetStringWidth()
+                            local labelWidth = tonumber(measuredWidth)
+                            if labelWidth then entry.label:SetWidth(math.min(labelWidth, UI.CONTENT_WIDTH - 64)) end
                             if not entry.up then
-                                entry.up = button(entry, "Up", 48, function() self:Move(key, id, -1); changed() end)
-                                entry.down = button(entry, "Down", 48, function() self:Move(key, id, 1); changed() end)
-                                entry.down:SetPoint("RIGHT", -4, 0)
-                                entry.up:SetPoint("RIGHT", entry.down, "LEFT", -4, 0)
+                                entry.up = arrow(entry, "Up", function() self:Move(key, id, -1); changed() end, "Move " .. known[id].name .. " up")
+                                entry.down = arrow(entry, "Down", function() self:Move(key, id, 1); changed() end, "Move " .. known[id].name .. " down")
+                                entry.up:SetPoint("LEFT", entry.label, "RIGHT", 8, 0)
+                                entry.down:SetPoint("LEFT", entry.up, "RIGHT", 2, 0)
                                 entry.hcParentRow = header
                             end
                             entry.up:SetEnabled(index > 1)
