@@ -98,7 +98,9 @@ end
 -- A grouped entry is satisfied by any known member of its group.
 local function entryStatus(unit, entry)
     if ns.Blessings and ns.Blessings:Handles(entry) then
-        return ns.Blessings:Status(unit, entry, auraStatus)
+        local status = ns.Blessings:Status(unit, entry, auraStatus)
+        learnDuration(unit, status.entry or entry, status)
+        return status
     end
     if ns.ClassBuffs and ns.ClassBuffs:IsClass("SHAMAN") and entry.group == "shaman-shield" then
         local status = ns.ClassBuffs:ShieldStatus(unit, entry, auraStatus)

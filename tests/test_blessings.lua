@@ -147,4 +147,9 @@ eq(action('target'), nil, 'hidden manual blessing does not fall through')
 B:Config().automatic = true
 auras.target = { [M] = aura('player', 30) }
 eq(action('target'), nil, 'hidden own renewal does not replace protected blessing')
+-- Blessings retain the same duration-learning path as other self buffs.
+auras.player = { [M] = aura('player') }
+ns.db.buffDurations[M] = nil
+ns.Actions:Entries()
+eq(ns.db.buffDurations[M], 3600, 'own blessing duration learned')
 print('blessings: ' .. count .. ' assertions passed')
