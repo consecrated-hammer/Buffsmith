@@ -7,6 +7,11 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-11-19
+
+- **Forever:** Carrot packed? Turn on individual checks for Carrot on a Stick, Mithril Spurs and Riding Skill gloves under Consumables > Travel reminders. The bar shows what’s missing when you mount.
+- Gift of Galloping can remind you during the last 24 hours of the buff. Turn on its expiry reminder in the same place.
+
 ## [1.14.0] - 2026-11-18
 
 The blessing queue has learned some manners.

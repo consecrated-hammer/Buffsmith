@@ -97,6 +97,10 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.15.0", date = "2026-11-19", items = {
+        { title = "Carrot packed?", text = "Forever can remind you about missing Carrot on a Stick, Mithril Spurs or Riding Skill gloves when you mount. Turn on each check under Consumables > Travel reminders.", client = "forever", kind = "new", page = "Consumables" },
+        { title = "Last day to gallop", text = "Turn on Gift of Galloping expiry to see a reminder during the last 24 hours of the buff.", client = "forever", kind = "new", page = "Consumables" },
+    } },
     { version = "1.14.0", date = "2026-11-18", items = {
         { title = "A little blessing order", text = "Forever paladins can order learned blessings for themselves and each class, fill another paladin's gaps and keep their own active blessing. Righteous Fury has its own optional reminder.", kind = "new", page = "Buffs", tab = "Paladin Blessings" },
         { title = "Keep your coatings", text = "Forever rogues can choose a poison per hand and wait for missing stock or use a fallback without losing their choice. Existing weapon coatings stay put.", kind = "new", page = "Buffs" },
