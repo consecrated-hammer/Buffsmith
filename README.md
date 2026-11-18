@@ -320,8 +320,9 @@ layout and secure casts still require in-game acceptance after staging.
 
 ### When to show each reminder
 
-Each consumable category and owned item has a When to show selector directly
-below its reminder controls. Buffs and tracking have their own selectors under
+Each consumable category and owned item has a When to show selector on the same
+row as its reminder controls. Custom rules expand below; effective inherited
+rules are explained in the selector tooltip. Buffs and tracking have their own selectors under
 Buffs > Reminders / Tracking; paladin blessings and Righteous Fury use their
 existing Paladin Blessings tab. Choices are Always, Dungeons and raids, Ready
 checks only, and Custom. Individual items can Use category settings; the effective

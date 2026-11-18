@@ -7,6 +7,8 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Keep reminder names, renewal thresholds and When to show selectors on one row.
+
 - Use compact arrow buttons beside each blessing to change its priority.
 
 - Add When to show rules per category, consumable, buff and tracking spell,

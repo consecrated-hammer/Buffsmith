@@ -164,7 +164,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(wow.LastPrint(), lastPrint, "preview posts nothing to chat")
     settings:Show("Buffs", "Reminders")
     equal(body("Buffs", "Reminders").content.reminderHeading:GetText(),
-        "Remind when this much time is left", "buff duration column is labelled")
+        "Remind below", "buff duration column is labelled")
     local candidates, excluded = ns.KnownSelfBuffCandidates, ns.IsBuffExcluded
     local temporary = { spellID = 7777, castID = 7777, name = "A timed buff", duration = 3600 }
     ns.KnownSelfBuffCandidates = function() return { temporary } end
@@ -186,7 +186,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
 
     settings:Show("Consumables")
     equal(body("Consumables").content.reminderHeading:GetText(),
-        "Remind when this much time is left", "consumable duration column is labelled")
+        "Remind below", "consumable duration column is labelled")
     local categories = ns.db.categories
     ns.db.categories = {}
     settings:Show("Consumables")
@@ -374,6 +374,9 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     local selector = assert(body.hcRows["Food: When to show"])
     local frame = selector:GetParent()
     local collapsed = frame:GetHeight()
+    equal(collapsed, frame.hcParentRow:GetHeight(), "preset selector occupies the existing reminder row")
+    equal(selector.Title:IsShown(), false, "inline selector hides the repeated buff label")
+    equal(selector.points[1][2], frame.hcParentRow, "selector anchors beside its reminder")
     R:Set({kind='category',category='food'}, 'CUSTOM')
     settings:Show("Consumables")
     assert(frame:GetHeight() > collapsed, "custom controls expand the list")
@@ -384,11 +387,15 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     R:Set({kind='category',category='food'}, 'INSTANCES')
     settings:Show("Consumables")
     equal(frame:GetHeight(), collapsed, "preset collapses custom controls")
+    R:Set({kind='category',category='food'}, 'CUSTOM')
+    settings:Show("Consumables")
+    local customHeight = frame:GetHeight()
     local stringHeight = frame.summary.GetStringHeight
     frame.summary.GetStringHeight = function() return 80 end
     settings:Show("Consumables")
-    assert(frame:GetHeight() > collapsed, "wrapped summary expands its available height")
+    assert(frame:GetHeight() > customHeight, "wrapped custom summary expands its available height")
     frame.summary.GetStringHeight = stringHeight
+    R:Set({kind='category',category='food'}, 'INSTANCES')
     settings:Show("Consumables")
     equal(settings:Focus("Consumables", "Food: Open world"), selector, "hidden custom setting focuses its selector")
     local item = {kind='item',itemID=9001,category='food'}

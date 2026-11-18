@@ -144,8 +144,8 @@ function R:RecommendedButton(panel, y)
 end
 
 -- Each reminder owns a compact rule selector. Only Custom expands the location
--- controls; inherited items show their effective category rule below the select.
-function R:CreateControl(panel, entry, label, parentRow, indent)
+-- controls; inline selectors explain inherited category rules in their tooltip.
+function R:CreateControl(panel, entry, label, parentRow, indent, inline)
     local UI = ns.HammerCore.UI
     local frame = CreateFrame("Frame", nil, panel)
     indent = indent or 0
@@ -160,7 +160,7 @@ function R:CreateControl(panel, entry, label, parentRow, indent)
     local values = entry.kind == "item" and { "INHERIT", "ALWAYS", "INSTANCES", "READY", "CUSTOM" } or { "ALWAYS", "INSTANCES", "READY", "CUSTOM" }
     local titles = {}
     for _, value in ipairs(values) do titles[#titles + 1] = labels[value] end
-    local dropdown, at = UI.Dropdown(frame, prefix .. ": When to show",
+    local dropdown, at, selector = UI.Dropdown(frame, prefix .. ": When to show",
         "Limit when this reminder is offered. Existing enabled, recipient and safety settings still apply. Ready checks last 15 seconds from their start.", -4,
         values, titles,
         function()
@@ -168,7 +168,19 @@ function R:CreateControl(panel, entry, label, parentRow, indent)
             return type(own) == "table" and "CUSTOM" or own or (entry.kind == "item" and "INHERIT" or "ALWAYS")
         end,
         function(value) self:Set(entry, value); self:Refresh() end, width)
-    if dropdown.hcTitle then dropdown.hcTitle:SetText("When to show") end
+    if dropdown.Title then dropdown.Title:SetText("When to show") end
+    if inline then
+        if dropdown.Title then dropdown.Title:Hide() end
+        dropdown:ClearAllPoints()
+        dropdown:SetPoint("RIGHT", parentRow, "RIGHT", -6, 0)
+        dropdown:SetSize(160, parentRow:GetHeight())
+        selector:ClearAllPoints()
+        selector:SetPoint("RIGHT", dropdown, "RIGHT", 0, 0)
+        selector:SetSize(160, 26)
+        UI.AttachHint(selector, prefix .. ": When to show", function()
+            return R:Describe(entry) .. "\nLocations and ready-check conditions must both match. Ready checks last 15 seconds."
+        end)
+    end
     local summary = UI.FontString(frame, "GameFontHighlightSmall", "muted")
     summary:SetPoint("TOPLEFT", UI.PAD + 2, at - 2)
     summary:SetWidth(width - 4)
@@ -197,15 +209,19 @@ function R:CreateControl(panel, entry, label, parentRow, indent)
         summary:SetText(R:Describe(entry))
         local textHeight = math.max(14, tonumber(summary:GetStringHeight()) or 30)
         summary:SetHeight(textHeight)
-        local bottom = summaryAt - textHeight - 6
+        local rowHeight = inline and parentRow:GetHeight() or 0
+        local bottom = inline and (-rowHeight - textHeight - 10) or (summaryAt - textHeight - 6)
+        summary:ClearAllPoints()
+        summary:SetPoint("TOPLEFT", UI.PAD + 2, inline and (-rowHeight - 4) or (summaryAt - 2))
+        summary:SetShown(not inline or custom)
         for index, row in ipairs(children) do
             row:ClearAllPoints()
             row:SetPoint("TOPLEFT", UI.PAD, bottom - (index - 1) * UI.CELL_H)
             row:SetShown(custom)
         end
-        self.height = -bottom + (custom and #children * UI.CELL_H or 0) + 4
+        self.height = inline and not custom and rowHeight or (-bottom + (custom and #children * UI.CELL_H or 0) + 4)
         self:SetHeight(self.height)
-        return self.height
+        return inline and (self.height - rowHeight) or self.height
     end
     frame.summary = summary
     frame:Layout()

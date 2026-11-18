@@ -296,9 +296,11 @@ function B:BuildOptions(panel, y)
                 if entry.group == "paladin-blessing" or entry.spellID == 25780 then
                     local heading = row("rules:" .. entry.spellID, entry.name .. " display rules")
                     heading.label:SetText(entry.name)
+                    heading.label:SetWidth(UI.CONTENT_WIDTH - 178)
+                    local rowAt = at
                     at = place(heading, at)
-                    if not heading.rules then heading.rules = ns.DisplayRules:CreateControl(panel, entry, entry.name, heading) end
-                    heading.rules:ClearAllPoints(); heading.rules:SetPoint("TOPLEFT", 0, at)
+                    if not heading.rules then heading.rules = ns.DisplayRules:CreateControl(panel, entry, entry.name, heading, 0, true) end
+                    heading.rules:ClearAllPoints(); heading.rules:SetPoint("TOPLEFT", 0, rowAt)
                     heading.rules:Show()
                     at = at - heading.rules:Layout()
                 end

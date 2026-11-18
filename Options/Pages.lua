@@ -83,25 +83,32 @@ local function flow(panel)
     return add
 end
 
-local TEXT_WIDTH = 210
-local SLIDER_X = 330
+local RULE_WIDTH = 160
+local SLIDER_WIDTH = 80
+local function sliderX() return UI.CONTENT_WIDTH - RULE_WIDTH - SLIDER_WIDTH - 52 end
+local function textWidth() return math.min(210, sliderX() - 100) end
 
 -- A single label explains the aligned duration sliders on each reminder list.
 local function reminderHeading(panel, y, buffs)
     local heading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    heading:SetPoint("TOPLEFT", UI.PAD + SLIDER_X, y - 4)
-    heading:SetWidth(UI.CONTENT_WIDTH - SLIDER_X)
+    heading:SetPoint("TOPLEFT", UI.PAD + sliderX(), y - 4)
+    heading:SetWidth(SLIDER_WIDTH + 38)
     heading:SetJustifyH("LEFT")
     if heading.SetWordWrap then heading:SetWordWrap(false) end
-    heading:SetText("Remind when this much time is left")
+    heading:SetText("Remind below")
     local hint = UI.AttachTitleHint(panel, heading, "Reminder thresholds", buffs
         and "Most sliders use remaining buff time. Permanent buffs have no slider; Read Leyline uses health or mana instead."
         or "Category and item sliders use the percentage of the effect's duration that is left.")
+    local ruleHeading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
+    ruleHeading:SetPoint("TOPLEFT", UI.PAD + UI.CONTENT_WIDTH - RULE_WIDTH - 6, y - 4)
+    ruleHeading:SetWidth(RULE_WIDTH)
+    ruleHeading:SetJustifyH("LEFT")
+    ruleHeading:SetText("When to show")
     panel.reminderHeading = heading
     return function(visible)
         heading:SetShown(visible)
         hint:SetShown(visible)
-        return y - (visible and 24 or 0)
+        return y - 24
     end
 end
 
@@ -134,13 +141,13 @@ local function reminderRow(panel, y, item)
     end
     local name = UI.FontString(row)
     name:SetPoint("TOPLEFT", left, "TOPRIGHT", 10, (item.icon and not item.caveat) and 0 or 6)
-    name:SetWidth(TEXT_WIDTH - row.indent)
+    name:SetWidth(textWidth() - row.indent)
     name:SetJustifyH("LEFT")
     if name.SetWordWrap then name:SetWordWrap(false) end
     name:SetText(item.label)
     local detail = UI.FontString(row, "GameFontHighlightSmall", "muted")
     detail:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4)
-    detail:SetWidth(TEXT_WIDTH - row.indent)
+    detail:SetWidth(textWidth() - row.indent)
     detail:SetJustifyH("LEFT")
     if detail.SetWordWrap then detail:SetWordWrap(false) end
     local caveat
@@ -156,9 +163,9 @@ local function reminderRow(panel, y, item)
     if not item.permanent then
         slider = CreateFrame("Slider", nil, row)
         slider:SetOrientation("HORIZONTAL")
-        slider:SetSize(140, 16)
+        slider:SetSize(SLIDER_WIDTH, 16)
         -- Sliders line up down the page, indented row or not.
-        slider:SetPoint("LEFT", SLIDER_X - row.indent, 0)
+        slider:SetPoint("LEFT", sliderX() - row.indent, 0)
         slider:SetMinMaxValues(0, 50)
         slider:SetValueStep(1)
         slider:SetObeyStepOnDrag(true)
@@ -170,7 +177,7 @@ local function reminderRow(panel, y, item)
         thumb:SetSize(10, 10)
         if slider.SetThumbTexture then slider:SetThumbTexture(thumb) end
         percent = UI.FontString(row, "GameFontHighlightSmall", "muted")
-        percent:SetPoint("LEFT", slider, "RIGHT", 10, 0)
+        percent:SetPoint("LEFT", slider, "RIGHT", 6, 0)
         UI.AttachHint(slider, "Reminder", item.resourceRecovery
             and "Remind below this health or mana percentage, while the ability is ready."
             or "Remind when this share of the effect's duration is left.")
@@ -206,7 +213,7 @@ local function reminderRow(panel, y, item)
         ns.RefreshAll()
         if panel.hcRefreshAll then panel.hcRefreshAll() end
     end)
-    if item.hint then UI.AttachHint(row, item.label, item.hint) end
+    UI.AttachHint(row, item.label, item.hint or "Enable or disable this reminder. Use the controls beside it to change renewal and display rules.")
     refresh()
     row.refresh = refresh
     UI.RegisterRow(panel, row, item.label)
@@ -251,8 +258,8 @@ local function rowPool(panel)
         frame.refresh()
         local ruleHeight = 0
         if frame.when and ns.DisplayRules then
-            if not frame.rules then frame.rules = ns.DisplayRules:CreateControl(panel, frame.when, frame.whenLabel, frame, frame.indent) end
-            frame.rules:ClearAllPoints(); frame.rules:SetPoint("TOPLEFT", frame.indent, y - ROW_HEIGHT)
+            if not frame.rules then frame.rules = ns.DisplayRules:CreateControl(panel, frame.when, frame.whenLabel, frame, frame.indent, true) end
+            frame.rules:ClearAllPoints(); frame.rules:SetPoint("TOPLEFT", frame.indent, y)
             frame.rules:SetShown(shown)
             ruleHeight = frame.rules:Layout()
         end
