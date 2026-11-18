@@ -15,6 +15,7 @@ frame:RegisterEvent("UPDATE_BINDINGS")
 frame:RegisterEvent("BAG_UPDATE_DELAYED")
 frame:RegisterEvent("BAG_UPDATE_COOLDOWN")
 frame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+if ns.TARGET == "Camelot" then pcall(frame.RegisterEvent, frame, "PLAYER_MOUNT_DISPLAY_CHANGED") end
 frame:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
 frame:RegisterEvent("SPELLS_CHANGED")
 frame:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -180,6 +181,8 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         refresh()
         -- Unit state can settle after the event; retry on the next frame.
         C_Timer.After(0, refresh)
+    elseif event == "PLAYER_MOUNT_DISPLAY_CHANGED" then
+        if ns.Actions:TracksMountGear() and not ns.IsCombatLocked() then ns.Palette:Refresh() end
     elseif event == "BAG_UPDATE_DELAYED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" or event == "ROLE_CHANGED_INFORM" or event == "PLAYER_UPDATE_RESTING"
         or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "UNIT_PET" or event == "MINIMAP_UPDATE_TRACKING"

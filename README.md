@@ -182,6 +182,11 @@ bar position, Visibility preserves the shared window/minimap preferences, and
 Consumables preserves your preferred and ignored items. All existing saved keys
 and values remain compatible; no settings migration is needed.
 
+On Forever, **Consumables > Travel reminders** lets you opt into checks for
+Carrot on a Stick, Mithril Spurs and Riding Skill gloves while mounted.
+**Gift of Galloping expiry** shows in the last 24 hours of the active buff.
+The reminders appear on the Buffsmith bar.
+
 ## Commands
 
 | Command | What it does |

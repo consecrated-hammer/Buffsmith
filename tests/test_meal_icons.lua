@@ -203,4 +203,51 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     end
     equal(ns.Palette.statusText:IsShown(), false, "text never flashes after meal")
 end
-io.write("Meal progress tests passed\n")
+for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
+    local ns = loadAddon(toc)
+    local mounted, now = true, 100
+    local trinkets = { [14] = 11122 }
+    local enchants = { [8] = 464, [10] = 930 }
+    IsMounted = function() return mounted end
+    GetTime = function() return now end
+    GetInventoryItemID = function(_, slot) return trinkets[slot] end
+    GetInventoryItemLink = function(_, slot) return ("|Hitem:9001:%d:0|h[Gear]|h"):format(enchants[slot] or 0) end
+    local expiration = 100 + 86401
+    C_UnitAuras.GetPlayerAuraBySpellID = function(spellID)
+        equal(spellID, 1289654, "reads the Forever Galloping aura")
+        return { expirationTime = expiration, duration = 15 * 86400 }
+    end
+    equal(#ns.Actions:TravelEntries(), 0, "travel reminders are opt-in")
+    ns.db.remindCarrot, ns.db.remindMithrilSpurs, ns.db.remindRidingGloves, ns.db.remindGalloping = true, true, true, true
+    local entries, wakeAt = ns.Actions:TravelEntries()
+    equal(#entries, 0, "equipped gear and early buff do not need reminders")
+    equal(wakeAt, ns.TARGET == "Camelot" and 101 or nil, "wake at the start of the final day on Forever")
+    if ns.TARGET == "Camelot" then
+        trinkets[14], enchants[10], now = nil, 0, 101
+        entries, wakeAt = ns.Actions:TravelEntries()
+        equal(#entries, 2, "show mounted gear and expiry together")
+        assert(entries[1].detail:find("Carrot on a Stick", 1, true))
+        assert(entries[1].detail:find("Riding Skill", 1, true))
+        assert(not entries[1].detail:find("Mithril Spurs", 1, true))
+        equal(entries[2].auraEnds, expiration, "expiry uses actual aura deadline")
+        equal(wakeAt, expiration, "refresh when the aura expires")
+        local _, visible = ns.Palette:Items()
+        local travelCount = 0
+        for _, entry in ipairs(visible) do
+            if entry.kind == "travel" then
+                assert(entry.displayOnly, "travel reminders never activate an action")
+                travelCount = travelCount + 1
+            end
+        end
+        equal(travelCount, 2, "both reminders render on the Buffsmith bar")
+        ns.db.remindCarrot = false
+        entries = ns.Actions:TravelEntries()
+        assert(not entries[1].detail:find("Carrot on a Stick", 1, true), "disabled checks never appear")
+        mounted = false
+        equal(#ns.Actions:TravelEntries(), 1, "dismount hides gear but retains expiry")
+        now = expiration
+        equal(#ns.Actions:TravelEntries(), 0, "elapsed aura no longer shows")
+    end
+    IsMounted, GetInventoryItemID, GetInventoryItemLink = nil, nil, nil
+end
+io.write("Meal and travel reminder tests passed\n")

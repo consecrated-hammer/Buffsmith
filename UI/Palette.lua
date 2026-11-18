@@ -61,7 +61,9 @@ local function button(parent, small)
             local name = recipientName(entry)
             GameTooltip:AddLine(name and ("Cast on: " .. name) or "Recipient unavailable.", 0.8, 0.8, 0.8, true)
         end
-        if entry.displayOnly then
+        if entry.displayOnly and entry.detail then
+            GameTooltip:AddLine(entry.detail, 0.8, 0.8, 0.8, true)
+        elseif entry.displayOnly then
             GameTooltip:AddLine("Eating or drinking. Casts are paused.", 0.8, 0.8, 0.8, true)
             GameTooltip:AddLine("Shows this aura's remaining duration. Casting waits until all eating or drinking ends.", 0.7, 0.7, 0.7, true)
             GameTooltip:AddLine("Informational aura icon. Clicking does nothing.", 0.7, 0.7, 0.7, true)
@@ -410,6 +412,21 @@ function Palette:Items()
                 end
             end
             items[#items + 1] = { subs = shown }
+        end
+    end
+    local travel, wakeAt = ns.Actions:TravelEntries()
+    for _, entry in ipairs(travel) do
+        items[#items + 1] = {}
+        mainEntries[#mainEntries + 1] = entry
+    end
+    if wakeAt ~= self.travelWakeAt then
+        self.travelWakeAt = wakeAt
+        if wakeAt then
+            C_Timer.After(math.max(0.05, wakeAt - GetTime()), function()
+                if self.travelWakeAt ~= wakeAt then return end
+                self.travelWakeAt = nil
+                if not ns.IsCombatLocked() then self:Refresh() end
+            end)
         end
     end
     self.renderedActionKeys = {}

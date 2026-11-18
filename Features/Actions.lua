@@ -420,6 +420,66 @@ function Actions:MealEntries()
         auraEnds = aura.ends, auraDuration = aura.duration } }
 end
 
+local function missingRidingEnchant(slot, enchantID)
+    if not GetInventoryItemLink then return false end
+    local link = ns.Plain(GetInventoryItemLink("player", slot))
+    if type(link) ~= "string" then return false end
+    local equippedEnchant = link:match("|Hitem:%d+:(%d*):")
+    return equippedEnchant ~= nil and (tonumber(equippedEnchant) or 0) ~= enchantID
+end
+
+function Actions:TracksMountGear()
+    return ns.db.remindCarrot or ns.db.remindMithrilSpurs or ns.db.remindRidingGloves
+end
+
+function Actions:TravelEntries()
+    local entries = {}
+    local checkGear = self:TracksMountGear()
+    if ns.TARGET ~= "Camelot" or not (checkGear or ns.db.remindGalloping)
+        or ns.IsCombatLocked() or playerIsDead() or playerOnTaxi() or self:IsRestedPaused() then return entries end
+
+    if checkGear and IsMounted and ns.Plain(IsMounted()) == true then
+        local missing = {}
+        if ns.db.remindCarrot and GetInventoryItemID then
+            local first = GetInventoryItemID("player", 13)
+            local second = GetInventoryItemID("player", 14)
+            if not ns.IsSecret(first) and not ns.IsSecret(second) and first ~= 11122 and second ~= 11122 then
+                missing[#missing + 1] = "Carrot on a Stick"
+            end
+        end
+        if ns.db.remindMithrilSpurs and missingRidingEnchant(8, 464) then missing[#missing + 1] = "Mithril Spurs on boots" end
+        if ns.db.remindRidingGloves and missingRidingEnchant(10, 930) then missing[#missing + 1] = "Riding Skill on gloves" end
+        if #missing > 0 then
+            entries[#entries + 1] = { kind = "travel", displayOnly = true, name = "Mount speed gear",
+                icon = "Interface\\Icons\\Ability_Mount_RidingHorse", detail = "Missing from your equipped gear: " .. table.concat(missing, ", ") .. "." }
+        end
+    end
+
+    local wakeAt
+    local getter = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
+    if ns.db.remindGalloping and getter then
+        local ok, aura = pcall(getter, ns.GALLOPING_AURA_ID)
+        aura = ok and ns.Plain(aura)
+        if type(aura) == "table" then
+            local expires = ns.Plain(aura.expirationTime)
+            local now = GetTime()
+            if type(expires) == "number" and expires < math.huge and expires > now then
+                local lastDay = expires - 24 * 60 * 60
+                wakeAt = expires
+                if lastDay > now then
+                    wakeAt = lastDay
+                else
+                    entries[#entries + 1] = { kind = "travel", displayOnly = true, name = "Gift of Galloping",
+                        icon = ns.Plain(aura.icon) or 136103, spellID = ns.GALLOPING_AURA_ID,
+                        detail = "Your mount-speed buff expires within 24 hours.",
+                        auraEnds = expires, auraDuration = ns.Plain(aura.duration) }
+                end
+            end
+        end
+    end
+    return entries, wakeAt
+end
+
 function Actions:IsEating()
     return self:MealStatus().active
 end

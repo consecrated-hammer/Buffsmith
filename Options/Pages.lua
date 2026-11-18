@@ -632,11 +632,22 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         function(value) ns.Set("foodStillSeconds", value) end,
         function(value) return value .. " s" end)
     if ns.DisplayRules then _, y = ns.DisplayRules:RecommendedButton(panel, y) end
+    if ns.TARGET == "Camelot" then
+        _, y = UI.Header(panel, "Travel reminders", y, ICONS.consumables)
+        _, y = UI.Check(panel, "Carrot on a Stick", "While mounted, show a reminder if neither trinket slot has a Carrot on a Stick.", y,
+            function() return ns.db.remindCarrot end, function(value) ns.Set("remindCarrot", value) end)
+        _, y = UI.Check(panel, "Mithril Spurs", "While mounted, show a reminder if your equipped boots are missing Mithril Spurs.", y,
+            function() return ns.db.remindMithrilSpurs end, function(value) ns.Set("remindMithrilSpurs", value) end)
+        _, y = UI.Check(panel, "Riding Skill gloves", "While mounted, show a reminder if your equipped gloves are missing the Riding Skill enchant.", y,
+            function() return ns.db.remindRidingGloves end, function(value) ns.Set("remindRidingGloves", value) end)
+        _, y = UI.Check(panel, "Gift of Galloping expiry", "Show a reminder during the final 24 hours of the active mount-speed buff.", y,
+            function() return ns.db.remindGalloping end, function(value) ns.Set("remindGalloping", value) end)
+    end
     _, y = UI.Header(panel, "Categories and items", y, ICONS.consumables)
     local heading = reminderHeading(panel, y, false)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local reset = UI.PageReset(panel, y, function()
-        resetKeys({ "categories", "foodStillSeconds" })
+        resetKeys({ "categories", "foodStillSeconds", "remindCarrot", "remindMithrilSpurs", "remindRidingGloves", "remindGalloping" })
         for _, key in ipairs({ "food", "scroll", "flask", "other", "weapon" }) do
             ns.db.reminderPercent[key] = ns.defaults.reminderPercent[key]
         end

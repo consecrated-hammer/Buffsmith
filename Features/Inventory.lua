@@ -186,6 +186,8 @@ local function isPoison(itemSubType, itemName)
 end
 
 local function classify(itemType, itemSubType, itemName, itemID)
+    -- Galloping is a durable travel buff with its own informational reminder.
+    if ns.TARGET == "Camelot" and itemID == ns.GALLOPING_ITEM_ID then return nil end
     if itemType ~= ITEM_CLASS_CONSUMABLE and itemType ~= "Consumable" then return nil end
     if campRule(itemID) then return "other" end
     if itemSubType ~= POTION and isPoison(itemSubType, itemName) then return "weapon" end
