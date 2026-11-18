@@ -1,6 +1,5 @@
 local addonName, ns = ...
 
-ns.GALLOPING_ITEM_ID = 271871
 ns.GALLOPING_AURA_ID = 1289654
 
 -- Placement does not directly apply these effects. Use the actual camp aura

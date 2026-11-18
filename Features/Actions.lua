@@ -423,7 +423,11 @@ end
 local function missingRidingEnchant(slot, enchantID)
     if not GetInventoryItemLink then return false end
     local link = ns.Plain(GetInventoryItemLink("player", slot))
-    if type(link) ~= "string" then return false end
+    if type(link) ~= "string" then
+        if not GetInventoryItemID then return false end
+        local item = GetInventoryItemID("player", slot)
+        return not ns.IsSecret(item) and item == nil
+    end
     local equippedEnchant = link:match("|Hitem:%d+:(%d*):")
     return equippedEnchant ~= nil and (tonumber(equippedEnchant) or 0) ~= enchantID
 end

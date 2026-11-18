@@ -182,7 +182,11 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         -- Unit state can settle after the event; retry on the next frame.
         C_Timer.After(0, refresh)
     elseif event == "PLAYER_MOUNT_DISPLAY_CHANGED" then
-        if ns.Actions:TracksMountGear() and not ns.IsCombatLocked() then ns.Palette:Refresh() end
+        if ns.Actions:TracksMountGear() and not ns.IsCombatLocked() then
+            C_Timer.After(0, function()
+                if not ns.IsCombatLocked() then ns.Palette:Refresh() end
+            end)
+        end
     elseif event == "BAG_UPDATE_DELAYED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" or event == "SPELLS_CHANGED" or event == "PLAYER_TARGET_CHANGED"
         or event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" or event == "ROLE_CHANGED_INFORM" or event == "PLAYER_UPDATE_RESTING"
         or event == "UNIT_CONNECTION" or event == "UNIT_PHASE" or event == "UNIT_PET" or event == "MINIMAP_UPDATE_TRACKING"
