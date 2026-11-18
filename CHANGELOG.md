@@ -7,30 +7,27 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-- Keep reminder names, renewal thresholds and When to show selectors on one row.
+## [1.14.0] - 2026-11-18
 
-- Use compact arrow buttons beside each blessing to change its priority.
+The blessing queue has learned some manners.
 
-- Add When to show rules per category, consumable, buff and tracking spell,
-  including live category inheritance, custom locations and ready-check windows.
-- Preserve existing reminder availability; add recommended defaults for new
-  installs and an explicit action to apply them to existing settings.
-
-- Forever rogues can choose poisons per hand, wait for missing stock or use a
-  fallback without losing their preference, and keep existing weapon coatings.
-- Forever druids can set Mark and Thorns recipients separately, including an
-  optional assigned-tanks-only party filter for Thorns.
-- Forever shamans can select a preferred shield while keeping their active one.
-
-### Added
-- Forever paladins can reorder learned blessings for themselves and each class,
-  fill missing blessings alongside another paladin, and keep their own buff until
-  renewal. Wisdom is excluded for warriors and rogues.
-- Optional Righteous Fury reminders for tanking, off by default.
-
-- Keeping up with the guild: a chat reminder flags newer stable releases seen in your group or guild. Configure Update reminders on Visibility; development and test builds stay quiet.
-
-- Your miner minds their own business: tracking preferences are per character, with a Shared checkbox for each type. A character’s lone tracking type, including Find Minerals, is offered automatically unless explicitly disabled.
+- **Forever paladins:** order learned blessings for yourself and each class, fill
+  gaps left by another paladin, and keep your own active blessing until renewal.
+  Righteous Fury has a separate reminder, off by default.
+- **Forever rogues:** choose a poison per hand, wait for missing stock or use a
+  fallback without losing your preference. Existing weapon coatings stay put.
+- **Forever druids and shamans:** choose Mark and Thorns recipients separately,
+  including assigned tanks for party Thorns, or choose a preferred shield while
+  keeping your active one.
+- **A time and a place:** set When to show for each buff, tracking spell,
+  consumable category or item. Items can inherit category rules; custom locations
+  and ready-check windows keep reminders where you want them. Existing reminder
+  availability is preserved. Recommended defaults are available explicitly.
+- **Your miner minds their own business:** tracking choices are per character,
+  with an optional Shared setting per type. A lone tracking type is offered
+  automatically unless you switch it off.
+- **Keeping up with the guild:** optional chat reminders flag newer stable
+  releases seen in your group or guild. Development and test builds stay quiet.
 
 ## [1.13.2] - 2026-11-15
 

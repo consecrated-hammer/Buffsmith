@@ -97,7 +97,11 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
-    { version = "1.13.3", date = "2026-11-16", items = {
+    { version = "1.14.0", date = "2026-11-18", items = {
+        { title = "A little blessing order", text = "Forever paladins can order learned blessings for themselves and each class, fill another paladin's gaps and keep their own active blessing. Righteous Fury has its own optional reminder.", kind = "new", page = "Buffs", tab = "Paladin Blessings" },
+        { title = "Keep your coatings", text = "Forever rogues can choose a poison per hand and wait for missing stock or use a fallback without losing their choice. Existing weapon coatings stay put.", kind = "new", page = "Buffs" },
+        { title = "Thorns with boundaries", text = "Forever druids can choose Mark and Thorns recipients separately, including assigned tanks for party Thorns. Shamans can choose a preferred shield while keeping their active one.", kind = "new", page = "Buffs" },
+        { title = "A time and a place", text = "Choose When to show for each buff, tracking spell, category or consumable. Items can follow their category; custom locations and ready checks narrow the reminders. Existing availability is preserved.", kind = "new", page = "Consumables" },
         { title = "Your miner minds their own business", text = "Tracking choices are per character by default. Tick Shared beside a tracking type to use an account preference. A character with only one tracking type gets its reminder automatically, unless explicitly disabled.", kind = "improved", page = "Buffs", tab = "Tracking" },
         { title = "Keeping up with the guild", text = "A chat reminder flags newer stable releases seen in your party, raid or guild. Configure Update reminders on Visibility. Development and test builds stay quiet.", kind = "improved", page = "Visibility" },
     } },
