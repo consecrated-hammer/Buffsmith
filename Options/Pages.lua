@@ -875,7 +875,7 @@ HC.Settings:NewPage({ name = "Thank You", description = "Optional replies when s
     end, enabled, master)
     add(function(frame, y)
         local row
-        row, y = UI.SearchPicker(frame, "Emote", "Random picks a different emote each time.", y, {
+        row, y = UI.SearchPicker(frame, "Emote", "Pick one emote, use Random Friendly for a mix of positive emotes, or use Random for any emote.", y, {
             width = 220,
             items = function()
                 local items = {}

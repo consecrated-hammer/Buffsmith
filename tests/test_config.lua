@@ -57,6 +57,9 @@ BuffsmithDB = { thanksChannel = "EMOTE", thanksEmote = "RANDOM" }
 ns.InitConfig()
 equal(ns.db.thanksChannel, "EMOTE", "emote delivery persists")
 equal(ns.db.thanksEmote, "RANDOM", "random emote selection persists")
+BuffsmithDB = { thanksChannel = "EMOTE", thanksEmote = "RANDOM_FRIENDLY" }
+ns.InitConfig()
+equal(ns.db.thanksEmote, "RANDOM_FRIENDLY", "friendly random emote selection persists")
 BuffsmithDB = { thanksChannel = "EMOTE", thanksEmote = "bad token" }
 ns.InitConfig()
 equal(ns.db.thanksEmote, "THANK", "invalid emote selection resets to Thank")

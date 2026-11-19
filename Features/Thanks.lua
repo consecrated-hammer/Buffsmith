@@ -9,7 +9,7 @@ local function after(delay, callback)
         Thanks:SaveDiagnostics()
     end)
 end
-local FEATURED_EMOTES = { { "THANK", "Thank" }, { "BOW", "Bow" }, { "CHEER", "Cheer" }, { "APPLAUD", "Applaud" }, { "SALUTE", "Salute" } }
+local FRIENDLY_EMOTES = { { "THANK", "Thank" }, { "BOW", "Bow" }, { "CHEER", "Cheer" }, { "APPLAUD", "Applaud" }, { "SALUTE", "Salute" } }
 
 -- Loading screens rebuild aura snapshots; treat them as a fresh baseline.
 function Thanks:ResetHistory(preservePending)
@@ -63,11 +63,14 @@ function Thanks:EmoteChoices()
     end
     if not seen.THANK then all[#all + 1] = { token = "THANK", label = "thank" }; seen.THANK = true end
     table.sort(all, function(a, b) return a.label:lower() < b.label:lower() end)
-    local choices = { { token = "RANDOM", label = "Random" } }
+    local choices = {
+        { token = "RANDOM_FRIENDLY", label = "Random Friendly", random = true },
+        { token = "RANDOM", label = "Random", random = true },
+    }
     local featured = {}
-    for _, item in ipairs(FEATURED_EMOTES) do
+    for _, item in ipairs(FRIENDLY_EMOTES) do
         if seen[item[1]] then
-            choices[#choices + 1] = { token = item[1], label = item[2] }
+            choices[#choices + 1] = { token = item[1], label = item[2], friendly = true }
             featured[item[1]] = true
         end
     end
@@ -80,11 +83,20 @@ end
 
 local function selectedEmote()
     local choices = Thanks:EmoteChoices()
-    local available = {}
-    for index = 2, #choices do available[#available + 1] = choices[index].token end
     local configured = ns.db.thanksEmote
-    if configured == "RANDOM" then return available[math.random(#available)] end
-    for _, token in ipairs(available) do if configured == token then return token end end
+    local friendlyOnly = configured == "RANDOM_FRIENDLY"
+    if friendlyOnly or configured == "RANDOM" then
+        local pool = {}
+        for _, choice in ipairs(choices) do
+            if not choice.random and (not friendlyOnly or choice.friendly) then
+                pool[#pool + 1] = choice.token
+            end
+        end
+        return pool[math.random(#pool)]
+    end
+    for _, choice in ipairs(choices) do
+        if not choice.random and configured == choice.token then return choice.token end
+    end
     return "THANK"
 end
 

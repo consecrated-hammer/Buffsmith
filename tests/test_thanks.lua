@@ -79,13 +79,14 @@ EMOTE2_TOKEN, EMOTE2_CMD1 = "THANK", "thank"
 EMOTE3_TOKEN, EMOTE3_CMD1 = "DANCE", "/dance"
 EMOTE4_TOKEN, EMOTE4_CMD1 = "BOW", "bow"
 local choices = ns.Thanks:EmoteChoices()
-equal(#choices, 4, "aliases do not duplicate emotes")
-equal(choices[1].token, "RANDOM", "random leads the picker")
-equal(choices[2].token, "THANK", "thank is the first featured emote")
-equal(choices[2].label, "Thank", "featured emotes use plain names")
-equal(choices[3].token, "BOW", "other featured emotes follow")
-equal(choices[4].token, "DANCE", "the remaining catalogue follows featured emotes")
-equal(choices[4].label, "Dance", "catalogue emotes use plain names")
+equal(#choices, 5, "aliases do not duplicate emotes")
+equal(choices[1].token, "RANDOM_FRIENDLY", "friendly random leads the picker")
+equal(choices[2].token, "RANDOM", "full random is below friendly random")
+equal(choices[3].token, "THANK", "thank is the first featured emote")
+equal(choices[3].label, "Thank", "featured emotes use plain names")
+equal(choices[4].token, "BOW", "other featured emotes follow")
+equal(choices[5].token, "DANCE", "the remaining catalogue follows featured emotes")
+equal(choices[5].label, "Dance", "catalogue emotes use plain names")
 
 ns.db.thanksChannel, ns.db.thanksEmote = "EMOTE", "THANK"
 C_ChatInfo = { PerformEmote = function(token, target)
@@ -102,14 +103,27 @@ equal(#sent, 1, "emote mode sends no chat message")
 
 ns.db.thanksEmote = "RANDOM"
 ns.Thanks:Queue("Power Word: Fortitude", "Helpfulpriest-OtherRealm", providerGUID, "party1")
+local originalRandom = math.random
+math.random = function(size)
+    equal(size, 3, "full random includes every real emote")
+    return 3
+end
 scheduled[4].callback()
+math.random = originalRandom
 equal(#emotes, 2, "random sends one emote")
-assert(emotes[2].token == "THANK" or emotes[2].token == "BOW" or emotes[2].token == "DANCE")
+equal(emotes[2].token, "DANCE", "full random can pick outside the friendly pool")
 
+ns.db.thanksEmote = "RANDOM_FRIENDLY"
 ns.Thanks:Queue("Power Word: Fortitude", "Helpfulpriest-OtherRealm", providerGUID, "party1")
 providerGUID = "Player-1-someone-else"
+math.random = function(size)
+    equal(size, 2, "friendly random only includes available friendly emotes")
+    return 2
+end
 scheduled[5].callback()
+math.random = originalRandom
 equal(#emotes, 3, "a changed unit token keeps the captured original recipient")
+equal(emotes[3].token, "BOW", "friendly random sends an emote from the friendly pool")
 equal(emotes[3].target, "Helpfulpriest-OtherRealm", "changed token never redirects the emote")
 
 providerGUID = "Player-1-priest"
@@ -223,7 +237,7 @@ equal(#sent, 5, "the refreshed buff sends one whisper to its new caster")
 
 -- The optional Forever fallback is deliberately an untargeted emote.  It is
 -- used only after both direct source reads fail, never as a guessed whisper.
-ns.db.thanksChannel, ns.db.thanksUnknownEmote, ns.db.thanksEmote = "EMOTE", true, "THANK"
+ns.db.thanksChannel, ns.db.thanksUnknownEmote, ns.db.thanksEmote = "EMOTE", true, "RANDOM_FRIENDLY"
 ns.Thanks.seen, ns.Thanks.seenAuras, ns.Thanks.eligibleAuras, ns.Thanks.attributedAuras = {}, {}, {}, {}
 C_UnitAuras.GetAuraDataByIndex = function(_, index)
     if index == 1 then return { spellId = 1244, auraInstanceID = 104, name = "Power Word: Fortitude" } end
@@ -236,7 +250,12 @@ ns.Thanks:Observe(false)
 scheduled[firstRetry].callback()
 scheduled[firstRetry + 1].callback()
 equal(#emotes, 4, "unknown-caster emote waits for the configured delay after retries")
+math.random = function(size)
+    equal(size, 2, "the Forever fallback uses the friendly pool")
+    return 1
+end
 scheduled[firstRetry + 2].callback()
+math.random = originalRandom
 equal(#emotes, 5, "an opted-in unknown caster gets one untargeted Forever emote")
 equal(emotes[5].target, "none", "the fallback never invents an emote target")
 equal(ns.Thanks.lastStatus, "emoted without caster: THANK", "the fallback is visible in diagnostics")
