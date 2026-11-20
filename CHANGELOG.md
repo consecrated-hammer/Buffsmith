@@ -7,6 +7,10 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.15.1] - 2026-11-20
+
+- Good manners, shuffled. Pick **Random Friendly** under **Thank You > Emote** and Buffsmith will pick one of Thank, Bow, Cheer, Applaud and Salute per reply. You can still pick a single emote or let **Random** pick from the whole list.
+
 ## [1.15.0] - 2026-11-19
 
 - **Forever:** Carrot packed? Turn on individual checks for Carrot on a Stick, Mithril Spurs and Riding Skill gloves under Consumables > Travel reminders. The bar shows what’s missing when you mount.

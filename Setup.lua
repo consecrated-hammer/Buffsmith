@@ -97,6 +97,9 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.15.1", date = "2026-11-20", items = {
+        { title = "Good manners, shuffled", text = "Pick Random Friendly under Thank You > Emote for a mix of Thank, Bow, Cheer, Applaud and Salute.", page = "Thank You", kind = "new" },
+    } },
     { version = "1.15.0", date = "2026-11-19", items = {
         { title = "Carrot packed?", text = "Forever can remind you about missing Carrot on a Stick, Mithril Spurs or Riding Skill gloves when you mount. Turn on each check under Consumables > Travel reminders.", client = "forever", kind = "new", page = "Consumables" },
         { title = "Last day to gallop", text = "Turn on Gift of Galloping expiry to see a reminder during the last 24 hours of the buff.", client = "forever", kind = "new", page = "Consumables" },
