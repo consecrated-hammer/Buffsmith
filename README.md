@@ -112,6 +112,11 @@ also ignored, including localized names and ranked Thorns. Unrecognised legacy
 food effects remain intact; the debug report shows retained/ignored mappings. New food-effect learning requires a Well Fed signal, so an
 unrelated class buff arriving during eating cannot replace the food timer.
 
+Under **Consumables > Click only**, turn on any category you want the **Next
+buff key** to skip. Reminders for that category still appear under the usual
+conditions. Click the icon or a flyout item to use it. All categories are
+included in the key by default.
+
 The drag handle stays at a fixed top-left corner while icons, cooldowns and
 status rows come and go. The grid grows right and down from there. Dragging the
 live bar or on-screen preview saves the same fixed corner. The settings preview has its own position. The changing-size grid no

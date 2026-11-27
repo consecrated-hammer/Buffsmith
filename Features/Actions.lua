@@ -1093,9 +1093,11 @@ function Actions:BindingEntries()
         end
     end
     for _, category in ipairs(ns.CONSUMABLE_ORDER) do
-        local choices = self:VisibleChoices(category)
-        local primary = self:Preferred(category, choices)
-        if primary then entries[#entries + 1] = choices[primary] end
+        if ns.db.clickOnlyCategories[category] ~= true then
+            local choices = self:VisibleChoices(category)
+            local primary = self:Preferred(category, choices)
+            if primary then entries[#entries + 1] = choices[primary] end
+        end
     end
     return entries
 end

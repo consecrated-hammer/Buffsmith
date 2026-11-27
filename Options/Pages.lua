@@ -632,6 +632,17 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         function(value) ns.Set("foodStillSeconds", value) end,
         function(value) return value .. " s" end)
     if ns.DisplayRules then _, y = ns.DisplayRules:RecommendedButton(panel, y) end
+    _, y = UI.Header(panel, "Click only", y, ICONS.consumables)
+    for _, category in ipairs(CATEGORIES) do
+        local key, label = category[1], category[2]
+        _, y = UI.Check(panel, "Click only: " .. label,
+            "Skip this category when you press the Next buff key. Click its bar icon or a flyout item to use it.", y,
+            function() return ns.db.clickOnlyCategories[key] == true end,
+            function(value)
+                ns.db.clickOnlyCategories[key] = value or nil
+                ns.RefreshAll()
+            end)
+    end
     if ns.TARGET == "Camelot" then
         _, y = UI.Header(panel, "Travel reminders", y, ICONS.consumables)
         _, y = UI.Check(panel, "Carrot on a Stick", "While mounted, show a reminder if neither trinket slot has a Carrot on a Stick.", y,
@@ -647,7 +658,8 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
     local heading = reminderHeading(panel, y, false)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local reset = UI.PageReset(panel, y, function()
-        resetKeys({ "categories", "foodStillSeconds", "remindCarrot", "remindMithrilSpurs", "remindRidingGloves", "remindGalloping" })
+        resetKeys({ "categories", "clickOnlyCategories", "foodStillSeconds", "remindCarrot", "remindMithrilSpurs",
+            "remindRidingGloves", "remindGalloping" })
         for _, key in ipairs({ "food", "scroll", "flask", "other", "weapon" }) do
             ns.db.reminderPercent[key] = ns.defaults.reminderPercent[key]
         end

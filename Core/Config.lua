@@ -37,6 +37,7 @@ ns.defaults = {
     excludedBuffs = {},
     buffDurations = {},
     categories = { food = true, scroll = true, flask = true, other = true, weapon = true },
+    clickOnlyCategories = {},
     maxAlternatives = 3,
     preferred = {},
     blessings = { automatic = true, keepActive = true, orders = {} },

@@ -203,6 +203,38 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     ns.db.categories.food = true
     settings:Show("Consumables")
     equal(settings:Focus("Consumables", "Test Food"), body("Consumables").hcRows["Test Food"], "enabled category reveals item")
+    local clickOnly = assert(settings:Focus("Consumables", "Click only: Food"))
+    local originalChoices = ns.Inventory.Choices
+    function ns.Inventory:Choices(category)
+        if category == "food" then return self:OwnedChoices(category) end
+        if category == "flask" then
+            return { { name = "Test Flask", itemID = 9003, kind = "item", category = "flask", icon = 1 } }
+        end
+        return {}
+    end
+    local function inKeyRotation(itemID)
+        local key = ns.Readiness:Key({ kind = "item", itemID = itemID })
+        for _, candidate in ipairs(ns.Bindings.order or {}) do
+            if candidate == key then return true end
+        end
+        return false
+    end
+    ns.RefreshAll()
+    equal(inKeyRotation(9001), true, "existing saves include food in the key rotation")
+    wow.Click(clickOnly.hcCheckbox)
+    equal(inKeyRotation(9001), false, "click-only food is removed from the key rotation immediately")
+    equal(inKeyRotation(9003), true, "the flask remains in the key rotation")
+    local clickableFood = false
+    for _, button in pairs(ns.Palette.buttons) do
+        if button:IsShown() and button:GetAttribute("type1") == "item" and button:GetAttribute("item1") == "item:9001" then
+            clickableFood = true
+        end
+    end
+    equal(clickableFood, true, "click-only food still has a visible, armed bar icon")
+    wow.Click(clickOnly.hcCheckbox)
+    equal(inKeyRotation(9001), true, "turning off click only puts food back in the key rotation")
+    wow.Click(clickOnly.hcCheckbox)
+    ns.Inventory.Choices = originalChoices
     settings:Show("Appearance")
     owned = false
     local events = _G.BuffsmithEventFrame
@@ -233,6 +265,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(ns.db.showTargetBuffs, true, "target reset")
     equal(ns.db.iconSize, 56, "target reset preserves appearance")
     clickReset("Consumables", "Reset this page")
+    equal(ns.db.clickOnlyCategories.food, nil, "consumable reset restores food to the key rotation")
     equal(ns.db.reminderPercent.food, 10, "category threshold reset")
     equal(ns.db.reminderPercent.item[9001], nil, "item threshold reset")
     equal(ns.db.excludedConsumables[9002], true, "consumable reset preserves ignored items")
