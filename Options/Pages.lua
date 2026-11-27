@@ -85,22 +85,34 @@ end
 
 local RULE_WIDTH = 160
 local SLIDER_WIDTH = 80
-local function sliderX() return UI.CONTENT_WIDTH - RULE_WIDTH - SLIDER_WIDTH - 52 end
-local function textWidth() return math.min(210, sliderX() - 100) end
+local CONSUMABLE_SLIDER_WIDTH = 64
+local CLICK_ONLY_WIDTH = 56
+local RULE_X = UI.CONTENT_WIDTH - RULE_WIDTH - 6
+local CLICK_ONLY_X = RULE_X - CLICK_ONLY_WIDTH
+local function sliderX(consumables)
+    return consumables and (CLICK_ONLY_X - CONSUMABLE_SLIDER_WIDTH - 38) or (RULE_X - SLIDER_WIDTH - 46)
+end
 
 -- A single label explains the aligned duration sliders on each reminder list.
-local function reminderHeading(panel, y, buffs)
+local function reminderHeading(panel, y, consumables)
     local heading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    heading:SetPoint("TOPLEFT", UI.PAD + sliderX(), y - 4)
-    heading:SetWidth(SLIDER_WIDTH + 38)
+    heading:SetPoint("TOPLEFT", UI.PAD + sliderX(consumables), y - 4)
+    heading:SetWidth((consumables and CONSUMABLE_SLIDER_WIDTH or SLIDER_WIDTH) + 38)
     heading:SetJustifyH("LEFT")
     if heading.SetWordWrap then heading:SetWordWrap(false) end
     heading:SetText("Remind below")
-    local hint = UI.AttachTitleHint(panel, heading, "Reminder thresholds", buffs
-        and "Most sliders use remaining buff time. Permanent buffs have no slider; Read Leyline uses health or mana instead."
-        or "Category and item sliders use the percentage of the effect's duration that is left.")
+    local hint = UI.AttachTitleHint(panel, heading, "Reminder thresholds", consumables
+        and "Category and item sliders use the percentage of the effect's duration that is left."
+        or "Most sliders use remaining buff time. Permanent buffs have no slider; Read Leyline uses health or mana instead.")
+    if consumables then
+        local clickHeading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
+        clickHeading:SetPoint("TOPLEFT", UI.PAD + CLICK_ONLY_X, y - 4)
+        clickHeading:SetWidth(CLICK_ONLY_WIDTH)
+        clickHeading:SetJustifyH("CENTER")
+        clickHeading:SetText("Click only")
+    end
     local ruleHeading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    ruleHeading:SetPoint("TOPLEFT", UI.PAD + UI.CONTENT_WIDTH - RULE_WIDTH - 6, y - 4)
+    ruleHeading:SetPoint("TOPLEFT", UI.PAD + RULE_X, y - 4)
     ruleHeading:SetWidth(RULE_WIDTH)
     ruleHeading:SetJustifyH("LEFT")
     ruleHeading:SetText("When to show")
@@ -112,7 +124,7 @@ local function reminderHeading(panel, y, buffs)
     end
 end
 
-local function reminderRow(panel, y, item)
+local function reminderRow(panel, y, item, consumables)
     local row = CreateFrame("Button", nil, panel, "BackdropTemplate")
     row:SetPoint("TOPLEFT", UI.PAD, y)
     row.indent = item.indent or 0
@@ -141,13 +153,15 @@ local function reminderRow(panel, y, item)
     end
     local name = UI.FontString(row)
     name:SetPoint("TOPLEFT", left, "TOPRIGHT", 10, (item.icon and not item.caveat) and 0 or 6)
-    name:SetWidth(textWidth() - row.indent)
+    local labelInset = consumables and (item.icon and 110 or 72) or 100
+    local labelWidth = math.min(210, sliderX(consumables) - labelInset) - row.indent
+    name:SetWidth(labelWidth)
     name:SetJustifyH("LEFT")
     if name.SetWordWrap then name:SetWordWrap(false) end
     name:SetText(item.label)
     local detail = UI.FontString(row, "GameFontHighlightSmall", "muted")
     detail:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4)
-    detail:SetWidth(textWidth() - row.indent)
+    detail:SetWidth(labelWidth)
     detail:SetJustifyH("LEFT")
     if detail.SetWordWrap then detail:SetWordWrap(false) end
     local caveat
@@ -163,9 +177,9 @@ local function reminderRow(panel, y, item)
     if not item.permanent then
         slider = CreateFrame("Slider", nil, row)
         slider:SetOrientation("HORIZONTAL")
-        slider:SetSize(SLIDER_WIDTH, 16)
+        slider:SetSize(consumables and CONSUMABLE_SLIDER_WIDTH or SLIDER_WIDTH, 16)
         -- Sliders line up down the page, indented row or not.
-        slider:SetPoint("LEFT", sliderX() - row.indent, 0)
+        slider:SetPoint("LEFT", sliderX(consumables) - row.indent, 0)
         slider:SetMinMaxValues(0, 50)
         slider:SetValueStep(1)
         slider:SetObeyStepOnDrag(true)
@@ -183,9 +197,34 @@ local function reminderRow(panel, y, item)
             or "Remind when this share of the effect's duration is left.")
     end
 
+    local clickOnly, category
+    if consumables and item.when and item.when.kind == "category" then
+        category = item.when.category
+        clickOnly = T.IsClassic() and UI.CheckButton(row) or UI.Switch(row)
+        if clickOnly.track then
+            clickOnly:SetSize(48, 24)
+            clickOnly.track:ClearAllPoints()
+            clickOnly.track:SetPoint("CENTER")
+            clickOnly.Text:Hide()
+        end
+        clickOnly:SetPoint("CENTER", row, "LEFT", CLICK_ONLY_X + CLICK_ONLY_WIDTH / 2, 0)
+        local label = "Click only: " .. item.label
+        UI.AttachHint(clickOnly, label,
+            "Skip this category when you press the Next buff key. Click its bar icon or a flyout item to use it.")
+        clickOnly.hcParentRow = row
+        UI.RegisterRow(panel, clickOnly, label)
+        clickOnly:SetScript("OnClick", function()
+            local enabled = ns.db.clickOnlyCategories[category] ~= true
+            ns.db.clickOnlyCategories[category] = enabled or nil
+            clickOnly:SetChecked(enabled)
+            ns.RefreshAll()
+        end)
+    end
+
     local changing = false
     local function refresh()
         tick:SetChecked(item.enabled())
+        if clickOnly then clickOnly:SetChecked(ns.db.clickOnlyCategories[category] == true) end
         if caveat then caveat:SetShown(item.enabled()) end
         if item.detail then
             detail:SetText(item.detail)
@@ -230,7 +269,7 @@ end
 
 -- Rows whose set changes while the page exists (ignoring, learning a spell,
 -- looting an item).  One frame per key, re-anchored on every layout.
-local function rowPool(panel)
+local function rowPool(panel, consumables)
     local pool = { frames = {} }
     function pool:Begin()
         for _, frame in pairs(self.frames) do
@@ -243,7 +282,7 @@ local function rowPool(panel)
         local frame = self.frames[key]
         if not frame then
             local definition = build()
-            frame = reminderRow(panel, y, definition)
+            frame = reminderRow(panel, y, definition, consumables)
             frame.when = definition.when
             frame.whenLabel = definition.label
             self.frames[key] = frame
@@ -456,7 +495,7 @@ local function buildReminders(panel, y)
     _, y = UI.Header(panel, "Your buffs", y, ICONS.detected)
     _, y = UI.Text(panel, "Buffsmith found these on this character. Short ones start switched off.", y)
     if ns.DisplayRules then _, y = ns.DisplayRules:RecommendedButton(panel, y) end
-    local heading = reminderHeading(panel, y, true)
+    local heading = reminderHeading(panel, y)
     local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
     local none = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     none:SetText("No self-buffs found for your class and level yet.")
@@ -632,17 +671,6 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         function(value) ns.Set("foodStillSeconds", value) end,
         function(value) return value .. " s" end)
     if ns.DisplayRules then _, y = ns.DisplayRules:RecommendedButton(panel, y) end
-    _, y = UI.Header(panel, "Click only", y, ICONS.consumables)
-    for _, category in ipairs(CATEGORIES) do
-        local key, label = category[1], category[2]
-        _, y = UI.Check(panel, "Click only: " .. label,
-            "Skip this category when you press the Next buff key. Click its bar icon or a flyout item to use it.", y,
-            function() return ns.db.clickOnlyCategories[key] == true end,
-            function(value)
-                ns.db.clickOnlyCategories[key] = value or nil
-                ns.RefreshAll()
-            end)
-    end
     if ns.TARGET == "Camelot" then
         _, y = UI.Header(panel, "Travel reminders", y, ICONS.consumables)
         _, y = UI.Check(panel, "Carrot on a Stick", "While mounted, show a reminder if neither trinket slot has a Carrot on a Stick.", y,
@@ -655,8 +683,8 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
             function() return ns.db.remindGalloping end, function(value) ns.Set("remindGalloping", value) end)
     end
     _, y = UI.Header(panel, "Categories and items", y, ICONS.consumables)
-    local heading = reminderHeading(panel, y, false)
-    local listTop, pool, link = y, rowPool(panel), ignoredLink(panel)
+    local heading = reminderHeading(panel, y, true)
+    local listTop, pool, link = y, rowPool(panel, true), ignoredLink(panel)
     local reset = UI.PageReset(panel, y, function()
         resetKeys({ "categories", "clickOnlyCategories", "foodStillSeconds", "remindCarrot", "remindMithrilSpurs",
             "remindRidingGloves", "remindGalloping" })

@@ -204,6 +204,17 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     settings:Show("Consumables")
     equal(settings:Focus("Consumables", "Test Food"), body("Consumables").hcRows["Test Food"], "enabled category reveals item")
     local clickOnly = assert(settings:Focus("Consumables", "Click only: Food"))
+    local rows = body("Consumables").hcRows
+    local food, threshold, timing = rows.Food, rows["Food reminder threshold"], rows["Food: When to show"]
+    equal(clickOnly:GetParent(), food, "click-only switch is part of the category row")
+    local _, _, _, clickX, clickY = clickOnly:GetPoint()
+    local _, thresholdX = threshold:GetPoint()
+    local _, _, _, timingInset = timing:GetPoint()
+    equal(clickY, 0, "click-only switch is vertically centered on the category row")
+    assert(thresholdX + threshold:GetWidth() + 32 < clickX - clickOnly:GetWidth() / 2,
+        "there is room for the threshold value before the click-only switch")
+    assert(clickX + clickOnly:GetWidth() / 2 < food:GetWidth() + timingInset - timing:GetWidth(),
+        "the click-only switch fits before the timing selector")
     local originalChoices = ns.Inventory.Choices
     function ns.Inventory:Choices(category)
         if category == "food" then return self:OwnedChoices(category) end
@@ -221,7 +232,8 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     end
     ns.RefreshAll()
     equal(inKeyRotation(9001), true, "existing saves include food in the key rotation")
-    wow.Click(clickOnly.hcCheckbox)
+    wow.Click(clickOnly)
+    equal(ns.db.categories.food, true, "click-only toggle leaves the category enabled")
     equal(inKeyRotation(9001), false, "click-only food is removed from the key rotation immediately")
     equal(inKeyRotation(9003), true, "the flask remains in the key rotation")
     local clickableFood = false
@@ -231,9 +243,9 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
         end
     end
     equal(clickableFood, true, "click-only food still has a visible, armed bar icon")
-    wow.Click(clickOnly.hcCheckbox)
+    wow.Click(clickOnly)
     equal(inKeyRotation(9001), true, "turning off click only puts food back in the key rotation")
-    wow.Click(clickOnly.hcCheckbox)
+    wow.Click(clickOnly)
     ns.Inventory.Choices = originalChoices
     settings:Show("Appearance")
     owned = false
@@ -397,13 +409,15 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
 end
 -- Display-rule controls preserve inheritance, expand Custom and reset only rules.
 for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
-    local ns = loadAddon(toc, { iconSize = 44, reminderPercent = { food = 23 }, categories = { food = true } })
+    local ns = loadAddon(toc, { iconSize = 44, reminderPercent = { food = 23 },
+        categories = { food = true }, clickOnlyCategories = { food = true } })
     local settings, R = ns.HammerCore.Settings, ns.DisplayRules
     ns.Inventory.OwnedChoices = function(_, category)
         return category == "food" and { { kind = "item", itemID = 9001, name = "Test Food", category = "food", usable = true } } or {}
     end
     settings:Show("Consumables")
     local body = settings.pages.Consumables.bodies.Consumables
+    equal(body.hcRows["Click only: Food"]:GetChecked(), true, "existing click-only settings render on the category row")
     local selector = assert(body.hcRows["Food: When to show"])
     local frame = selector:GetParent()
     local collapsed = frame:GetHeight()
@@ -443,6 +457,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(ns.db.iconSize, 44, "apply preserves layout")
     equal(ns.db.reminderPercent.food, 23, "apply preserves renewal threshold")
     equal(ns.db.categories.food, true, "apply preserves enabled categories")
+    equal(ns.db.clickOnlyCategories.food, true, "apply preserves click-only choices")
     for name, err in pairs(settings.errors) do error(toc .. " " .. name .. ": " .. err) end
 end
 -- The actual READY_CHECK event and combat recovery refresh the next-buff key.
