@@ -97,6 +97,9 @@ end
 -- HammerCore's tools/whatsnew_check.py fails the release without one. A
 -- `page` adds a link to that settings page.
 local WHATS_NEW = {
+    { version = "1.16.0", date = "2026-11-28", items = {
+        { title = "Hands off my snacks", text = "Turn on Click only beside any Consumables category to skip it with the Next buff key. Its items are still clickable on the bar.", page = "Consumables", kind = "new" },
+    } },
     { version = "1.15.1", date = "2026-11-20", items = {
         { title = "Good manners, shuffled", text = "Pick Random Friendly under Thank You > Emote for a mix of Thank, Bow, Cheer, Applaud and Salute.", page = "Thank You", kind = "new" },
     } },

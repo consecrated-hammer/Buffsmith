@@ -7,6 +7,10 @@ and Buffsmith uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-11-28
+
+- **Hands off my snacks.** Turn on **Click only** beside any Consumables category. The Next buff key skips that category, and you can still use its items by clicking their icons.
+
 ## [1.15.1] - 2026-11-20
 
 - Good manners, shuffled. Pick **Random Friendly** under **Thank You > Emote** and Buffsmith will pick one of Thank, Bow, Cheer, Applaud and Salute per reply. You can still pick a single emote or let **Random** pick from the whole list.
