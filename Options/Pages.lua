@@ -86,7 +86,9 @@ end
 local RULE_WIDTH = 160
 local SLIDER_WIDTH = 80
 local CONSUMABLE_SLIDER_WIDTH = 64
-local CLICK_ONLY_WIDTH = 56
+local CLICK_ONLY_WIDTH = 76
+-- The When to show heading lines up with the selector's text, not its border.
+local RULE_TEXT_INSET = 10
 local CLICK_ONLY_HINT = "When this is on, the Next buff key skips this category. Click its bar icon or a flyout item to use it."
 local function ruleX() return UI.CONTENT_WIDTH - RULE_WIDTH - 6 end
 local function clickOnlyX() return ruleX() - CLICK_ONLY_WIDTH end
@@ -114,8 +116,8 @@ local function reminderHeading(panel, y, consumables)
         UI.AttachTitleHint(panel, clickHeading, "Click only", CLICK_ONLY_HINT)
     end
     local ruleHeading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    ruleHeading:SetPoint("TOPLEFT", heading, "TOPLEFT", ruleX() - start, 0)
-    ruleHeading:SetWidth(RULE_WIDTH)
+    ruleHeading:SetPoint("TOPLEFT", heading, "TOPLEFT", ruleX() - start + RULE_TEXT_INSET, 0)
+    ruleHeading:SetWidth(RULE_WIDTH - RULE_TEXT_INSET)
     ruleHeading:SetJustifyH("LEFT")
     ruleHeading:SetText("When to show")
     panel.reminderHeading = heading

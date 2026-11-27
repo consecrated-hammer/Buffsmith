@@ -233,7 +233,7 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
     equal(headingX + headingOffset + clickHeading:GetWidth() / 2, rowX + clickX, "click-only heading is centered over its switch")
     local _, timingAnchor, _, timingOffset = assert(timingHeading):GetPoint()
     equal(timingAnchor, reminderHeading, "timing header uses the shared heading anchor")
-    equal(headingX + timingOffset, rowX + food:GetWidth() + timingInset - timing:GetWidth(), "timing heading aligns above the selector")
+    equal(headingX + timingOffset, rowX + food:GetWidth() + timingInset - timing:GetWidth() + 10, "timing heading aligns with the selector text")
     local headingHint
     for _, frame in ipairs(wow.frames) do
         if frame.points[1] and frame.points[1][2] == clickHeading and frame.hcHintTitle == "Click only" then
