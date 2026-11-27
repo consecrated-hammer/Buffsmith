@@ -87,17 +87,18 @@ local RULE_WIDTH = 160
 local SLIDER_WIDTH = 80
 local CONSUMABLE_SLIDER_WIDTH = 64
 local CLICK_ONLY_WIDTH = 56
-local RULE_X = UI.CONTENT_WIDTH - RULE_WIDTH - 6
-local CLICK_ONLY_X = RULE_X - CLICK_ONLY_WIDTH
+local CLICK_ONLY_HINT = "When this is on, the Next buff key skips this category. Click its bar icon or a flyout item to use it."
+local function ruleX() return UI.CONTENT_WIDTH - RULE_WIDTH - 6 end
+local function clickOnlyX() return ruleX() - CLICK_ONLY_WIDTH end
 local function sliderX(consumables)
-    return consumables and (CLICK_ONLY_X - CONSUMABLE_SLIDER_WIDTH - 38) or (RULE_X - SLIDER_WIDTH - 46)
+    return consumables and (clickOnlyX() - CONSUMABLE_SLIDER_WIDTH - 38) or (ruleX() - SLIDER_WIDTH - 46)
 end
 
 -- A single label explains the aligned duration sliders on each reminder list.
 local function reminderHeading(panel, y, consumables)
+    local start = sliderX(consumables)
     local heading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    heading:SetPoint("TOPLEFT", UI.PAD + sliderX(consumables), y - 4)
-    heading:SetWidth((consumables and CONSUMABLE_SLIDER_WIDTH or SLIDER_WIDTH) + 38)
+    heading:SetWidth((consumables and CONSUMABLE_SLIDER_WIDTH or SLIDER_WIDTH) + 28)
     heading:SetJustifyH("LEFT")
     if heading.SetWordWrap then heading:SetWordWrap(false) end
     heading:SetText("Remind below")
@@ -106,21 +107,25 @@ local function reminderHeading(panel, y, consumables)
         or "Most sliders use remaining buff time. Permanent buffs have no slider; Read Leyline uses health or mana instead.")
     if consumables then
         local clickHeading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-        clickHeading:SetPoint("TOPLEFT", UI.PAD + CLICK_ONLY_X, y - 4)
+        clickHeading:SetPoint("TOPLEFT", heading, "TOPLEFT", clickOnlyX() - start, 0)
         clickHeading:SetWidth(CLICK_ONLY_WIDTH)
         clickHeading:SetJustifyH("CENTER")
         clickHeading:SetText("Click only")
+        UI.AttachTitleHint(panel, clickHeading, "Click only", CLICK_ONLY_HINT)
     end
     local ruleHeading = UI.FontString(panel, "GameFontHighlightSmall", "muted")
-    ruleHeading:SetPoint("TOPLEFT", UI.PAD + RULE_X, y - 4)
+    ruleHeading:SetPoint("TOPLEFT", heading, "TOPLEFT", ruleX() - start, 0)
     ruleHeading:SetWidth(RULE_WIDTH)
     ruleHeading:SetJustifyH("LEFT")
     ruleHeading:SetText("When to show")
     panel.reminderHeading = heading
-    return function(visible)
+    return function(visible, top)
+        top = top or y
+        heading:ClearAllPoints()
+        heading:SetPoint("TOPLEFT", UI.PAD + start, top - 4)
         heading:SetShown(visible)
         hint:SetShown(visible)
-        return y - 24
+        return top - 24
     end
 end
 
@@ -207,10 +212,9 @@ local function reminderRow(panel, y, item, consumables)
             clickOnly.track:SetPoint("CENTER")
             clickOnly.Text:Hide()
         end
-        clickOnly:SetPoint("CENTER", row, "LEFT", CLICK_ONLY_X + CLICK_ONLY_WIDTH / 2, 0)
+        clickOnly:SetPoint("CENTER", row, "LEFT", clickOnlyX() + CLICK_ONLY_WIDTH / 2, 0)
         local label = "Click only: " .. item.label
-        UI.AttachHint(clickOnly, label,
-            "Skip this category when you press the Next buff key. Click its bar icon or a flyout item to use it.")
+        UI.AttachHint(clickOnly, label, CLICK_ONLY_HINT)
         clickOnly.hcParentRow = row
         UI.RegisterRow(panel, clickOnly, label)
         clickOnly:SetScript("OnClick", function()
@@ -700,7 +704,7 @@ HC.Settings:NewPage({ name = "Consumables", columns = 1, description = "Items ap
         for _, category in ipairs(CATEGORIES) do
             if ns.db.categories[category[1]] then sliders = true; break end
         end
-        local y = link("item", heading(sliders))
+        local y = heading(sliders, link("item", listTop))
         pool:Begin()
         for _, category in ipairs(CATEGORIES) do
             local key, label = category[1], category[2]

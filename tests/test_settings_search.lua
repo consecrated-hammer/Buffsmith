@@ -215,6 +215,40 @@ for _, toc in ipairs({ "Buffsmith.toc", "Buffsmith_Camelot.toc" }) do
         "there is room for the threshold value before the click-only switch")
     assert(clickX + clickOnly:GetWidth() / 2 < food:GetWidth() + timingInset - timing:GetWidth(),
         "the click-only switch fits before the timing selector")
+    local content = body("Consumables").content
+    local reminderHeading = content.reminderHeading
+    local _, headingX, headingY = reminderHeading:GetPoint()
+    local _, rowX, rowY = food:GetPoint()
+    equal(headingX, rowX + thresholdX, "threshold heading aligns to the real window width")
+    equal(headingY - rowY, 20, "headings sit directly above the first category row")
+    local clickHeading, timingHeading
+    for _, region in ipairs(wow.regions) do
+        if region:GetParent() == content then
+            if region:GetText() == "Click only" then clickHeading = region end
+            if region:GetText() == "When to show" then timingHeading = region end
+        end
+    end
+    local _, anchor, _, headingOffset = assert(clickHeading):GetPoint()
+    equal(anchor, reminderHeading, "click-only header uses the shared heading anchor")
+    equal(headingX + headingOffset + clickHeading:GetWidth() / 2, rowX + clickX, "click-only heading is centered over its switch")
+    local _, timingAnchor, _, timingOffset = assert(timingHeading):GetPoint()
+    equal(timingAnchor, reminderHeading, "timing header uses the shared heading anchor")
+    equal(headingX + timingOffset, rowX + food:GetWidth() + timingInset - timing:GetWidth(), "timing heading aligns above the selector")
+    local headingHint
+    for _, frame in ipairs(wow.frames) do
+        if frame.points[1] and frame.points[1][2] == clickHeading and frame.hcHintTitle == "Click only" then
+            headingHint = frame
+            break
+        end
+    end
+    local tooltipLine, addLine = nil, GameTooltip.AddLine
+    GameTooltip.AddLine = function(_, line) tooltipLine = line end
+    for _, control in ipairs({ assert(headingHint, "click-only heading has a hover target"), clickOnly }) do
+        tooltipLine = nil
+        control.scripts.OnEnter(control)
+        assert(tooltipLine and tooltipLine:find("Next buff key skips this category", 1, true), "hover explains the keybind effect")
+    end
+    GameTooltip.AddLine = addLine
     local originalChoices = ns.Inventory.Choices
     function ns.Inventory:Choices(category)
         if category == "food" then return self:OwnedChoices(category) end
